@@ -9,16 +9,16 @@
   left: 0;
   width: 100%;
   height: 100%;
-  z-index: 1000;
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   align-items: center;
-  padding-bottom: 50px;
-  background-color: var(--color-bg-base);
+  padding-bottom: 56px;
+  background-color: #080a0f;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
 }
 
@@ -36,7 +36,7 @@
   width: 100%;
   height: 100%;
   z-index: 0;
-  background: radial-gradient(circle at 60% 40%, #1c2230 0%, #10141d 55%, #080a0f 100%);
+  background: radial-gradient(circle at 60% 40%, #171c26 0%, #0d1017 60%, #06070a 100%);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -50,10 +50,10 @@
   height: 100%;
   background-size: 40px 40px;
   background-image: 
-    linear-gradient(to right, rgba(196, 90, 114, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
-  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9) 30%, transparent 80%);
-  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9) 30%, transparent 80%);
+    linear-gradient(to right, rgba(196, 90, 114, 0.06) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.06) 1px, transparent 1px);
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 30%, transparent 85%);
+  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.95) 30%, transparent 85%);
 }
 
 /* 임시 텍스트 표시 배너 (나중에 인게임 스크린샷으로 교체 예정) */
@@ -63,8 +63,8 @@
   align-items: center;
   gap: 8px;
   padding: 14px 28px;
-  background: rgba(18, 19, 22, 0.7);
-  border: 1px dashed rgba(196, 90, 114, 0.4);
+  background: rgba(14, 17, 24, 0.85);
+  border: 1px dashed rgba(196, 90, 114, 0.5);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   pointer-events: none;
@@ -73,23 +73,23 @@
 }
 
 .screenshot-placeholder-badge .badge-icon {
-  font-size: 1.1rem;
-  color: var(--color-spec-accent);
+  font-size: 1.15rem;
+  color: var(--accent-spec);
 }
 
 .screenshot-placeholder-badge .badge-text {
   font-family: var(--font-mono);
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   letter-spacing: 0.18em;
-  color: var(--color-text-dim);
+  color: var(--text-secondary);
   text-transform: uppercase;
 }
 
 .screenshot-placeholder-badge .badge-sub {
   font-family: var(--font-mono);
-  font-size: 0.64rem;
+  font-size: 0.65rem;
   letter-spacing: 0.1em;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 /* 3. 하단 테크니컬 로딩 카드 */
@@ -97,10 +97,10 @@
   position: relative;
   z-index: 10;
   width: 90%;
-  max-width: 680px;
-  background: rgba(18, 20, 26, 0.9);
-  border: 1px solid var(--color-border);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  max-width: 720px;
+  background: rgba(14, 17, 24, 0.96);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.1);
   padding: 24px 28px;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -122,45 +122,78 @@
 .loading-brand-tag {
   font-family: var(--font-mono);
   font-size: 0.68rem;
-  padding: 2px 6px;
+  font-weight: 700;
+  padding: 2px 7px;
   background: rgba(196, 90, 114, 0.2);
-  color: var(--color-spec-accent);
-  border: 1px solid rgba(196, 90, 114, 0.4);
+  color: var(--accent-spec);
+  border: 1px solid rgba(196, 90, 114, 0.45);
   letter-spacing: 0.12em;
 }
 
 .loading-main-title {
   font-family: var(--font-mono);
-  font-size: 0.92rem;
+  font-size: 0.94rem;
   font-weight: 700;
-  color: var(--color-text-main);
-  letter-spacing: 0.1em;
+  color: var(--text-primary);
+  letter-spacing: 0.08em;
+}
+
+.loading-rate-display {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.loading-rate-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.14em;
 }
 
 .loading-percent-text {
   font-family: var(--font-mono);
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--color-spec-accent);
-  letter-spacing: 0.05em;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: #38bdf8 !important;
+  text-shadow: 0 0 14px rgba(56, 189, 248, 0.75);
+  letter-spacing: 0.04em;
+  min-width: 65px;
+  text-align: right;
 }
 
 /* 프로그레스 바 트랙 및 채움 */
 .loading-bar-track {
   width: 100%;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.08);
+  height: 12px;
+  background: rgba(18, 22, 31, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.95);
   position: relative;
   overflow: hidden;
-  margin: 10px 0 14px 0;
+  margin: 12px 0 14px 0;
 }
 
 .loading-bar-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #38bdf8 0%, var(--color-spec-accent) 100%);
-  box-shadow: 0 0 12px rgba(196, 90, 114, 0.8);
-  transition: width 0.15s ease-out;
+  background: linear-gradient(90deg, #0284c7 0%, #38bdf8 35%, #818cf8 70%, var(--accent-spec) 100%) !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.95), 0 0 8px rgba(196, 90, 114, 0.9) !important;
+  position: relative;
+  transition: width 0.05s linear;
+}
+
+/* 프로그레스 바 진행 선두 엣지 네온 바 */
+.loading-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100%;
+  background: #ffffff;
+  box-shadow: 0 0 10px #ffffff, 0 0 16px #38bdf8;
 }
 
 /* 작업 상태 텍스트 */
@@ -173,16 +206,16 @@
 
 .loading-task-text {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--color-accent-blue);
-  letter-spacing: 0.08em;
+  font-size: 0.74rem;
+  color: #38bdf8;
+  letter-spacing: 0.06em;
 }
 
 .loading-spinner-dots {
   display: inline-block;
   width: 14px;
   height: 14px;
-  border: 2px solid rgba(56, 189, 248, 0.2);
+  border: 2px solid rgba(56, 189, 248, 0.25);
   border-top-color: #38bdf8;
   border-radius: 50%;
   animation: loading-spin 0.8s linear infinite;
@@ -195,8 +228,11 @@
 /* 하단 팁 / 설명 상자 */
 .loading-tip-box {
   padding: 10px 14px;
-  background: rgba(10, 12, 16, 0.6);
-  border-left: 3px solid var(--color-spec-accent);
+  background: rgba(10, 12, 16, 0.7);
+  border-left: 3px solid var(--accent-spec);
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -206,14 +242,14 @@
   font-family: var(--font-mono);
   font-size: 0.65rem;
   font-weight: 700;
-  color: var(--color-spec-accent);
+  color: var(--accent-spec);
   letter-spacing: 0.1em;
   white-space: nowrap;
 }
 
 .loading-tip-text {
-  font-family: var(--font-body);
+  font-family: var(--font-sans);
   font-size: 0.74rem;
   line-height: 1.45;
-  color: var(--color-text-dim);
+  color: var(--text-secondary);
 }

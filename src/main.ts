@@ -940,8 +940,9 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 초기 시작 화면: 타이틀 씬 설정 및 비동기 최초 부팅 로딩 씬 실행
-  setModeUI('TITLE');
-  loadingScreen.runInitialLoad();
+  // 최초 시뮬레이션 엔진 로딩 씬 가동 -> 100% 완료 후 타이틀 씬 활성화
+  loadingScreen.runInitialLoad().then(() => {
+    setModeUI('TITLE');
+  });
 });
 

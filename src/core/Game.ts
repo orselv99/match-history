@@ -183,36 +183,93 @@ export class Game {
     this.scene.add(this.hemiLight);
   }
 
+  public currentTimeOfDay: 'morning' | 'noon' | 'sunset' | 'night' = 'noon';
+
+  public setEnvironment(
+    timeOfDay: 'morning' | 'noon' | 'sunset' | 'night',
+    weather: 'clear' | 'rain' | 'wind_fog'
+  ): void {
+    this.currentTimeOfDay = timeOfDay;
+    this.currentWeatherId = weather;
+
+    let bgColor = 0x121316;
+    let fogColor = 0x121316;
+    let fogDensity = 0.0035;
+    let dirColor = 0xffedd5;
+    let dirIntensity = 1.4;
+    const dirPos = new THREE.Vector3(120, 150, 80);
+    let ambColor = 0xdbeafe;
+    let ambIntensity = 0.6;
+
+    // 1. 시간대(Time of Day) 기본 파라미터
+    if (timeOfDay === 'morning') {
+      bgColor = 0x1a2130;
+      fogColor = 0x1a2130;
+      dirColor = 0xfef08a; // 온화한 황금빛 아침 햇살
+      dirIntensity = 1.35;
+      dirPos.set(160, 80, 50);
+      ambColor = 0xcfd8dc;
+      ambIntensity = 0.65;
+    } else if (timeOfDay === 'noon') {
+      bgColor = 0x141824;
+      fogColor = 0x141824;
+      dirColor = 0xffffff; // 강렬한 정오 태양광
+      dirIntensity = 1.6;
+      dirPos.set(80, 180, 70);
+      ambColor = 0xe0f2fe;
+      ambIntensity = 0.7;
+    } else if (timeOfDay === 'sunset') {
+      bgColor = 0x2e1219;
+      fogColor = 0x2e1219;
+      dirColor = 0xf97316; // 타오르는 석양 노을
+      dirIntensity = 1.7;
+      dirPos.set(150, 45, 80);
+      ambColor = 0x7c2d12;
+      ambIntensity = 0.5;
+    } else if (timeOfDay === 'night') {
+      bgColor = 0x070913;
+      fogColor = 0x070913;
+      dirColor = 0x38bdf8; // 푸른 밤하늘 달빛
+      dirIntensity = 0.8;
+      dirPos.set(60, 110, 40);
+      ambColor = 0x0f172a;
+      ambIntensity = 0.4;
+    }
+
+    // 2. 날씨(Weather) 복합 효과
+    if (weather === 'rain') {
+      fogColor = 0x1e293b;
+      fogDensity = 0.006;
+      dirIntensity *= 0.7;
+      ambColor = 0x475569;
+    } else if (weather === 'wind_fog') {
+      fogColor = 0x334155;
+      fogDensity = 0.0085;
+      dirIntensity *= 0.55;
+      ambIntensity *= 1.1;
+    }
+
+    this.scene.background = new THREE.Color(bgColor);
+    if (this.scene.fog instanceof THREE.FogExp2) {
+      this.scene.fog.color.setHex(fogColor);
+      this.scene.fog.density = fogDensity;
+    }
+    this.dirLight.color.setHex(dirColor);
+    this.dirLight.intensity = dirIntensity;
+    this.dirLight.position.copy(dirPos);
+    this.ambientLight.color.setHex(ambColor);
+    this.ambientLight.intensity = ambIntensity;
+  }
+
   public setWeather(weatherId: 'clear' | 'sunset' | 'night' | 'rain'): void {
-    this.currentWeatherId = weatherId;
     if (weatherId === 'sunset') {
-      this.scene.background = new THREE.Color(0x2d1219);
-      if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(0x2d1219);
-      this.dirLight.color.setHex(0xf97316);
-      this.dirLight.intensity = 1.6;
-      this.ambientLight.color.setHex(0xfde047);
-      this.ambientLight.intensity = 0.5;
+      this.setEnvironment('sunset', 'clear');
     } else if (weatherId === 'night') {
-      this.scene.background = new THREE.Color(0x060814);
-      if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(0x060814);
-      this.dirLight.color.setHex(0x38bdf8);
-      this.dirLight.intensity = 0.8;
-      this.ambientLight.color.setHex(0x1e1b4b);
-      this.ambientLight.intensity = 0.4;
+      this.setEnvironment('night', 'clear');
     } else if (weatherId === 'rain') {
-      this.scene.background = new THREE.Color(0x111827);
-      if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(0x1e293b);
-      this.dirLight.color.setHex(0x94a3b8);
-      this.dirLight.intensity = 0.9;
-      this.ambientLight.color.setHex(0x64748b);
-      this.ambientLight.intensity = 0.7;
-    } else { // clear
-      this.scene.background = new THREE.Color(0x121316);
-      if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(0x121316);
-      this.dirLight.color.setHex(0xffedd5);
-      this.dirLight.intensity = 1.4;
-      this.ambientLight.color.setHex(0xdbeafe);
-      this.ambientLight.intensity = 0.6;
+      this.setEnvironment('noon', 'rain');
+    } else {
+      this.setEnvironment('noon', 'clear');
     }
   }
 

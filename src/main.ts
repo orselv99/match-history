@@ -1,6 +1,7 @@
 import { Game, GameUIState } from './core/Game.ts';
 import { MatchSummaryMetadata } from './replay/ReplayTypes.ts';
 import { ReplayCodec } from './replay/ReplayCodec.ts';
+import { VehiclePreview } from './game/VehiclePreview.ts';
 
 window.addEventListener('DOMContentLoaded', () => {
   const container = document.getElementById('game-container') as HTMLElement;
@@ -20,26 +21,57 @@ window.addEventListener('DOMContentLoaded', () => {
   const btnModeTitle = document.getElementById('btn-mode-title')!;
   const modalBtnTitle = document.getElementById('modal-btn-title')!;
 
-  // 게임 설정 모달 DOM
+  // 6. 게임 설정 위저드 모달 (Game Setup Wizard) DOM
   const gameSetupModal = document.getElementById('game-setup-modal')!;
   const setupBtnClose = document.getElementById('setup-btn-close')!;
-  const setupChkAutoDrive = document.getElementById('setup-chk-autodrive') as HTMLInputElement;
-  const setupOptionsContainer = document.getElementById('setup-options-container')!;
-  const setupDriverName = document.getElementById('setup-driver-name') as HTMLInputElement;
-  const setupBtnRandomName = document.getElementById('setup-btn-random-name')!;
-  const setupBtnRandomAll = document.getElementById('setup-btn-random-all')!;
-  const setupBtnStartRace = document.getElementById('setup-btn-start-race')!;
+  const wizardCurrentStepTitle = document.getElementById('wizard-current-step-title')!;
+  const wizardStepTabs = document.querySelectorAll<HTMLElement>('.wizard-step-tab');
+  const wizardStepPanels = document.querySelectorAll<HTMLElement>('.wizard-step-panel');
 
-  const trackCards = document.querySelectorAll<HTMLElement>('.setup-card[data-track]');
-  const modelCards = document.querySelectorAll<HTMLElement>('.setup-card[data-model]');
-  const colorChips = document.querySelectorAll<HTMLElement>('.color-chip[data-color]');
-  const weatherChips = document.querySelectorAll<HTMLElement>('.weather-chip[data-weather]');
+  // 위저드 풋터 네비게이션 버튼
+  const wizardBtnPrev = document.getElementById('wizard-btn-prev') as HTMLButtonElement;
+  const wizardBtnNext = document.getElementById('wizard-btn-next') as HTMLButtonElement;
+  const wizardBtnStart = document.getElementById('wizard-btn-start') as HTMLButtonElement;
+  const wizardBtnRandomAll = document.getElementById('wizard-btn-random-all') as HTMLButtonElement;
 
-  // 커스텀 컬러 피커 DOM
-  const customColorPicker = document.getElementById('setup-custom-color-picker') as HTMLInputElement;
-  const customColorDot = document.getElementById('custom-color-dot') as HTMLElement;
-  const customColorHex = document.getElementById('custom-color-hex') as HTMLElement;
-  const colorPickerBox = document.getElementById('color-picker-box') as HTMLElement;
+  // Step 1: 서킷 선택 DOM
+  const wizardTrackCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-track]');
+  const trackSvgMonaco = document.getElementById('track-svg-monaco')!;
+  const trackSvgSilverstone = document.getElementById('track-svg-silverstone')!;
+  const trackSvgNurburgring = document.getElementById('track-svg-nurburgring')!;
+  const trackShowcaseTitle = document.getElementById('track-showcase-title')!;
+  const trackShowcaseBadge = document.getElementById('track-showcase-badge')!;
+  const trackShowcaseDesc = document.getElementById('track-showcase-desc')!;
+  const trackSpecLen = document.getElementById('track-spec-len')!;
+  const trackSpecCorners = document.getElementById('track-spec-corners')!;
+  const trackSpecRecord = document.getElementById('track-spec-record')!;
+  const trackSpecType = document.getElementById('track-spec-type')!;
+
+  // Step 2: 머신 & 컬러 DOM
+  const wizardModelCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-model]');
+  const wizardColorInput = document.getElementById('wizard-color-input') as HTMLInputElement;
+  const wizardColorSwatch = document.getElementById('wizard-color-swatch') as HTMLElement;
+  const wizardColorHex = document.getElementById('wizard-color-hex') as HTMLElement;
+  const wizardVehicleCanvas = document.getElementById('wizard-vehicle-canvas') as HTMLCanvasElement;
+  const vehicleSpecSpeed = document.getElementById('vehicle-spec-speed')!;
+  const vehicleSpecAccel = document.getElementById('vehicle-spec-accel')!;
+  const vehicleSpecDownforce = document.getElementById('vehicle-spec-downforce')!;
+  const vehicleSpecHandling = document.getElementById('vehicle-spec-handling')!;
+
+  // Step 3: 환경 (시간 & 날씨) DOM
+  const envTimeChips = document.querySelectorAll<HTMLElement>('.env-chip-btn[data-time]');
+  const envWeatherChips = document.querySelectorAll<HTMLElement>('.env-chip-btn[data-weather]');
+  const envSummaryText = document.getElementById('env-summary-text')!;
+
+  // Step 4: 드라이버 프로필 & 자동주행 & 세션 브리핑 DOM
+  const wizardDriverName = document.getElementById('wizard-driver-name') as HTMLInputElement;
+  const wizardBtnRandomName = document.getElementById('wizard-btn-random-name')!;
+  const wizardChkAutodrive = document.getElementById('wizard-chk-autodrive') as HTMLInputElement;
+  const briefingTrack = document.getElementById('briefing-track')!;
+  const briefingModel = document.getElementById('briefing-model')!;
+  const briefingColorDot = document.getElementById('briefing-color-dot') as HTMLElement;
+  const briefingEnv = document.getElementById('briefing-env')!;
+  const briefingDriver = document.getElementById('briefing-driver')!;
 
   // 3단계 전적 검색 & 글로벌 리더보드 모달 DOM
   const matchHistoryModal = document.getElementById('match-history-modal')!;
@@ -255,131 +287,362 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // 4. 게임 설정 인터랙션 핸들러
-  let selectedTrack = 'circuit_monaco';
-  let selectedModel = 'gt_turbo';
+  // 4. 게임 설정 위저드 (Game Setup Wizard) 인터랙션 핸들러
+  let vehiclePreview: VehiclePreview | null = null;
+  if (wizardVehicleCanvas) {
+    try {
+      vehiclePreview = new VehiclePreview(wizardVehicleCanvas);
+    } catch (e) {
+      console.warn('VehiclePreview init failed', e);
+    }
+  }
+
+  const TRACK_METADATA: Record<string, {
+    title: string;
+    badge: string;
+    badgeClass: string;
+    desc: string;
+    len: string;
+    corners: string;
+    record: string;
+    type: string;
+  }> = {
+    circuit_monaco: {
+      title: 'Circuit de Monaco',
+      badge: '★★★★★ HARD',
+      badgeClass: 'badge-expert',
+      desc: '모나코 몬테카를로 항만을 끼고 달리는 전설적인 도심 서킷. 폭이 매우 좁고 가드레일이 가까워 극한의 집중력과 브레이킹 포인트 제어가 요구됩니다.',
+      len: '3.337 km',
+      corners: '19 CORNERS',
+      record: '01:14.260',
+      type: 'TECHNICAL STREET',
+    },
+    circuit_silverstone: {
+      title: 'Silverstone GP',
+      badge: '★★★☆☆ MEDIUM',
+      badgeClass: 'badge-medium',
+      desc: '영국 모터스포츠의 성지. 초고속 Maggotts-Becketts 복합 코너와 긴 직선주로를 통해 고속 코너링 다운포스와 슬립스트림 추월의 진수를 선사합니다.',
+      len: '5.891 km',
+      corners: '18 CORNERS',
+      record: '01:27.097',
+      type: 'HIGH-SPEED GP',
+    },
+    circuit_nurburgring: {
+      title: 'Nürburgring Nordschleife',
+      badge: '★★★★★★ INSANE',
+      badgeClass: 'badge-insane',
+      desc: '악명 높은 녹색 지옥(Green Hell). 극심한 고저차와 154개의 연속 블라인드 코너, 점프 구간까지 공존하는 세계에서 가장 위험하고 장대한 서킷입니다.',
+      len: '20.832 km',
+      corners: '154 CORNERS',
+      record: '06:40.330',
+      type: 'ROLLERCOASTER',
+    },
+  };
+
+  const MODEL_METADATA: Record<string, {
+    title: string;
+    speed: string;
+    accel: string;
+    downforce: string;
+    handling: string;
+  }> = {
+    gt_turbo: {
+      title: 'GT-86 Turbo',
+      speed: '210 km/h',
+      accel: '4.8s',
+      downforce: 'MEDIUM',
+      handling: 'STABLE',
+    },
+    formula_aero: {
+      title: 'Formula Aero',
+      speed: '228 km/h',
+      accel: '2.6s',
+      downforce: 'ULTRA HIGH',
+      handling: 'RAZOR SHARP',
+    },
+    cyber_speedster: {
+      title: 'Cyber Speedster',
+      speed: '242 km/h',
+      accel: '3.2s',
+      downforce: 'HIGH',
+      handling: 'HYPER DYNAMIC',
+    },
+  };
+
+  let currentWizardStep: 1 | 2 | 3 | 4 = 1;
+  let selectedTrack: 'circuit_monaco' | 'circuit_silverstone' | 'circuit_nurburgring' = 'circuit_monaco';
+  let selectedModel: 'gt_turbo' | 'formula_aero' | 'cyber_speedster' = 'gt_turbo';
   let selectedColor = '#ef4444';
-  let selectedWeather = 'clear';
+  let selectedTime: 'morning' | 'noon' | 'sunset' | 'night' = 'noon';
+  let selectedWeather: 'clear' | 'rain' | 'wind_fog' = 'clear';
 
-  const selectRadioGroup = (elements: NodeListOf<HTMLElement>, activeEl: HTMLElement) => {
-    elements.forEach(el => {
-      el.classList.remove('active');
-      const input = el.querySelector('input');
-      if (input) input.checked = false;
+  // Step 1: 서킷 쇼케이스 갱신
+  const updateTrackShowcase = () => {
+    wizardTrackCards.forEach(c => {
+      c.classList.toggle('active', c.dataset.track === selectedTrack);
     });
-    activeEl.classList.add('active');
-    const input = activeEl.querySelector('input');
-    if (input) input.checked = true;
+
+    trackSvgMonaco.classList.toggle('active', selectedTrack === 'circuit_monaco');
+    trackSvgSilverstone.classList.toggle('active', selectedTrack === 'circuit_silverstone');
+    trackSvgNurburgring.classList.toggle('active', selectedTrack === 'circuit_nurburgring');
+
+    const meta = TRACK_METADATA[selectedTrack];
+    if (meta) {
+      trackShowcaseTitle.textContent = meta.title;
+      trackShowcaseBadge.textContent = meta.badge;
+      trackShowcaseBadge.className = `choice-card-badge ${meta.badgeClass}`;
+      trackShowcaseDesc.textContent = meta.desc;
+      trackSpecLen.textContent = meta.len;
+      trackSpecCorners.textContent = meta.corners;
+      trackSpecRecord.textContent = meta.record;
+      trackSpecType.textContent = meta.type;
+    }
+    if (briefingTrack) briefingTrack.textContent = meta?.title || selectedTrack;
   };
 
-  const updateCarVisuals = () => {
-    game.playerVehicle.setModel(selectedModel as any);
-    const hex = parseInt(selectedColor.replace('#', '0x'), 16);
-    game.playerVehicle.setColor(hex);
+  // Step 2: 차량 모델 & 스펙 갱신
+  const updateModelShowcase = () => {
+    wizardModelCards.forEach(c => {
+      c.classList.toggle('active', c.dataset.model === selectedModel);
+    });
+
+    const meta = MODEL_METADATA[selectedModel];
+    if (meta) {
+      vehicleSpecSpeed.textContent = meta.speed;
+      vehicleSpecAccel.textContent = meta.accel;
+      vehicleSpecDownforce.textContent = meta.downforce;
+      vehicleSpecHandling.textContent = meta.handling;
+    }
+
+    vehiclePreview?.setModel(selectedModel);
+    game.playerVehicle.setModel(selectedModel);
+    if (briefingModel) briefingModel.textContent = meta?.title || selectedModel;
   };
 
-  trackCards.forEach(card => {
-    card.addEventListener('click', () => {
-      if (setupChkAutoDrive.checked) return;
-      selectRadioGroup(trackCards, card);
-      selectedTrack = card.dataset.track || 'circuit_monaco';
-    });
-  });
-
-  modelCards.forEach(card => {
-    card.addEventListener('click', () => {
-      if (setupChkAutoDrive.checked) return;
-      selectRadioGroup(modelCards, card);
-      selectedModel = card.dataset.model || 'gt_turbo';
-      updateCarVisuals();
-    });
-  });
-
-  // 컬러 칩 클릭 핸들러
-  colorChips.forEach(chip => {
-    chip.addEventListener('click', () => {
-      if (setupChkAutoDrive.checked) return;
-      selectRadioGroup(colorChips, chip);
-      colorPickerBox?.classList.remove('active');
-      const c = chip.dataset.color || '#ef4444';
-      selectedColor = c;
-      if (customColorPicker) customColorPicker.value = c;
-      if (customColorDot) customColorDot.style.backgroundColor = c;
-      if (customColorHex) customColorHex.textContent = c.toUpperCase();
-      updateCarVisuals();
-    });
-  });
-
-  // 직접 입력 컬러 피커 핸들러
-  const handleCustomColorInput = (hexVal: string) => {
-    if (setupChkAutoDrive.checked) return;
-    colorChips.forEach(c => c.classList.remove('active'));
-    colorPickerBox?.classList.add('active');
+  // Step 2: 차량 리버리 컬러 동적 갱신
+  const updateColor = (hexVal: string) => {
     selectedColor = hexVal;
-    if (customColorDot) customColorDot.style.backgroundColor = hexVal;
-    if (customColorHex) customColorHex.textContent = hexVal.toUpperCase();
-    updateCarVisuals();
+    if (wizardColorInput) wizardColorInput.value = hexVal;
+    if (wizardColorSwatch) wizardColorSwatch.style.backgroundColor = hexVal;
+    if (wizardColorHex) wizardColorHex.textContent = hexVal.toUpperCase();
+
+    const hexNum = parseInt(hexVal.replace('#', '0x'), 16);
+    vehiclePreview?.setColor(hexNum);
+    game.playerVehicle.setColor(hexNum);
+    if (briefingColorDot) briefingColorDot.style.backgroundColor = hexVal;
   };
 
-  customColorPicker?.addEventListener('input', (e) => {
-    handleCustomColorInput((e.target as HTMLInputElement).value);
-  });
-  customColorPicker?.addEventListener('change', (e) => {
-    handleCustomColorInput((e.target as HTMLInputElement).value);
-  });
+  // Step 3: 환경 (시간 & 날씨) 갱신
+  const updateEnvironmentShowcase = () => {
+    envTimeChips.forEach(c => {
+      c.classList.toggle('active', c.dataset.time === selectedTime);
+    });
+    envWeatherChips.forEach(c => {
+      c.classList.toggle('active', c.dataset.weather === selectedWeather);
+    });
 
-  weatherChips.forEach(chip => {
-    chip.addEventListener('click', () => {
-      if (setupChkAutoDrive.checked) return;
-      selectRadioGroup(weatherChips, chip);
-      selectedWeather = chip.dataset.weather || 'clear';
-      game.setWeather(selectedWeather as any);
+    const timeNames: Record<string, string> = {
+      morning: 'MORNING [아침]',
+      noon: 'NOON [점심]',
+      sunset: 'SUNSET [저녁]',
+      night: 'NIGHT [밤]',
+    };
+    const weatherNames: Record<string, string> = {
+      clear: 'CLEAR [맑음]',
+      rain: 'RAIN [비]',
+      wind_fog: 'WIND & FOG [바람/안개]',
+    };
+
+    if (envSummaryText) {
+      envSummaryText.textContent = `${timeNames[selectedTime] || selectedTime} + ${weatherNames[selectedWeather] || selectedWeather}`;
+    }
+
+    game.setEnvironment(selectedTime, selectedWeather);
+
+    const timeUpper = selectedTime.toUpperCase();
+    const weatherUpper = selectedWeather === 'wind_fog' ? 'WIND & FOG' : selectedWeather.toUpperCase();
+    if (briefingEnv) briefingEnv.textContent = `${timeUpper} + ${weatherUpper}`;
+  };
+
+  // Step 4: 세션 브리핑 카드 갱신
+  const updateBriefingCard = () => {
+    if (briefingTrack) briefingTrack.textContent = TRACK_METADATA[selectedTrack]?.title || selectedTrack;
+    if (briefingModel) briefingModel.textContent = MODEL_METADATA[selectedModel]?.title || selectedModel;
+    if (briefingColorDot) briefingColorDot.style.backgroundColor = selectedColor;
+
+    const timeUpper = selectedTime.toUpperCase();
+    const weatherUpper = selectedWeather === 'wind_fog' ? 'WIND & FOG' : selectedWeather.toUpperCase();
+    if (briefingEnv) briefingEnv.textContent = `${timeUpper} + ${weatherUpper}`;
+
+    if (briefingDriver) {
+      if (wizardChkAutodrive.checked) {
+        briefingDriver.textContent = 'AI 4-CAR SIMULATION (컴퓨터 자율 주행 배틀)';
+      } else {
+        const name = wizardDriverName.value.trim() || 'Apex Hunter';
+        briefingDriver.textContent = `${name} (수동 주행)`;
+      }
+    }
+  };
+
+  // 위저드 스텝 이동 함수
+  const stepTitles = [
+    '01 CIRCUIT // 서킷 트랙 선택',
+    '02 MACHINE // 머신 모델 & 리버리 컬러',
+    '03 ENVIRONMENT // 시간대 & 기후 환경',
+    '04 DRIVER & MODE // 드라이버 프로필 & 주행 모드'
+  ];
+
+  const goToStep = (step: 1 | 2 | 3 | 4) => {
+    currentWizardStep = step;
+
+    if (wizardCurrentStepTitle) {
+      wizardCurrentStepTitle.textContent = stepTitles[step - 1];
+    }
+
+    wizardStepTabs.forEach(tab => {
+      tab.classList.toggle('active', Number(tab.dataset.step) === step);
+    });
+
+    wizardStepPanels.forEach((panel, idx) => {
+      panel.classList.toggle('active', idx + 1 === step);
+    });
+
+    wizardBtnPrev.disabled = (step === 1);
+
+    if (step === 4) {
+      wizardBtnNext.style.display = 'none';
+      wizardBtnStart.style.display = 'inline-block';
+      updateBriefingCard();
+    } else {
+      wizardBtnNext.style.display = 'inline-block';
+      wizardBtnStart.style.display = 'none';
+    }
+
+    // Step 2 진입 시 턴테이블 3D 렌더링 가동, 벗어날 시 정지
+    if (step === 2) {
+      vehiclePreview?.start();
+      setTimeout(() => vehiclePreview?.resize(), 40);
+    } else {
+      vehiclePreview?.stop();
+    }
+  };
+
+  // 스텝 인디케이터 탭 클릭 이벤트
+  wizardStepTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const step = Number(tab.dataset.step) as 1 | 2 | 3 | 4;
+      if (step >= 1 && step <= 4) goToStep(step);
     });
   });
 
+  // 이전 / 다음 단계 버튼 이벤트
+  wizardBtnPrev.addEventListener('click', () => {
+    if (currentWizardStep > 1) {
+      goToStep((currentWizardStep - 1) as 1 | 2 | 3 | 4);
+    }
+  });
+
+  wizardBtnNext.addEventListener('click', () => {
+    if (currentWizardStep < 4) {
+      goToStep((currentWizardStep + 1) as 1 | 2 | 3 | 4);
+    }
+  });
+
+  // Step 1: 서킷 선택 카드 이벤트
+  wizardTrackCards.forEach(card => {
+    card.addEventListener('click', () => {
+      selectedTrack = (card.dataset.track as any) || 'circuit_monaco';
+      updateTrackShowcase();
+    });
+  });
+
+  // Step 2: 머신 선택 카드 이벤트
+  wizardModelCards.forEach(card => {
+    card.addEventListener('click', () => {
+      selectedModel = (card.dataset.model as any) || 'gt_turbo';
+      updateModelShowcase();
+    });
+  });
+
+  // Step 2: 컬러 픽커 이벤트 (프리셋 없이 단독 기본 표시)
+  wizardColorInput.addEventListener('input', (e) => {
+    updateColor((e.target as HTMLInputElement).value);
+  });
+  wizardColorInput.addEventListener('change', (e) => {
+    updateColor((e.target as HTMLInputElement).value);
+  });
+
+  // Step 3: 환경 (시간대 & 기후) 이벤트
+  envTimeChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      selectedTime = (chip.dataset.time as any) || 'noon';
+      updateEnvironmentShowcase();
+    });
+  });
+
+  envWeatherChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      selectedWeather = (chip.dataset.weather as any) || 'clear';
+      updateEnvironmentShowcase();
+    });
+  });
+
+  // Step 4: 드라이버 랜덤 닉네임 & 자동주행 모드 토글
   const pickRandomName = () => {
     const rand = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
-    setupDriverName.value = rand;
+    wizardDriverName.value = rand;
+    if (currentWizardStep === 4) updateBriefingCard();
   };
-  pickRandomName(); // 기본 1개 세팅
+  pickRandomName();
 
-  setupBtnRandomName.addEventListener('click', pickRandomName);
+  wizardBtnRandomName.addEventListener('click', pickRandomName);
 
-  setupBtnRandomAll.addEventListener('click', () => {
-    if (setupChkAutoDrive.checked) return;
-    pickRandomName();
-
-    const randTrack = trackCards[Math.floor(Math.random() * trackCards.length)];
-    selectRadioGroup(trackCards, randTrack);
-    selectedTrack = randTrack.dataset.track || 'circuit_monaco';
-
-    const randModel = modelCards[Math.floor(Math.random() * modelCards.length)];
-    selectRadioGroup(modelCards, randModel);
-    selectedModel = randModel.dataset.model || 'gt_turbo';
-
-    const randColor = colorChips[Math.floor(Math.random() * colorChips.length)];
-    selectRadioGroup(colorChips, randColor);
-    colorPickerBox?.classList.remove('active');
-    selectedColor = randColor.dataset.color || '#ef4444';
-    if (customColorPicker) customColorPicker.value = selectedColor;
-    if (customColorDot) customColorDot.style.backgroundColor = selectedColor;
-    if (customColorHex) customColorHex.textContent = selectedColor.toUpperCase();
-
-    const randWeather = weatherChips[Math.floor(Math.random() * weatherChips.length)];
-    selectRadioGroup(weatherChips, randWeather);
-    selectedWeather = randWeather.dataset.weather || 'clear';
-    game.setWeather(selectedWeather as any);
-
-    updateCarVisuals();
+  wizardDriverName.addEventListener('input', () => {
+    if (currentWizardStep === 4) updateBriefingCard();
   });
 
-  // 자동주행 체크박스 토글 -> 하위 옵션 disabled 처리
-  setupChkAutoDrive.addEventListener('change', () => {
-    if (setupChkAutoDrive.checked) {
-      setupOptionsContainer.classList.add('disabled');
+  wizardChkAutodrive.addEventListener('change', () => {
+    if (wizardChkAutodrive.checked) {
+      wizardDriverName.disabled = true;
+      wizardBtnRandomName.setAttribute('disabled', 'true');
+      (wizardBtnRandomName as HTMLElement).style.pointerEvents = 'none';
+      (wizardBtnRandomName as HTMLElement).style.opacity = '0.4';
     } else {
-      setupOptionsContainer.classList.remove('disabled');
+      wizardDriverName.disabled = false;
+      wizardBtnRandomName.removeAttribute('disabled');
+      (wizardBtnRandomName as HTMLElement).style.pointerEvents = 'auto';
+      (wizardBtnRandomName as HTMLElement).style.opacity = '1';
     }
+    if (currentWizardStep === 4) updateBriefingCard();
+  });
+
+  // 전체 랜덤 선택 (ALL RANDOM) 버튼
+  wizardBtnRandomAll.addEventListener('click', () => {
+    pickRandomName();
+
+    const tracks: Array<'circuit_monaco' | 'circuit_silverstone' | 'circuit_nurburgring'> = [
+      'circuit_monaco', 'circuit_silverstone', 'circuit_nurburgring'
+    ];
+    selectedTrack = tracks[Math.floor(Math.random() * tracks.length)];
+    updateTrackShowcase();
+
+    const models: Array<'gt_turbo' | 'formula_aero' | 'cyber_speedster'> = [
+      'gt_turbo', 'formula_aero', 'cyber_speedster'
+    ];
+    selectedModel = models[Math.floor(Math.random() * models.length)];
+    updateModelShowcase();
+
+    const randHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+    updateColor(randHex);
+
+    const times: Array<'morning' | 'noon' | 'sunset' | 'night'> = ['morning', 'noon', 'sunset', 'night'];
+    selectedTime = times[Math.floor(Math.random() * times.length)];
+
+    const weathers: Array<'clear' | 'rain' | 'wind_fog'> = ['clear', 'rain', 'wind_fog'];
+    selectedWeather = weathers[Math.floor(Math.random() * weathers.length)];
+    updateEnvironmentShowcase();
+
+    updateBriefingCard();
   });
 
   // 전체화면 토글
@@ -391,32 +654,41 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 타이틀 씬 메뉴 버튼 이벤트
+  // 타이틀 씬 시작 버튼 클릭 -> 위저드 모달 1단계 오픈
   titleBtnStart.addEventListener('click', () => {
     game.audio.init();
     gameSetupModal.classList.add('open');
+    goToStep(1);
   });
 
   setupBtnClose.addEventListener('click', () => {
     gameSetupModal.classList.remove('open');
+    vehiclePreview?.stop();
   });
 
-  setupBtnStartRace.addEventListener('click', () => {
+  // 위저드 4단계: 레이스 시작 버튼
+  wizardBtnStart.addEventListener('click', () => {
     gameSetupModal.classList.remove('open');
+    vehiclePreview?.stop();
     game.audio.init();
 
-    if (setupChkAutoDrive.checked) {
-      // 자동 주행 모드 실행 (컴퓨터 AI 4대 배틀)
+    if (wizardChkAutodrive.checked) {
       setModeUI('DEMO');
     } else {
-      // 직접 주행 모드 실행 - 선택된 옵션 엔진에 반영
-      const driverName = setupDriverName.value.trim() || 'Apex Hunter';
+      const driverName = wizardDriverName.value.trim() || 'Apex Hunter';
       game.currentDriverName = driverName;
       game.currentTrackId = selectedTrack;
-      updateCarVisuals();
-      game.setWeather(selectedWeather as any);
-
+      updateModelShowcase();
+      updateColor(selectedColor);
+      game.setEnvironment(selectedTime, selectedWeather);
       setModeUI('DRIVING');
+    }
+  });
+
+  // 윈도우 리사이즈 시 턴테이블 뷰어 반응형 크기 조정
+  window.addEventListener('resize', () => {
+    if (gameSetupModal.classList.contains('open') && currentWizardStep === 2) {
+      vehiclePreview?.resize();
     }
   });
 

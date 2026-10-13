@@ -342,177 +342,376 @@
     </div>
   </div>
 
-  <!-- 6. 게임 설정 모달 (Game Setup & Customization) -->
+  <!-- 6. 게임 설정 모달 (Game Setup Wizard) -->
   <div id="game-setup-modal" class="modal-overlay">
-    <div class="modal-card setup-modal-card">
-      <header class="modal-header-strip">
-        <span class="modal-title">GAME CONFIGURATION // 레이스 설정</span>
+    <div class="modal-card setup-modal-card wizard-modal-card">
+      <header class="modal-header-strip wizard-header-strip">
+        <div class="wizard-header-title-wrap">
+          <span class="system-tag-badge">CONFIGURATION WIZARD // 단계별 게임 설정</span>
+          <h2 class="modal-title" id="wizard-current-step-title">01 CIRCUIT // 서킷 트랙 선택</h2>
+        </div>
         <button id="setup-btn-close" class="modal-close-btn" title="닫기 [ESC]">✕</button>
       </header>
 
-      <div class="modal-content-body">
-        <!-- 자동주행 체크박스 (체크 시 하단 옵션 전체 disabled) -->
-        <div class="setup-autodrive-banner">
-          <label class="autodrive-label">
-            <input type="checkbox" id="setup-chk-autodrive" />
-            <span class="autodrive-custom-chk"></span>
-            <div class="autodrive-text-wrap">
-              <span class="autodrive-title">AI AUTO-DRIVE // 자동 주행 모드</span>
-              <span class="autodrive-desc">체크 시 컴퓨터 AI 4대가 트랙을 자율 주행하며, 모든 개별 선택 옵션이 비활성화됩니다.</span>
-            </div>
-          </label>
-        </div>
-
-        <!-- 커스터마이징 옵션 컨테이너 -->
-        <div id="setup-options-container" class="setup-options-container">
-          <!-- 1. 드라이버 이름 입력 -->
-          <div class="setup-group">
-            <div class="setup-group-header">
-              <span class="setup-group-title">01 DRIVER NAME // 드라이버 닉네임</span>
-              <button type="button" id="setup-btn-random-name" class="glass-btn small-action-btn">🎲 랜덤 생성</button>
-            </div>
-            <div class="setup-input-wrap">
-              <input type="text" id="setup-driver-name" class="setup-text-input" placeholder="드라이버 이름을 입력하세요 (예: Apex Hunter)" maxlength="16" />
-            </div>
+      <!-- 스텝 인디케이터 바 -->
+      <nav class="wizard-stepper">
+        <button type="button" class="wizard-step-tab active" data-step="1">
+          <span class="step-num">01</span>
+          <div class="step-text-col">
+            <span class="step-name">CIRCUIT</span>
+            <span class="step-desc">서킷 선택</span>
           </div>
-
-          <!-- 2. 서킷 트랙 선택 -->
-          <div class="setup-group">
-            <span class="setup-group-title">02 TRACK // 서킷 선택</span>
-            <div class="setup-card-grid">
-              <label class="setup-card active" data-track="circuit_monaco">
-                <input type="radio" name="track" value="circuit_monaco" checked />
-                <span class="card-indicator"></span>
-                <div class="card-content">
-                  <span class="card-title">Circuit de Monaco</span>
-                  <span class="card-sub">3.337 km / 가드레일 테크니컬</span>
-                </div>
-              </label>
-              <label class="setup-card" data-track="circuit_silverstone">
-                <input type="radio" name="track" value="circuit_silverstone" />
-                <span class="card-indicator"></span>
-                <div class="card-content">
-                  <span class="card-title">Silverstone GP</span>
-                  <span class="card-sub">5.891 km / 초고속 오픈 에어로</span>
-                </div>
-              </label>
-              <label class="setup-card" data-track="circuit_nurburgring">
-                <input type="radio" name="track" value="circuit_nurburgring" />
-                <span class="card-indicator"></span>
-                <div class="card-content">
-                  <span class="card-title">Nürburgring Nordschleife</span>
-                  <span class="card-sub">20.8 km / 녹색 지옥 롱 코스</span>
-                </div>
-              </label>
-            </div>
+        </button>
+        <button type="button" class="wizard-step-tab" data-step="2">
+          <span class="step-num">02</span>
+          <div class="step-text-col">
+            <span class="step-name">MACHINE</span>
+            <span class="step-desc">차량 & 컬러</span>
           </div>
-
-          <!-- 3. 차량 머신 모델 선택 -->
-          <div class="setup-group">
-            <span class="setup-group-title">03 VEHICLE MODEL // 차량 머신</span>
-            <div class="setup-card-grid">
-              <label class="setup-card active" data-model="gt_turbo">
-                <input type="radio" name="vehicle-model" value="gt_turbo" checked />
-                <span class="card-indicator"></span>
-                <div class="card-content">
-                  <span class="card-title">GT-86 Turbo</span>
-                  <span class="card-sub">최고속 210 km/h // 밸런스형 쿠페</span>
-                </div>
-              </label>
-              <label class="setup-card" data-model="formula_aero">
-                <input type="radio" name="vehicle-model" value="formula_aero" />
-                <span class="card-indicator"></span>
-                <div class="card-content">
-                  <span class="card-title">Formula Aero</span>
-                  <span class="card-sub">최고속 225 km/h // 초경량 고가속</span>
-                </div>
-              </label>
-              <label class="setup-card" data-model="cyber_speedster">
-                <input type="radio" name="vehicle-model" value="cyber_speedster" />
-                <span class="card-indicator"></span>
-                <div class="card-content">
-                  <span class="card-title">Cyber Speedster</span>
-                  <span class="card-sub">최고속 240 km/h // 하이퍼카</span>
-                </div>
-              </label>
-            </div>
+        </button>
+        <button type="button" class="wizard-step-tab" data-step="3">
+          <span class="step-num">03</span>
+          <div class="step-text-col">
+            <span class="step-name">ENVIRONMENT</span>
+            <span class="step-desc">시간 & 날씨</span>
           </div>
+        </button>
+        <button type="button" class="wizard-step-tab" data-step="4">
+          <span class="step-num">04</span>
+          <div class="step-text-col">
+            <span class="step-name">DRIVER & MODE</span>
+            <span class="step-desc">드라이버 & 모드</span>
+          </div>
+        </button>
+      </nav>
 
-          <!-- 4. 리버리 컬러 선택 & 컬러 피커 -->
-          <div class="setup-group">
-            <span class="setup-group-title">04 VEHICLE COLOR // 리버리 컬러 & 컬러 피커</span>
-            <div class="setup-color-chips">
-              <label class="color-chip active" style="--chip-color: #ef4444;" title="Crimson Red" data-color="#ef4444">
-                <input type="radio" name="vehicle-color" value="#ef4444" checked />
-                <span class="color-dot"></span>
-                <span class="color-name">Crimson Red</span>
-              </label>
-              <label class="color-chip" style="--chip-color: #06b6d4;" title="Cyber Cyan" data-color="#06b6d4">
-                <input type="radio" name="vehicle-color" value="#06b6d4" />
-                <span class="color-dot"></span>
-                <span class="color-name">Cyber Cyan</span>
-              </label>
-              <label class="color-chip" style="--chip-color: #1e293b;" title="Midnight Black" data-color="#1e293b">
-                <input type="radio" name="vehicle-color" value="#1e293b" />
-                <span class="color-dot"></span>
-                <span class="color-name">Midnight Black</span>
-              </label>
-              <label class="color-chip" style="--chip-color: #eab308;" title="Electric Yellow" data-color="#eab308">
-                <input type="radio" name="vehicle-color" value="#eab308" />
-                <span class="color-dot"></span>
-                <span class="color-name">Electric Yellow</span>
-              </label>
-              <label class="color-chip" style="--chip-color: #16a34a;" title="Racing Green" data-color="#16a34a">
-                <input type="radio" name="vehicle-color" value="#16a34a" />
-                <span class="color-dot"></span>
-                <span class="color-name">Racing Green</span>
-              </label>
+      <div class="modal-content-body wizard-content-body">
+        <!-- STEP 1: 서킷 선택 (3가지 선택버튼 + 서킷별 미니맵 + 난이도 + 간단한 소개) -->
+        <div id="wizard-step-1" class="wizard-step-panel active">
+          <div class="wizard-split-layout">
+            <!-- 왼쪽: 3가지 서킷 선택 버튼 -->
+            <div class="wizard-choice-col">
+              <span class="wizard-col-title">SELECT TRACK // 서킷 선택</span>
+              <div class="wizard-card-list">
+                <button type="button" class="wizard-choice-card active" data-track="circuit_monaco">
+                  <div class="choice-card-header">
+                    <span class="choice-card-num">TRK 01</span>
+                    <span class="choice-card-badge badge-expert">★★★★★ HARD</span>
+                  </div>
+                  <strong class="choice-card-title">Circuit de Monaco</strong>
+                  <span class="choice-card-meta">3.337 km // 19 Corners // 가드레일 도심</span>
+                </button>
 
-              <!-- 직접 지정 가능한 컬러 피커 (HTML5 Color Picker) -->
-              <div class="color-picker-box" id="color-picker-box" title="직접 컬러 피커로 색상 선택">
-                <input type="color" id="setup-custom-color-picker" value="#ef4444" class="custom-color-input" />
-                <div class="color-picker-content">
-                  <span class="color-dot custom-dot" id="custom-color-dot" style="background-color: #ef4444;"></span>
-                  <span class="color-name">CUSTOM PICKER</span>
-                  <span class="color-hex-badge" id="custom-color-hex">#EF4444</span>
+                <button type="button" class="wizard-choice-card" data-track="circuit_silverstone">
+                  <div class="choice-card-header">
+                    <span class="choice-card-num">TRK 02</span>
+                    <span class="choice-card-badge badge-medium">★★★☆☆ MEDIUM</span>
+                  </div>
+                  <strong class="choice-card-title">Silverstone GP</strong>
+                  <span class="choice-card-meta">5.891 km // 18 Corners // 초고속 에어로</span>
+                </button>
+
+                <button type="button" class="wizard-choice-card" data-track="circuit_nurburgring">
+                  <div class="choice-card-header">
+                    <span class="choice-card-num">TRK 03</span>
+                    <span class="choice-card-badge badge-insane">★★★★★★ INSANE</span>
+                  </div>
+                  <strong class="choice-card-title">Nürburgring Nordschleife</strong>
+                  <span class="choice-card-meta">20.832 km // 154 Corners // 녹색 지옥</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 오른쪽: 서킷 쇼케이스 (SVG 미니맵 + 난이도 + 소개) -->
+            <div class="wizard-preview-col">
+              <div class="track-showcase-card">
+                <div class="track-map-viewport">
+                  <!-- Monaco SVG Map -->
+                  <svg id="track-svg-monaco" class="track-svg active" viewBox="0 0 400 240">
+                    <path class="track-svg-outline" d="M 60,150 C 60,120 90,80 140,80 C 180,80 200,100 240,90 C 270,80 300,50 340,60 C 370,70 360,120 330,140 C 290,160 260,140 240,160 C 220,180 240,210 210,210 C 170,210 160,170 120,170 C 90,170 60,180 60,150 Z" />
+                    <circle cx="60" cy="150" r="5" class="track-start-pin" />
+                    <text x="74" y="154" class="track-start-text">START / FINISH</text>
+                  </svg>
+                  <!-- Silverstone SVG Map -->
+                  <svg id="track-svg-silverstone" class="track-svg" viewBox="0 0 400 240">
+                    <path class="track-svg-outline" d="M 70,160 C 60,100 110,60 170,70 C 240,80 270,50 320,60 C 360,70 350,140 310,160 C 270,180 240,160 200,190 C 160,210 100,210 70,160 Z" />
+                    <circle cx="70" cy="160" r="5" class="track-start-pin" />
+                    <text x="84" y="164" class="track-start-text">START / FINISH</text>
+                  </svg>
+                  <!-- Nürburgring SVG Map -->
+                  <svg id="track-svg-nurburgring" class="track-svg" viewBox="0 0 400 240">
+                    <path class="track-svg-outline" d="M 60,140 C 50,90 90,50 140,60 C 190,70 200,40 250,50 C 300,60 350,70 360,110 C 370,160 320,170 290,180 C 240,200 210,170 170,190 C 120,210 70,190 60,140 Z" />
+                    <circle cx="60" cy="140" r="5" class="track-start-pin" />
+                    <text x="74" y="144" class="track-start-text">START / FINISH</text>
+                  </svg>
+                </div>
+
+                <div class="track-info-detail">
+                  <div class="track-detail-header">
+                    <h3 id="track-showcase-title" class="track-detail-title">Circuit de Monaco</h3>
+                    <span id="track-showcase-badge" class="choice-card-badge badge-expert">★★★★★ HARD</span>
+                  </div>
+                  <p id="track-showcase-desc" class="track-detail-desc">
+                    모나코 몬테카를로 항만을 끼고 달리는 전설적인 도심 서킷. 폭이 매우 좁고 가드레일이 가까워 극한의 집중력과 브레이킹 포인트 제어가 요구됩니다.
+                  </p>
+                  <div class="track-spec-grid">
+                    <div class="spec-cell">
+                      <span class="spec-k">LENGTH</span>
+                      <span id="track-spec-len" class="spec-v">3.337 km</span>
+                    </div>
+                    <div class="spec-cell">
+                      <span class="spec-k">CORNERS</span>
+                      <span id="track-spec-corners" class="spec-v">19 CORNERS</span>
+                    </div>
+                    <div class="spec-cell">
+                      <span class="spec-k">LAP RECORD</span>
+                      <span id="track-spec-record" class="spec-v">01:14.260</span>
+                    </div>
+                    <div class="spec-cell">
+                      <span class="spec-k">CHARACTER</span>
+                      <span id="track-spec-type" class="spec-v">TECHNICAL STREET</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- 5. 서킷 기후 & 조명 선택 -->
-          <div class="setup-group">
-            <span class="setup-group-title">05 WEATHER // 서킷 기후 & 조명</span>
-            <div class="setup-weather-grid">
-              <label class="weather-chip active" data-weather="clear">
-                <input type="radio" name="weather" value="clear" checked />
-                <span class="weather-icon">☀️</span>
-                <span class="weather-label">CLEAR // 맑음</span>
+        <!-- STEP 2: 차량 선택 (3가지 선택버튼 + 색상픽커 기본 표시 + 천천히 회전하는 3D 차량 렌더링) -->
+        <div id="wizard-step-2" class="wizard-step-panel">
+          <div class="wizard-split-layout">
+            <!-- 왼쪽: 차량 3가지 버튼 + 색상 픽커 -->
+            <div class="wizard-choice-col">
+              <span class="wizard-col-title">SELECT MACHINE // 차량 모델</span>
+              <div class="wizard-card-list">
+                <button type="button" class="wizard-choice-card active" data-model="gt_turbo">
+                  <div class="choice-card-header">
+                    <span class="choice-card-num">CAR 01</span>
+                    <span class="choice-card-badge">BALANCE COUPE</span>
+                  </div>
+                  <strong class="choice-card-title">GT-86 Turbo</strong>
+                  <span class="choice-card-meta">최고속 210 km/h // 가속 4.8s // 밸런스형 후륜 쿠페</span>
+                </button>
+
+                <button type="button" class="wizard-choice-card" data-model="formula_aero">
+                  <div class="choice-card-header">
+                    <span class="choice-card-num">CAR 02</span>
+                    <span class="choice-card-badge badge-expert">DOWNFORCE AERO</span>
+                  </div>
+                  <strong class="choice-card-title">Formula Aero</strong>
+                  <span class="choice-card-meta">최고속 228 km/h // 가속 2.6s // 초경량 고다운포스</span>
+                </button>
+
+                <button type="button" class="wizard-choice-card" data-model="cyber_speedster">
+                  <div class="choice-card-header">
+                    <span class="choice-card-num">CAR 03</span>
+                    <span class="choice-card-badge badge-insane">HYPER SPEED</span>
+                  </div>
+                  <strong class="choice-card-title">Cyber Speedster</strong>
+                  <span class="choice-card-meta">최고속 242 km/h // 가속 3.2s // 사이버 하이퍼카</span>
+                </button>
+              </div>
+
+              <!-- 리버리 색상 픽커 (기본 표시, 프리셋 제거) -->
+              <div class="wizard-color-section">
+                <span class="wizard-col-title">LIVERY COLOR // 차량 색상 픽커</span>
+                <div class="wizard-color-picker-box">
+                  <div class="color-picker-swatch-wrap">
+                    <input type="color" id="wizard-color-input" value="#ef4444" class="wizard-color-input-native" />
+                    <div id="wizard-color-swatch" class="wizard-color-swatch-preview" style="background-color: #ef4444;"></div>
+                  </div>
+                  <div class="color-picker-meta-col">
+                    <div class="color-picker-meta-top">
+                      <span class="color-hex-title">HEX CODE</span>
+                      <span id="wizard-color-hex" class="color-hex-tag">#EF4444</span>
+                    </div>
+                    <span class="color-picker-guide">원하는 색상을 선택하면 오른쪽 3D 뷰어와 인게임 차량에 실시간으로 반영됩니다.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 오른쪽: 천천히 회전하는 실시간 3D 차량 턴테이블 렌더링 뷰포트 -->
+            <div class="wizard-preview-col">
+              <div class="vehicle-turntable-container">
+                <div class="turntable-header-tag">
+                  <span class="pulse-dot"></span>
+                  <span>LIVE 3D TURNTABLE // 360° 실시간 렌더링</span>
+                </div>
+                <div class="turntable-canvas-wrap">
+                  <canvas id="wizard-vehicle-canvas"></canvas>
+                </div>
+                <div class="turntable-specs-footer">
+                  <div class="spec-cell">
+                    <span class="spec-k">TOP SPEED</span>
+                    <span id="vehicle-spec-speed" class="spec-v">210 km/h</span>
+                  </div>
+                  <div class="spec-cell">
+                    <span class="spec-k">0-100 ACCEL</span>
+                    <span id="vehicle-spec-accel" class="spec-v">4.8s</span>
+                  </div>
+                  <div class="spec-cell">
+                    <span class="spec-k">DOWNFORCE</span>
+                    <span id="vehicle-spec-downforce" class="spec-v">MEDIUM</span>
+                  </div>
+                  <div class="spec-cell">
+                    <span class="spec-k">HANDLING</span>
+                    <span id="vehicle-spec-handling" class="spec-v">STABLE</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: 환경 선택 (시간: 아침, 점심, 저녁, 밤 / 날씨: 맑음, 비, 바람 등) -->
+        <div id="wizard-step-3" class="wizard-step-panel">
+          <div class="environment-step-grid">
+            <!-- 1. 시간대 선택 (Time of Day) -->
+            <div class="env-group">
+              <span class="wizard-col-title">01 TIME OF DAY // 서킷 시간대 선택</span>
+              <div class="env-options-grid env-time-grid">
+                <button type="button" class="env-chip-btn" data-time="morning">
+                  <span class="env-icon">🌅</span>
+                  <div class="env-chip-info">
+                    <strong class="env-name">MORNING // 아침</strong>
+                    <span class="env-desc">온화한 여명 & 황금빛 햇살</span>
+                  </div>
+                </button>
+
+                <button type="button" class="env-chip-btn active" data-time="noon">
+                  <span class="env-icon">☀️</span>
+                  <div class="env-chip-info">
+                    <strong class="env-name">NOON // 점심</strong>
+                    <span class="env-desc">청명하고 강렬한 정오 직사광</span>
+                  </div>
+                </button>
+
+                <button type="button" class="env-chip-btn" data-time="sunset">
+                  <span class="env-icon">🌇</span>
+                  <div class="env-chip-info">
+                    <strong class="env-name">SUNSET // 저녁</strong>
+                    <span class="env-desc">붉게 물드는 석양 노을</span>
+                  </div>
+                </button>
+
+                <button type="button" class="env-chip-btn" data-time="night">
+                  <span class="env-icon">🌙</span>
+                  <div class="env-chip-info">
+                    <strong class="env-name">NIGHT // 밤</strong>
+                    <span class="env-desc">칠흑 같은 어둠 & 네온 서킷</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. 날씨 선택 (Weather) -->
+            <div class="env-group">
+              <span class="wizard-col-title">02 WEATHER CONDITION // 기후 & 노면 상태</span>
+              <div class="env-options-grid env-weather-grid">
+                <button type="button" class="env-chip-btn active" data-weather="clear">
+                  <span class="env-icon">✨</span>
+                  <div class="env-chip-info">
+                    <strong class="env-name">CLEAR // 맑음</strong>
+                    <span class="env-desc">최적의 노면 그립 & 투명한 시야</span>
+                  </div>
+                </button>
+
+                <button type="button" class="env-chip-btn" data-weather="rain">
+                  <span class="env-icon">🌧️</span>
+                  <div class="env-chip-info">
+                    <strong class="env-name">RAIN // 비</strong>
+                    <span class="env-desc">젖은 노면 반사 & 슬립 증가</span>
+                  </div>
+                </button>
+
+                <button type="button" class="env-chip-btn" data-weather="wind_fog">
+                  <span class="env-icon">💨</span>
+                  <div class="env-chip-info">
+                    <strong class="env-name">WIND & FOG // 바람/안개</strong>
+                    <span class="env-desc">짙은 레이싱 안개 & 측풍 시뮬레이션</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- 환경 요약 상태 바 -->
+            <div class="env-summary-banner">
+              <span class="env-summary-label">ACTIVE ENVIRONMENT // 적용 환경:</span>
+              <span id="env-summary-text" class="env-summary-val">NOON [점심] + CLEAR [맑음]</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 4: 드라이버 설정 및 자동주행모드 (드라이버 이름 + 랜덤 + 자동주행 체크) -->
+        <div id="wizard-step-4" class="wizard-step-panel">
+          <div class="driver-step-container">
+            <!-- 1. 드라이버 이름 입력 -->
+            <div class="setup-group">
+              <div class="setup-group-header">
+                <span class="setup-group-title">01 DRIVER PROFILE // 드라이버 닉네임</span>
+                <button type="button" id="wizard-btn-random-name" class="glass-btn small-action-btn">🎲 랜덤 생성</button>
+              </div>
+              <div class="setup-input-wrap">
+                <input type="text" id="wizard-driver-name" class="setup-text-input" placeholder="드라이버 닉네임을 입력하세요 (예: Apex Hunter)" maxlength="16" />
+              </div>
+            </div>
+
+            <!-- 2. AI 자동 주행 모드 토글 -->
+            <div class="setup-autodrive-banner">
+              <label class="autodrive-label">
+                <input type="checkbox" id="wizard-chk-autodrive" />
+                <span class="autodrive-custom-chk"></span>
+                <div class="autodrive-text-wrap">
+                  <span class="autodrive-title">AI AUTO-DRIVE MODE // 컴퓨터 4대 자율 주행 배틀</span>
+                  <span class="autodrive-desc">체크 시 플레이어 수동 운전 대신, 컴퓨터 AI 4대가 주행하는 시뮬레이션 모드로 진행됩니다.</span>
+                </div>
               </label>
-              <label class="weather-chip" data-weather="sunset">
-                <input type="radio" name="weather" value="sunset" />
-                <span class="weather-icon">🌅</span>
-                <span class="weather-label">SUNSET // 노을</span>
-              </label>
-              <label class="weather-chip" data-weather="night">
-                <input type="radio" name="weather" value="night" />
-                <span class="weather-icon">🌙</span>
-                <span class="weather-label">NIGHT // 야간</span>
-              </label>
-              <label class="weather-chip" data-weather="rain">
-                <input type="radio" name="weather" value="rain" />
-                <span class="weather-icon">🌧️</span>
-                <span class="weather-label">RAIN // 젖은 노면</span>
-              </label>
+            </div>
+
+            <!-- 3. 최종 설정 확인 요약 (Race Setup Summary Card) -->
+            <div class="race-briefing-card">
+              <div class="briefing-header">
+                <span class="system-tag-badge">RACE BRIEFING // 세션 요약</span>
+                <span class="briefing-status">READY FOR START</span>
+              </div>
+              <div class="briefing-grid">
+                <div class="briefing-item">
+                  <span class="briefing-k">SELECTED CIRCUIT</span>
+                  <strong id="briefing-track" class="briefing-v">Circuit de Monaco</strong>
+                </div>
+                <div class="briefing-item">
+                  <span class="briefing-k">MACHINE & COLOR</span>
+                  <div class="briefing-machine-row">
+                    <span id="briefing-color-dot" class="briefing-color-dot" style="background-color: #ef4444;"></span>
+                    <strong id="briefing-model" class="briefing-v">GT-86 Turbo</strong>
+                  </div>
+                </div>
+                <div class="briefing-item">
+                  <span class="briefing-k">ENVIRONMENT</span>
+                  <strong id="briefing-env" class="briefing-v">NOON + CLEAR</strong>
+                </div>
+                <div class="briefing-item">
+                  <span class="briefing-k">DRIVER / MODE</span>
+                  <strong id="briefing-driver" class="briefing-v">Apex Hunter (Manual Drive)</strong>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- 모달 풋터 (전체 랜덤 버튼 + 레이스 시작 버튼) -->
-      <footer class="modal-actions setup-actions">
-        <button type="button" id="setup-btn-random-all" class="secondary-btn">🎲 ALL RANDOM // 전체 랜덤</button>
-        <button type="button" id="setup-btn-start-race" class="primary-btn">START RACE // 레이스 시작 ▶</button>
+      <!-- 모달 풋터 (위저드 이전 / 다음 / 시작 버튼) -->
+      <footer class="modal-actions wizard-actions">
+        <div class="wizard-footer-left">
+          <button type="button" id="wizard-btn-prev" class="secondary-btn" disabled>← PREV // 이전 단계</button>
+        </div>
+        <div class="wizard-footer-right">
+          <button type="button" id="wizard-btn-random-all" class="secondary-btn">🎲 ALL RANDOM // 전체 랜덤</button>
+          <button type="button" id="wizard-btn-next" class="primary-btn">NEXT // 다음 단계 →</button>
+          <button type="button" id="wizard-btn-start" class="primary-btn start-race-btn" style="display: none;">START RACE // 레이스 시작 ▶</button>
+        </div>
       </footer>
     </div>
   </div>

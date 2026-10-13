@@ -90,8 +90,14 @@
         <button id="btn-mode-replay" class="glass-btn" title="3D 리플레이 보기">
           <span>REPLAY // 3D</span>
         </button>
+        <button id="btn-top-history" class="glass-btn" title="전적 검색 & 글로벌 리더보드 (3단계)">
+          <span>ARCHIVE // 전적</span>
+        </button>
         <button id="btn-settings" class="glass-btn" title="환경 설정 (O)">
           <span>SETTINGS // 설정</span>
+        </button>
+        <button id="btn-fullscreen" class="glass-btn" title="전체화면 토글 (F11)">
+          <span>⛶ FULLSCREEN</span>
         </button>
         <button id="btn-reset" class="glass-btn" title="초기화 (R)">
           <span>RESET [R]</span>
@@ -432,9 +438,9 @@
             </div>
           </div>
 
-          <!-- 4. 리버리 컬러 선택 -->
+          <!-- 4. 리버리 컬러 선택 & 컬러 피커 -->
           <div class="setup-group">
-            <span class="setup-group-title">04 VEHICLE COLOR // 리버리 컬러</span>
+            <span class="setup-group-title">04 VEHICLE COLOR // 리버리 컬러 & 컬러 피커</span>
             <div class="setup-color-chips">
               <label class="color-chip active" style="--chip-color: #ef4444;" title="Crimson Red" data-color="#ef4444">
                 <input type="radio" name="vehicle-color" value="#ef4444" checked />
@@ -461,6 +467,16 @@
                 <span class="color-dot"></span>
                 <span class="color-name">Racing Green</span>
               </label>
+
+              <!-- 직접 지정 가능한 컬러 피커 (HTML5 Color Picker) -->
+              <div class="color-picker-box" id="color-picker-box" title="직접 컬러 피커로 색상 선택">
+                <input type="color" id="setup-custom-color-picker" value="#ef4444" class="custom-color-input" />
+                <div class="color-picker-content">
+                  <span class="color-dot custom-dot" id="custom-color-dot" style="background-color: #ef4444;"></span>
+                  <span class="color-name">CUSTOM PICKER</span>
+                  <span class="color-hex-badge" id="custom-color-hex">#EF4444</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -497,6 +513,185 @@
       <footer class="modal-actions setup-actions">
         <button type="button" id="setup-btn-random-all" class="secondary-btn">🎲 ALL RANDOM // 전체 랜덤</button>
         <button type="button" id="setup-btn-start-race" class="primary-btn">START RACE // 레이스 시작 ▶</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 7. 전적 검색 & 글로벌 리더보드 모달 (Step 3: Match History Archive) -->
+  <div id="match-history-modal" class="modal-overlay">
+    <div class="modal-card history-modal-card">
+      <header class="modal-header-strip">
+        <div class="history-header-left">
+          <span class="system-tag-badge">EDGE D1 + R2 // 30Hz TICK ARCHIVE</span>
+          <h2 class="modal-title">MATCH ARCHIVE & LEADERBOARD // 전적 검색</h2>
+        </div>
+        <button id="history-btn-close" class="modal-close-btn" title="닫기 [ESC]">✕</button>
+      </header>
+
+      <div class="modal-content-body history-content-body">
+        <!-- 상단 통계 개요 스트립 -->
+        <div class="history-metrics-row">
+          <div class="history-metric-card">
+            <span class="metric-label">TOTAL MATCHES // 총 전적</span>
+            <span class="metric-value">1,284 <span class="metric-unit">RECORDS</span></span>
+          </div>
+          <div class="history-metric-card">
+            <span class="metric-label">CIRCUIT BEST // 최고 랩타임</span>
+            <span class="metric-value highlight-accent">00:48.219 <span class="metric-unit">Schumacher_KR</span></span>
+          </div>
+          <div class="history-metric-card">
+            <span class="metric-label">TOP SPEED RECORD // 최고속</span>
+            <span class="metric-value">241.0 <span class="metric-unit">km/h</span></span>
+          </div>
+          <div class="history-metric-card">
+            <span class="metric-label">DATABASE NODE // 스토리지</span>
+            <span class="metric-value text-cyan">D1 EDGE <span class="metric-unit">ACTIVE</span></span>
+          </div>
+        </div>
+
+        <!-- 검색 & 필터링 컨트롤 바 -->
+        <div class="history-filter-panel">
+          <div class="history-search-group">
+            <div class="history-input-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="history-search-driver" class="history-search-input" placeholder="드라이버 닉네임 검색 (예: Schumacher_KR, Apex Hunter)..." />
+            </div>
+            <button type="button" id="history-btn-search" class="primary-btn history-search-btn">SEARCH // 검색</button>
+          </div>
+
+          <div class="history-filter-controls">
+            <div class="history-track-tabs">
+              <button type="button" class="history-tab-btn active" data-track="all">ALL TRACKS</button>
+              <button type="button" class="history-tab-btn" data-track="circuit_monaco">MONACO GP</button>
+              <button type="button" class="history-tab-btn" data-track="circuit_silverstone">SILVERSTONE</button>
+              <button type="button" class="history-tab-btn" data-track="circuit_nurburgring">NÜRBURGRING</button>
+            </div>
+
+            <div class="history-sort-select-wrap">
+              <span class="filter-sort-label">SORT // 정렬:</span>
+              <select id="history-sort-select" class="history-sort-select">
+                <option value="best_lap">BEST LAP (최고 랩타임 순)</option>
+                <option value="recent">RECENT (최신 경기 순)</option>
+                <option value="top_speed">TOP SPEED (최고속 순)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 전적 & 리더보드 테이블 -->
+        <div class="history-table-container">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th class="col-rank">RANK</th>
+                <th class="col-driver">DRIVER // 드라이버</th>
+                <th class="col-machine">MACHINE // 머신</th>
+                <th class="col-track">TRACK // 서킷</th>
+                <th class="col-lap">BEST LAP // 기록</th>
+                <th class="col-speed">TOP SPEED</th>
+                <th class="col-date">RECORDED // 일시</th>
+                <th class="col-action">REPLAY // 3D</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-tbody">
+              <!-- 샘플 데이터 1 (1위 골드) -->
+              <tr class="rank-row-top rank-1">
+                <td class="col-rank"><span class="rank-badge rank-badge-1">🥇 01</span></td>
+                <td class="col-driver"><strong class="driver-name-text">Schumacher_KR</strong> <span class="driver-tag pro">PRO</span></td>
+                <td class="col-machine"><span class="machine-badge formula">Formula Aero</span></td>
+                <td class="col-track">Monaco Grand Prix</td>
+                <td class="col-lap"><span class="lap-highlight gold">00:48.219</span></td>
+                <td class="col-speed">238.4 km/h</td>
+                <td class="col-date">2026-10-13 15:10</td>
+                <td class="col-action">
+                  <button type="button" class="history-replay-btn" data-match="MCH-MON-261013-01">▶ 3D REPLAY</button>
+                </td>
+              </tr>
+
+              <!-- 샘플 데이터 2 (2위 실버) -->
+              <tr class="rank-row-top rank-2">
+                <td class="col-rank"><span class="rank-badge rank-badge-2">🥈 02</span></td>
+                <td class="col-driver"><strong class="driver-name-text">Apex Hunter</strong></td>
+                <td class="col-machine"><span class="machine-badge gt">GT-86 Turbo</span></td>
+                <td class="col-track">Monaco Grand Prix</td>
+                <td class="col-lap"><span class="lap-highlight silver">00:49.104</span></td>
+                <td class="col-speed">221.7 km/h</td>
+                <td class="col-date">2026-10-13 14:45</td>
+                <td class="col-action">
+                  <button type="button" class="history-replay-btn" data-match="MCH-MON-261013-02">▶ 3D REPLAY</button>
+                </td>
+              </tr>
+
+              <!-- 샘플 데이터 3 (3위 브론즈) -->
+              <tr class="rank-row-top rank-3">
+                <td class="col-rank"><span class="rank-badge rank-badge-3">🥉 03</span></td>
+                <td class="col-driver"><strong class="driver-name-text">Monaco Ghost</strong></td>
+                <td class="col-machine"><span class="machine-badge cyber">Cyber Speedster</span></td>
+                <td class="col-track">Monaco Grand Prix</td>
+                <td class="col-lap"><span class="lap-highlight bronze">00:50.332</span></td>
+                <td class="col-speed">241.0 km/h</td>
+                <td class="col-date">2026-10-13 13:20</td>
+                <td class="col-action">
+                  <button type="button" class="history-replay-btn" data-match="MCH-MON-261013-03">▶ 3D REPLAY</button>
+                </td>
+              </tr>
+
+              <!-- 샘플 데이터 4 -->
+              <tr>
+                <td class="col-rank"><span class="rank-badge">04</span></td>
+                <td class="col-driver"><strong class="driver-name-text">드리프트킹</strong></td>
+                <td class="col-machine"><span class="machine-badge gt">GT-86 Turbo</span></td>
+                <td class="col-track">Monaco Grand Prix</td>
+                <td class="col-lap"><span class="lap-highlight">00:51.082</span></td>
+                <td class="col-speed">212.5 km/h</td>
+                <td class="col-date">2026-10-13 12:05</td>
+                <td class="col-action">
+                  <button type="button" class="history-replay-btn" data-match="MCH-MON-261013-04">▶ 3D REPLAY</button>
+                </td>
+              </tr>
+
+              <!-- 샘플 데이터 5 -->
+              <tr>
+                <td class="col-rank"><span class="rank-badge">05</span></td>
+                <td class="col-driver"><strong class="driver-name-text">Redline Fox</strong></td>
+                <td class="col-machine"><span class="machine-badge formula">Formula Aero</span></td>
+                <td class="col-track">Monaco Grand Prix</td>
+                <td class="col-lap"><span class="lap-highlight">00:51.940</span></td>
+                <td class="col-speed">225.1 km/h</td>
+                <td class="col-date">2026-10-13 11:30</td>
+                <td class="col-action">
+                  <button type="button" class="history-replay-btn" data-match="MCH-MON-261013-05">▶ 3D REPLAY</button>
+                </td>
+              </tr>
+
+              <!-- 샘플 데이터 6 -->
+              <tr>
+                <td class="col-rank"><span class="rank-badge">06</span></td>
+                <td class="col-driver"><strong class="driver-name-text">질주본능</strong></td>
+                <td class="col-machine"><span class="machine-badge cyber">Cyber Speedster</span></td>
+                <td class="col-track">Monaco Grand Prix</td>
+                <td class="col-lap"><span class="lap-highlight">00:52.415</span></td>
+                <td class="col-speed">234.8 km/h</td>
+                <td class="col-date">2026-10-13 10:15</td>
+                <td class="col-action">
+                  <button type="button" class="history-replay-btn" data-match="MCH-MON-261013-06">▶ 3D REPLAY</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 모달 풋터 (상태 안내 및 닫기) -->
+      <footer class="modal-actions history-actions">
+        <div class="history-status-note">
+          <span class="pulse-dot"></span>
+          <span>STEP 3 UI PREVIEW // 다음 단계에서 D1 DB API 실시간 쿼리 및 R2 바이너리 3D 재생이 연동됩니다.</span>
+        </div>
+        <div class="history-footer-buttons">
+          <button type="button" id="history-btn-refresh" class="secondary-btn">🔄 REFRESH // 새로고침</button>
+          <button type="button" id="history-btn-close-bottom" class="primary-btn">CLOSE // 닫기</button>
+        </div>
       </footer>
     </div>
   </div>

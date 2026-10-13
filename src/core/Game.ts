@@ -140,6 +140,19 @@ export class Game {
       }
     });
 
+    // 창 크기 조절 및 전체화면(Fullscreen) 감지 리스너 바인딩
+    this.onResize = this.onResize.bind(this);
+    window.addEventListener('resize', this.onResize);
+    document.addEventListener('fullscreenchange', this.onResize);
+    document.addEventListener('webkitfullscreenchange', this.onResize);
+
+    if (typeof ResizeObserver !== 'undefined') {
+      const resizeObserver = new ResizeObserver(() => {
+        this.onResize();
+      });
+      resizeObserver.observe(this.container);
+    }
+
     // 메인 루프 가동
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
@@ -631,9 +644,14 @@ export class Game {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${millis.toString().padStart(3, '0')}`;
   }
 
-  private onResize(): void {
-    this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
+  public onResize(): void {
+    const width = this.container.clientWidth || window.innerWidth;
+    const height = this.container.clientHeight || window.innerHeight;
+    if (width === 0 || height === 0) return;
+
+    this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+    this.renderer.setSize(width, height);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   }
 }

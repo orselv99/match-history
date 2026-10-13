@@ -35,6 +35,24 @@ window.addEventListener('DOMContentLoaded', () => {
   const colorChips = document.querySelectorAll<HTMLElement>('.color-chip[data-color]');
   const weatherChips = document.querySelectorAll<HTMLElement>('.weather-chip[data-weather]');
 
+  // 커스텀 컬러 피커 DOM
+  const customColorPicker = document.getElementById('setup-custom-color-picker') as HTMLInputElement;
+  const customColorDot = document.getElementById('custom-color-dot') as HTMLElement;
+  const customColorHex = document.getElementById('custom-color-hex') as HTMLElement;
+  const colorPickerBox = document.getElementById('color-picker-box') as HTMLElement;
+
+  // 3단계 전적 검색 & 글로벌 리더보드 모달 DOM
+  const matchHistoryModal = document.getElementById('match-history-modal')!;
+  const historyBtnClose = document.getElementById('history-btn-close')!;
+  const historyBtnCloseBottom = document.getElementById('history-btn-close-bottom')!;
+  const btnTopHistory = document.getElementById('btn-top-history');
+  const btnFullscreen = document.getElementById('btn-fullscreen');
+  const historyTabBtns = document.querySelectorAll<HTMLElement>('.history-tab-btn');
+  const historySearchInput = document.getElementById('history-search-driver') as HTMLInputElement;
+  const historyBtnSearch = document.getElementById('history-btn-search')!;
+  const historyBtnRefresh = document.getElementById('history-btn-refresh')!;
+  const historyReplayBtns = document.querySelectorAll<HTMLElement>('.history-replay-btn');
+
   const RANDOM_NAMES = [
     'Apex Hunter',
     '스피드마스터',
@@ -254,6 +272,12 @@ window.addEventListener('DOMContentLoaded', () => {
     if (input) input.checked = true;
   };
 
+  const updateCarVisuals = () => {
+    game.playerVehicle.setModel(selectedModel as any);
+    const hex = parseInt(selectedColor.replace('#', '0x'), 16);
+    game.playerVehicle.setColor(hex);
+  };
+
   trackCards.forEach(card => {
     card.addEventListener('click', () => {
       if (setupChkAutoDrive.checked) return;
@@ -267,15 +291,41 @@ window.addEventListener('DOMContentLoaded', () => {
       if (setupChkAutoDrive.checked) return;
       selectRadioGroup(modelCards, card);
       selectedModel = card.dataset.model || 'gt_turbo';
+      updateCarVisuals();
     });
   });
 
+  // 컬러 칩 클릭 핸들러
   colorChips.forEach(chip => {
     chip.addEventListener('click', () => {
       if (setupChkAutoDrive.checked) return;
       selectRadioGroup(colorChips, chip);
-      selectedColor = chip.dataset.color || '#ef4444';
+      colorPickerBox?.classList.remove('active');
+      const c = chip.dataset.color || '#ef4444';
+      selectedColor = c;
+      if (customColorPicker) customColorPicker.value = c;
+      if (customColorDot) customColorDot.style.backgroundColor = c;
+      if (customColorHex) customColorHex.textContent = c.toUpperCase();
+      updateCarVisuals();
     });
+  });
+
+  // 직접 입력 컬러 피커 핸들러
+  const handleCustomColorInput = (hexVal: string) => {
+    if (setupChkAutoDrive.checked) return;
+    colorChips.forEach(c => c.classList.remove('active'));
+    colorPickerBox?.classList.add('active');
+    selectedColor = hexVal;
+    if (customColorDot) customColorDot.style.backgroundColor = hexVal;
+    if (customColorHex) customColorHex.textContent = hexVal.toUpperCase();
+    updateCarVisuals();
+  };
+
+  customColorPicker?.addEventListener('input', (e) => {
+    handleCustomColorInput((e.target as HTMLInputElement).value);
+  });
+  customColorPicker?.addEventListener('change', (e) => {
+    handleCustomColorInput((e.target as HTMLInputElement).value);
   });
 
   weatherChips.forEach(chip => {
@@ -283,6 +333,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (setupChkAutoDrive.checked) return;
       selectRadioGroup(weatherChips, chip);
       selectedWeather = chip.dataset.weather || 'clear';
+      game.setWeather(selectedWeather as any);
     });
   });
 
@@ -308,11 +359,18 @@ window.addEventListener('DOMContentLoaded', () => {
 
     const randColor = colorChips[Math.floor(Math.random() * colorChips.length)];
     selectRadioGroup(colorChips, randColor);
+    colorPickerBox?.classList.remove('active');
     selectedColor = randColor.dataset.color || '#ef4444';
+    if (customColorPicker) customColorPicker.value = selectedColor;
+    if (customColorDot) customColorDot.style.backgroundColor = selectedColor;
+    if (customColorHex) customColorHex.textContent = selectedColor.toUpperCase();
 
     const randWeather = weatherChips[Math.floor(Math.random() * weatherChips.length)];
     selectRadioGroup(weatherChips, randWeather);
     selectedWeather = randWeather.dataset.weather || 'clear';
+    game.setWeather(selectedWeather as any);
+
+    updateCarVisuals();
   });
 
   // 자동주행 체크박스 토글 -> 하위 옵션 disabled 처리
@@ -321,6 +379,15 @@ window.addEventListener('DOMContentLoaded', () => {
       setupOptionsContainer.classList.add('disabled');
     } else {
       setupOptionsContainer.classList.remove('disabled');
+    }
+  });
+
+  // 전체화면 토글
+  btnFullscreen?.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
     }
   });
 
@@ -346,17 +413,67 @@ window.addEventListener('DOMContentLoaded', () => {
       const driverName = setupDriverName.value.trim() || 'Apex Hunter';
       game.currentDriverName = driverName;
       game.currentTrackId = selectedTrack;
-      game.playerVehicle.setModel(selectedModel as any);
-      const hex = parseInt(selectedColor.replace('#', '0x'), 16);
-      game.playerVehicle.setColor(hex);
+      updateCarVisuals();
       game.setWeather(selectedWeather as any);
 
       setModeUI('DRIVING');
     }
   });
 
+  // 3단계 전적 검색 & 글로벌 리더보드 모달 이벤트
   titleBtnHistory.addEventListener('click', () => {
-    alert('전적 검색 & 글로벌 리더보드는 다음 순서(3단계)에서 구현될 예정입니다.');
+    matchHistoryModal.classList.add('open');
+  });
+
+  btnTopHistory?.addEventListener('click', () => {
+    matchHistoryModal.classList.add('open');
+  });
+
+  historyBtnClose.addEventListener('click', () => {
+    matchHistoryModal.classList.remove('open');
+  });
+
+  historyBtnCloseBottom.addEventListener('click', () => {
+    matchHistoryModal.classList.remove('open');
+  });
+
+  // 트랙 탭 전환
+  historyTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      historyTabBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // 검색 필터링 인터랙션
+  const filterMockRows = () => {
+    const q = historySearchInput.value.trim().toLowerCase();
+    const rows = document.querySelectorAll<HTMLElement>('#history-table-tbody tr');
+    rows.forEach(r => {
+      const text = r.textContent?.toLowerCase() || '';
+      if (!q || text.includes(q)) {
+        r.style.display = '';
+      } else {
+        r.style.display = 'none';
+      }
+    });
+  };
+
+  historyBtnSearch?.addEventListener('click', filterMockRows);
+  historySearchInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') filterMockRows();
+  });
+
+  historyBtnRefresh?.addEventListener('click', () => {
+    historySearchInput.value = '';
+    filterMockRows();
+  });
+
+  historyReplayBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const matchCode = btn.getAttribute('data-match');
+      alert(`[Step 3 안내] 리플레이 매치 코드: ${matchCode}\n현재 3단계 UI 프로토타입 상태입니다. 다음 단계에서 실제 R2 압축 바이너리 스트리밍 및 3D 뷰어 재생이 연결됩니다.`);
+    });
   });
 
   titleBtnSettings.addEventListener('click', () => {
@@ -534,11 +651,13 @@ window.addEventListener('DOMContentLoaded', () => {
     settingSteerVal.textContent = `${(val / 100).toFixed(1)}x`;
   });
 
-  // 단축키: ESC로 타이틀 복귀 및 모달 닫기, O로 설정 토글
+  // 단축키: ESC로 타이틀 복귀 및 모달 닫기, O로 설정 토글, F로 전체화면
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (gameSetupModal.classList.contains('open')) {
         gameSetupModal.classList.remove('open');
+      } else if (matchHistoryModal.classList.contains('open')) {
+        matchHistoryModal.classList.remove('open');
       } else if (settingsModal.classList.contains('open')) {
         closeSettings();
       } else if (finishModal.classList.contains('open')) {
@@ -553,6 +672,12 @@ window.addEventListener('DOMContentLoaded', () => {
       } else {
         syncAudioSettingsUI();
         settingsModal.classList.add('open');
+      }
+    } else if ((e.key === 'f' || e.key === 'F') && !(e.target instanceof HTMLInputElement)) {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
       }
     }
   });

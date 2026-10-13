@@ -51,11 +51,14 @@ export class CircuitTrack {
     this.setupCheckpoints();
   }
 
+  public roadMaterial: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial({
+    color: 0x2e323b,
+    roughness: 0.7,
+    metalness: 0.15,
+  });
+
   private buildTrackMesh(): void {
     const segments = 300;
-    // THREE.CatmullRomCurve3.getSpacedPoints는 closed 커브일 때도 0부터 1.0까지 segments + 1개의 점을 반환합니다.
-    // 폐루프 서킷의 이음새 중복 버그(0과 1.0에서의 영벡터 계산 오류 및 대각선 왜곡)를 방지하기 위해
-    // 마지막 중복점을 제거하고 정확히 segments개의 고유 순환 점을 유지합니다.
     const rawPoints = this.trackCurve.getSpacedPoints(segments);
     const roadPoints = rawPoints.slice(0, segments);
 
@@ -101,13 +104,7 @@ export class CircuitTrack {
     roadGeom.setIndex(indices);
     roadGeom.computeVertexNormals();
 
-    // 아스팔트 재질 (시인성을 대폭 높인 뚜렷한 테크니컬 아스팔트 그레이)
-    const roadMat = new THREE.MeshStandardMaterial({
-      color: 0x2e323b,
-      roughness: 0.7,
-      metalness: 0.15,
-    });
-    const roadMesh = new THREE.Mesh(roadGeom, roadMat);
+    const roadMesh = new THREE.Mesh(roadGeom, this.roadMaterial);
     roadMesh.receiveShadow = true;
     this.group.add(roadMesh);
 
@@ -390,7 +387,7 @@ export class CircuitTrack {
     const position = new THREE.Vector3()
       .copy(pt)
       .addScaledVector(right, lane);
-    position.y = 0.35;
+    position.y = 0.055;
 
     const heading = Math.atan2(tangent.x, tangent.z);
 

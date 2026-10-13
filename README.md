@@ -22,9 +22,11 @@ match-history/
 │   ├── game/                       # 인게임 엔티티 및 게임플레이 로직
 │   │   ├── AICarManager.ts         # 자율주행 AI 차량 에이전트 및 경로 추종
 │   │   ├── CircuitTrack.ts         # 서킷 트랙 지오메트리 및 체크포인트
+│   │   ├── CollisionManager.ts     # 차량 간 탄성 물리 충돌, 반발 임펄스, 카메라 쉐이크 및 스파크
 │   │   ├── HoneycombPicker.ts      # 127셀 헥사곤 허니콤 컬러 팔레트 컴포넌트
 │   │   ├── LapTimer.ts             # 랩 타임 및 섹터 기록 측정기
-│   │   ├── Vehicle.ts              # 레이싱 머신 3D 메시, 물리 및 리버리 컬러
+│   │   ├── SkidMarkManager.ts      # 실시간 드리프트 타이어 스키드마크 쿼드 및 타이어 연기
+│   │   ├── Vehicle.ts              # 레이싱 머신 3D 메시, 물리, 헤드라이트/조명 및 리버리 컬러
 │   │   └── VehiclePreview.ts       # 게임 설정 Step 2용 독립 3D 턴테이블 뷰어
 │   ├── replay/                     # 30Hz 틱 레코딩 및 압축 코덱
 │   │   ├── ReplayCodec.ts          # 양자화 및 Gzip/Deflate 압축 코덱

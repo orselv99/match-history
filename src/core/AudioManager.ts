@@ -258,6 +258,106 @@ export class AudioManager {
     });
   }
 
+  /**
+   * 차량 충돌 시 메탈릭 크런치 임팩트 사운드 재생
+   */
+  public playCrashImpact(intensity: number = 1.0): void {
+    if (!this.ctx || !this.sfxGain) return;
+    const now = this.ctx.currentTime;
+    const clampedIntensity = Math.min(1.0, Math.max(0.25, intensity / 15.0));
+
+    // 1. 저주파 펀치 서브 베이스 (Sub Boom)
+    const subOsc = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    subOsc.type = 'sine';
+    subOsc.frequency.setValueAtTime(160, now);
+    subOsc.frequency.exponentialRampToValueAtTime(25, now + 0.22);
+
+    subGain.gain.setValueAtTime(0.6 * clampedIntensity, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+
+    subOsc.connect(subGain);
+    subGain.connect(this.sfxGain);
+    subOsc.start(now);
+    subOsc.stop(now + 0.25);
+
+    // 2. 금속 충돌 노이즈 버스트 (Metal Crunch Noise)
+    const sampleRate = this.ctx.sampleRate;
+    const noiseBuf = this.ctx.createBuffer(1, Math.floor(sampleRate * 0.25), sampleRate);
+    const data = noiseBuf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (sampleRate * 0.06));
+    }
+    const noiseSource = this.ctx.createBufferSource();
+    noiseSource.buffer = noiseBuf;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1500, now);
+    filter.Q.setValueAtTime(2.2, now);
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.55 * clampedIntensity, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+    noiseSource.connect(filter);
+    filter.connect(noiseGain);
+    noiseGain.connect(this.sfxGain);
+    noiseSource.start(now);
+  }
+
+  private rainGain: GainNode | null = null;
+  private rainSource: AudioBufferSourceNode | null = null;
+
+  /**
+   * 빗소리 앰비언트 사운드 켜기/끄기
+   */
+  public setRainAudio(enabled: boolean): void {
+    if (!this.ctx || !this.sfxGain) return;
+    const now = this.ctx.currentTime;
+
+    if (enabled) {
+      if (!this.rainSource) {
+        const bufferSize = this.ctx.sampleRate * 2;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        this.rainSource = this.ctx.createBufferSource();
+        this.rainSource.buffer = noiseBuffer;
+        this.rainSource.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1900, now);
+
+        this.rainGain = this.ctx.createGain();
+        this.rainGain.gain.setValueAtTime(0, now);
+        this.rainGain.gain.linearRampToValueAtTime(0.07, now + 0.8);
+
+        this.rainSource.connect(filter);
+        filter.connect(this.rainGain);
+        this.rainGain.connect(this.sfxGain);
+        this.rainSource.start();
+      }
+    } else {
+      if (this.rainGain && this.rainSource) {
+        this.rainGain.gain.linearRampToValueAtTime(0, now + 0.4);
+        const oldSrc = this.rainSource;
+        setTimeout(() => {
+          try {
+            oldSrc.stop();
+            oldSrc.disconnect();
+          } catch (e) {}
+        }, 500);
+        this.rainSource = null;
+        this.rainGain = null;
+      }
+    }
+  }
+
   public playTestBeep(): void {
     if (!this.isInitialized) {
       this.init();

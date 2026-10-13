@@ -82,9 +82,10 @@ export class AICarManager {
   }
 
   /**
-   * 스타팅 그리드 박스에 4대 차량 나란히 정렬 배치 (Grid Alignment)
+   * 스타팅 그리드 박스에 차량 나란히 정렬 배치 (Grid Alignment)
+   * @param asRivals 플레이어 주행 모드 시 (슬롯 0은 플레이어 전용, AI는 1, 2, 3번 슬롯에 배치)
    */
-  public resetToGrids(): void {
+  public resetToGrids(asRivals: boolean = false): void {
     this.isActive = true;
     this.group.visible = true;
     this.isAllFinished = false;
@@ -94,6 +95,14 @@ export class AICarManager {
     const slotLanes = [-2.2, 2.2, -2.2, 2.2];
 
     this.agents.forEach((agent, idx) => {
+      if (asRivals && idx === 0) {
+        // 슬롯 0은 플레이어 차량이 차지하므로 비활성화
+        agent.vehicle.mesh.visible = false;
+        agent.speedMs = 0;
+        return;
+      }
+
+      agent.vehicle.mesh.visible = true;
       const distBehind = slotDistances[idx];
       const lane = slotLanes[idx];
 
@@ -105,20 +114,26 @@ export class AICarManager {
       agent.currentLap = 1;
       agent.isFinished = false;
 
-      // 그리드 박스 위치에 차량 스폰
+      // 그리드 박스 위치에 차량 스폰 (Y: 0.055m 지면 밀착)
       const gridPos = this.track.getGridPosition(idx);
       agent.vehicle.reset(gridPos.position, gridPos.heading);
     });
   }
 
-  public activate(): void {
-    this.resetToGrids();
+  public activate(asRivals: boolean = false): void {
+    this.resetToGrids(asRivals);
   }
 
   public deactivate(): void {
     this.isActive = false;
     this.group.visible = false;
     this.isAllFinished = false;
+  }
+
+  public setHeadlights(enabled: boolean): void {
+    this.agents.forEach((agent) => {
+      agent.vehicle.setHeadlights(enabled);
+    });
   }
 
   public update(delta: number, isRunning: boolean): void {
@@ -132,6 +147,8 @@ export class AICarManager {
     const trackLength = this.track.trackCurve.getLength();
 
     this.agents.forEach((agent) => {
+      if (!agent.vehicle.mesh.visible) return;
+
       if (agent.isFinished) {
         // 완주 후 서서히 감속
         agent.speedMs = Math.max(0, agent.speedMs - 15.0 * delta);
@@ -145,6 +162,9 @@ export class AICarManager {
 
         const targetSpeed = curveAngle > 0.3 ? agent.baseSpeedMs * 0.65 : agent.maxSpeedMs;
         agent.speedMs += (targetSpeed - agent.speedMs) * Math.min(1.0, 3.5 * delta);
+
+        // 고속 급선회 시 AI 차량도 드리프트 활성화
+        agent.vehicle.isDrifting = curveAngle > 0.32 && agent.speedMs > 25.0;
 
         // 2. 주기적 레인 변경 (추월 시도 모션)
         if (Math.random() < 0.015) {
@@ -187,7 +207,7 @@ export class AICarManager {
     const carPos = new THREE.Vector3()
       .copy(pt)
       .addScaledVector(right, agent.laneOffset);
-    carPos.y = 0.35;
+    carPos.y = 0.055; // 지면 노면 밀착
 
     agent.vehicle.position.copy(carPos);
     agent.vehicle.mesh.position.copy(carPos);
@@ -196,6 +216,13 @@ export class AICarManager {
     agent.vehicle.heading = heading;
     agent.vehicle.mesh.rotation.y = heading;
     agent.vehicle.speed = agent.speedMs;
+
+    // 바퀴 회전 애니메이션
+    const wheelRotSpeed = (agent.speedMs / 0.38) * delta;
+    agent.vehicle.frontLeftWheel.rotation.x += wheelRotSpeed;
+    agent.vehicle.frontRightWheel.rotation.x += wheelRotSpeed;
+    agent.vehicle.rearLeftWheel.rotation.x += wheelRotSpeed;
+    agent.vehicle.rearRightWheel.rotation.x += wheelRotSpeed;
   }
 
   /**

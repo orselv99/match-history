@@ -686,6 +686,8 @@ window.addEventListener('DOMContentLoaded', () => {
     vehiclePreview?.stop();
     game.audio.init();
 
+    game.setEnvironment(selectedTime, selectedWeather);
+
     if (wizardChkAutodrive.checked) {
       setModeUI('DEMO');
     } else {
@@ -694,8 +696,8 @@ window.addEventListener('DOMContentLoaded', () => {
       game.currentTrackId = selectedTrack;
       updateModelShowcase();
       updateColor(selectedColor);
-      game.setEnvironment(selectedTime, selectedWeather);
       setModeUI('DRIVING');
+      game.startCountdown();
     }
   });
 

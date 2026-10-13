@@ -30,13 +30,23 @@ export class Vehicle {
   public isDrifting: boolean = false;
 
   // 바퀴 메시 레퍼런스 (회전 및 조향 애니메이션용)
-  private frontLeftWheel!: THREE.Mesh;
-  private frontRightWheel!: THREE.Mesh;
-  private rearLeftWheel!: THREE.Mesh;
-  private rearRightWheel!: THREE.Mesh;
+  public frontLeftWheel!: THREE.Mesh;
+  public frontRightWheel!: THREE.Mesh;
+  public rearLeftWheel!: THREE.Mesh;
+  public rearRightWheel!: THREE.Mesh;
   private brakeLightMaterial!: THREE.MeshStandardMaterial;
   public bodyMaterial!: THREE.MeshStandardMaterial;
   public currentModelId: string = 'gt_turbo';
+
+  // 헤드라이트 & 테일라이트 조명
+  public leftSpotLight!: THREE.SpotLight;
+  public rightSpotLight!: THREE.SpotLight;
+  public leftTarget!: THREE.Object3D;
+  public rightTarget!: THREE.Object3D;
+  public leftBeamMesh!: THREE.Mesh;
+  public rightBeamMesh!: THREE.Mesh;
+  public tailPointLight!: THREE.PointLight;
+  public headlightsEnabled: boolean = false;
 
   // 스펙 상수 (가변)
   private MAX_SPEED_MS = 58.3; // 약 210 km/h
@@ -122,18 +132,21 @@ export class Vehicle {
     const cabinGeom = new THREE.BoxGeometry(1.7, 0.45, 2.2);
     const cabin = new THREE.Mesh(cabinGeom, glassMat);
     cabin.position.set(0, 0.95, -0.2);
+    cabin.castShadow = !isGhost;
     this.mesh.add(cabin);
 
     // 루프 상단
     const roofGeom = new THREE.BoxGeometry(1.65, 0.1, 1.8);
     const roof = new THREE.Mesh(roofGeom, bodyMat);
     roof.position.set(0, 1.2, -0.2);
+    roof.castShadow = !isGhost;
     this.mesh.add(roof);
 
     // 3. 리어 윙 (스포일러)
     const wingGeom = new THREE.BoxGeometry(2.0, 0.08, 0.4);
     const wing = new THREE.Mesh(wingGeom, darkMat);
     wing.position.set(0, 1.05, -2.0);
+    wing.castShadow = !isGhost;
     this.mesh.add(wing);
 
     // 윙 지지대
@@ -159,6 +172,44 @@ export class Vehicle {
     this.mesh.add(leftLight);
     this.mesh.add(rightLight);
 
+    // 야간/악천후 주행용 강력한 전방 스포트라이트 (SpotLights)
+    this.leftSpotLight = new THREE.SpotLight(0xfffbeb, 0, 65, Math.PI / 6, 0.5, 1.2);
+    this.leftSpotLight.position.set(-0.75, 0.5, 2.2);
+    this.leftTarget = new THREE.Object3D();
+    this.leftTarget.position.set(-0.75, 0.0, 35.0);
+    this.mesh.add(this.leftSpotLight);
+    this.mesh.add(this.leftTarget);
+    this.leftSpotLight.target = this.leftTarget;
+
+    this.rightSpotLight = new THREE.SpotLight(0xfffbeb, 0, 65, Math.PI / 6, 0.5, 1.2);
+    this.rightSpotLight.position.set(0.75, 0.5, 2.2);
+    this.rightTarget = new THREE.Object3D();
+    this.rightTarget.position.set(0.75, 0.0, 35.0);
+    this.mesh.add(this.rightSpotLight);
+    this.mesh.add(this.rightTarget);
+    this.rightSpotLight.target = this.rightTarget;
+
+    // 헤드라이트 볼류메트릭 빔 콘 (Light Beams)
+    const beamGeom = new THREE.ConeGeometry(3.6, 26, 16, 1, true);
+    beamGeom.rotateX(Math.PI / 2);
+    beamGeom.translate(0, 0, 13);
+    const beamMat = new THREE.MeshBasicMaterial({
+      color: 0xfff8db,
+      transparent: true,
+      opacity: 0.14,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    this.leftBeamMesh = new THREE.Mesh(beamGeom, beamMat);
+    this.leftBeamMesh.position.set(-0.75, 0.5, 2.2);
+    this.leftBeamMesh.visible = false;
+    this.mesh.add(this.leftBeamMesh);
+
+    this.rightBeamMesh = new THREE.Mesh(beamGeom, beamMat);
+    this.rightBeamMesh.position.set(0.75, 0.5, 2.2);
+    this.rightBeamMesh.visible = false;
+    this.mesh.add(this.rightBeamMesh);
+
     // 5. 테일라이트 / 브레이크등
     this.brakeLightMaterial = new THREE.MeshStandardMaterial({
       color: 0xdc2626,
@@ -170,6 +221,11 @@ export class Vehicle {
     tailLight.position.set(0, 0.55, -2.2);
     this.mesh.add(tailLight);
 
+    // 후방 레드 글로우 조명 (PointLight)
+    this.tailPointLight = new THREE.PointLight(0xef4444, 0, 10, 1.5);
+    this.tailPointLight.position.set(0, 0.55, -2.4);
+    this.mesh.add(this.tailPointLight);
+
     // 6. 바퀴 4개 (Wheel Cylinders)
     const wheelGeom = new THREE.CylinderGeometry(0.38, 0.38, 0.32, 16);
     wheelGeom.rotateZ(Math.PI / 2); // 휠 방향 정렬
@@ -178,13 +234,19 @@ export class Vehicle {
 
     this.frontLeftWheel = new THREE.Mesh(wheelGeom, wheelMat);
     this.frontLeftWheel.position.set(-1.05, 0.38, 1.3);
+    this.frontLeftWheel.castShadow = !isGhost;
+
     this.frontRightWheel = new THREE.Mesh(wheelGeom, wheelMat);
     this.frontRightWheel.position.set(1.05, 0.38, 1.3);
+    this.frontRightWheel.castShadow = !isGhost;
 
     this.rearLeftWheel = new THREE.Mesh(wheelGeom, wheelMat);
     this.rearLeftWheel.position.set(-1.05, 0.38, -1.3);
+    this.rearLeftWheel.castShadow = !isGhost;
+
     this.rearRightWheel = new THREE.Mesh(wheelGeom, wheelMat);
     this.rearRightWheel.position.set(1.05, 0.38, -1.3);
+    this.rearRightWheel.castShadow = !isGhost;
 
     this.mesh.add(this.frontLeftWheel);
     this.mesh.add(this.frontRightWheel);
@@ -236,9 +298,9 @@ export class Vehicle {
     const speedRatio = Math.min(1.0, Math.abs(this.speed) / 25.0);
     const steerAngle = steerInput * (0.65 - speedRatio * 0.35);
 
-    // 드리프트 판정 (핸드브레이크 또는 고속 급선회)
-    const isHighSpeedTurn = Math.abs(steerInput) > 0.7 && Math.abs(this.speed) > 18.0;
-    this.isDrifting = (handbrake && Math.abs(this.speed) > 8.0) || isHighSpeedTurn;
+    // 드리프트 판정 (핸드브레이크 또는 급선회 슬립)
+    const isHighSpeedTurn = Math.abs(steerInput) > 0.6 && Math.abs(this.speed) > 12.0;
+    this.isDrifting = (handbrake && Math.abs(this.speed) > 2.5) || isHighSpeedTurn;
 
     const driftFactor = this.isDrifting ? 2.2 : 1.0;
     const turnRate = steerAngle * (this.speed / 4.0) * driftFactor;
@@ -256,6 +318,12 @@ export class Vehicle {
 
     this.position.x += forwardX * this.speed * delta;
     this.position.z += forwardZ * this.speed * delta;
+
+    // 지면 접지 서스펜션: 온로드 0.055m 밀착, 오프로드 잔디 진동 반영
+    const targetY = isOffroad
+      ? 0.02 + (Math.random() - 0.5) * 0.008 * Math.min(1.0, Math.abs(this.speed) / 20.0)
+      : 0.055;
+    this.position.y += (targetY - this.position.y) * Math.min(1.0, 18.0 * delta);
 
     // 4. 3D 메시 Transform 적용
     this.mesh.position.copy(this.position);
@@ -276,11 +344,32 @@ export class Vehicle {
     this.frontLeftWheel.rotation.y = -steerAngle;
     this.frontRightWheel.rotation.y = -steerAngle;
 
-    // 6. 브레이크등 발광
+    // 6. 브레이크등 및 후방 조명 발광
+    const isBraking = brake > 0.1 || handbrake;
     if (this.brakeLightMaterial) {
-      const isBraking = brake > 0.1 || handbrake;
-      this.brakeLightMaterial.emissiveIntensity = isBraking ? 2.8 : 0.8;
+      this.brakeLightMaterial.emissiveIntensity = isBraking ? 2.8 : (this.headlightsEnabled ? 1.2 : 0.6);
     }
+    if (this.tailPointLight) {
+      this.tailPointLight.intensity = (this.headlightsEnabled ? 1.2 : 0) + (isBraking ? 2.8 : 0);
+    }
+  }
+
+  public setHeadlights(enabled: boolean): void {
+    this.headlightsEnabled = enabled;
+    const intensity = enabled ? 3.5 : 0;
+    if (this.leftSpotLight) this.leftSpotLight.intensity = intensity;
+    if (this.rightSpotLight) this.rightSpotLight.intensity = intensity;
+    if (this.leftBeamMesh) this.leftBeamMesh.visible = enabled;
+    if (this.rightBeamMesh) this.rightBeamMesh.visible = enabled;
+    if (this.tailPointLight) this.tailPointLight.intensity = enabled ? 1.2 : 0;
+  }
+
+  public getRearWheelWorldPositions(): { left: THREE.Vector3; right: THREE.Vector3 } {
+    const left = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    this.rearLeftWheel.getWorldPosition(left);
+    this.rearRightWheel.getWorldPosition(right);
+    return { left, right };
   }
 
   public getSpeedKmh(): number {
@@ -289,6 +378,9 @@ export class Vehicle {
 
   public reset(pos: THREE.Vector3, heading: number = 0): void {
     this.position.copy(pos);
+    if (this.position.y < 0.04 || this.position.y > 0.1) {
+      this.position.y = 0.055;
+    }
     this.speed = 0;
     this.heading = heading;
     this.slipAngle = 0;

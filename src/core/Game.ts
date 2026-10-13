@@ -9,6 +9,8 @@ import { ReplayPlayer } from '../replay/ReplayPlayer.ts';
 import { ReplayCodec } from '../replay/ReplayCodec.ts';
 import { MatchSummaryMetadata } from '../replay/ReplayTypes.ts';
 import { AICarManager } from '../game/AICarManager.ts';
+import { SkidMarkManager } from '../game/SkidMarkManager.ts';
+import { CollisionManager } from '../game/CollisionManager.ts';
 
 export type GameMode = 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO';
 export type RaceState = 'READY' | 'COUNTDOWN' | 'RUNNING' | 'FINISHED';
@@ -42,6 +44,8 @@ export class Game {
   public playerVehicle: Vehicle;
   public replayPlayer: ReplayPlayer;
   public aiManager: AICarManager;
+  public skidMarkManager: SkidMarkManager;
+  public collisionManager: CollisionManager;
   public input: InputManager;
   public audio: AudioManager;
   public lapTimer: LapTimer;
@@ -59,8 +63,16 @@ export class Game {
   private countdownTimer: number = 3.0;
   private lastBeepNumber: number = -1;
 
-  // 카메라 파라미터
+  // 카메라 파라미터 & 충돌 쉐이크
   private cameraLookTarget: THREE.Vector3 = new THREE.Vector3();
+  private cameraShakeIntensity: number = 0;
+
+  // 비 날씨 파티클 시스템
+  private rainParticles!: THREE.Points;
+  private rainGeom!: THREE.BufferGeometry;
+  private rainPositions!: Float32Array;
+  private isRaining: boolean = false;
+  private readonly RAIN_COUNT = 2400;
 
   // 조명 레퍼런스
   private dirLight!: THREE.DirectionalLight;
@@ -118,12 +130,38 @@ export class Game {
     this.aiManager = new AICarManager(this.track);
     this.scene.add(this.aiManager.group);
 
+    // 스키드마크 & 충돌 매니저
+    this.skidMarkManager = new SkidMarkManager();
+    this.scene.add(this.skidMarkManager.group);
+
+    this.collisionManager = new CollisionManager();
+    this.scene.add(this.collisionManager.group);
+
+    // 충돌 리스너: 임팩트 사운드 & 카메라 쉐이크
+    this.collisionManager.onCollision = (ev) => {
+      if (ev.isPlayerInvolved) {
+        this.cameraShakeIntensity = Math.min(1.0, Math.max(0.4, ev.impactSpeed * 0.04));
+        this.audio.playCrashImpact(ev.impactSpeed);
+      } else {
+        const dist = ev.contactPoint.distanceTo(this.playerVehicle.position);
+        if (dist < 45.0) {
+          this.audio.playCrashImpact(ev.impactSpeed * 0.6);
+        }
+      }
+    };
+
+    // 3D 비 파티클 시스템 초기화
+    this.initRainSystem();
+
     this.input = new InputManager();
     this.audio = new AudioManager();
     this.lapTimer = new LapTimer(3); // 3랩 완주
     this.recorder = new ReplayRecorder();
 
     this.clock = new THREE.Clock();
+
+    // 초기 환경 설정 (맑은 정오)
+    this.setEnvironment('noon', 'clear');
 
     // 초기 모드 설정 (타이틀 씬 대기)
     this.setMode('TITLE');
@@ -189,6 +227,70 @@ export class Game {
     this.scene.add(this.hemiLight);
   }
 
+  private initRainSystem(): void {
+    this.rainGeom = new THREE.BufferGeometry();
+    this.rainPositions = new Float32Array(this.RAIN_COUNT * 3);
+
+    for (let i = 0; i < this.RAIN_COUNT; i++) {
+      this.rainPositions[i * 3] = (Math.random() - 0.5) * 120;
+      this.rainPositions[i * 3 + 1] = Math.random() * 45;
+      this.rainPositions[i * 3 + 2] = (Math.random() - 0.5) * 120;
+    }
+
+    this.rainGeom.setAttribute('position', new THREE.BufferAttribute(this.rainPositions, 3));
+
+    // 절차적 세로 빗방울 텍스처
+    const canvas = document.createElement('canvas');
+    canvas.width = 16;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const grad = ctx.createLinearGradient(8, 0, 8, 64);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      grad.addColorStop(0.5, 'rgba(190, 225, 255, 0.7)');
+      grad.addColorStop(1, 'rgba(230, 245, 255, 0.95)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(6, 0, 4, 64);
+    }
+    const rainTex = new THREE.CanvasTexture(canvas);
+
+    const rainMat = new THREE.PointsMaterial({
+      color: 0x93c5fd,
+      size: 1.4,
+      map: rainTex,
+      transparent: true,
+      opacity: 0.75,
+      depthWrite: false,
+      blending: THREE.NormalBlending,
+    });
+
+    this.rainParticles = new THREE.Points(this.rainGeom, rainMat);
+    this.rainParticles.visible = false;
+    this.scene.add(this.rainParticles);
+  }
+
+  private updateRain(delta: number, focusPos: THREE.Vector3): void {
+    if (!this.isRaining || !this.rainParticles || !this.rainParticles.visible) return;
+
+    const pos = this.rainPositions;
+    const fallSpeed = 52.0 * delta;
+    const windSpeed = 6.0 * delta;
+
+    for (let i = 0; i < this.RAIN_COUNT; i++) {
+      const idx = i * 3;
+      pos[idx] += windSpeed;
+      pos[idx + 1] -= fallSpeed;
+
+      if (pos[idx + 1] < 0.05) {
+        pos[idx] = focusPos.x + (Math.random() - 0.5) * 110;
+        pos[idx + 1] = focusPos.y + 25 + Math.random() * 20;
+        pos[idx + 2] = focusPos.z + (Math.random() - 0.5) * 110;
+      }
+    }
+
+    (this.rainGeom.attributes.position as THREE.BufferAttribute).needsUpdate = true;
+  }
+
   public currentTimeOfDay: 'morning' | 'noon' | 'sunset' | 'night' = 'noon';
 
   public setEnvironment(
@@ -206,54 +308,98 @@ export class Game {
     const dirPos = new THREE.Vector3(120, 150, 80);
     let ambColor = 0xdbeafe;
     let ambIntensity = 0.6;
+    let hemiSky = 0x7dd3fc;
+    let hemiGround = 0x121316;
 
-    // 1. 시간대(Time of Day) 기본 파라미터
+    // 1. 시간대(Time of Day)
     if (timeOfDay === 'morning') {
       bgColor = 0x1a2130;
       fogColor = 0x1a2130;
-      dirColor = 0xfef08a; // 온화한 황금빛 아침 햇살
-      dirIntensity = 1.35;
-      dirPos.set(160, 80, 50);
-      ambColor = 0xcfd8dc;
+      dirColor = 0xfde047; // 따뜻한 골든 모닝 햇살
+      dirIntensity = 1.5;
+      dirPos.set(180, 50, 60);
+      ambColor = 0x94a3b8;
       ambIntensity = 0.65;
+      hemiSky = 0xfef08a;
+      hemiGround = 0x1e293b;
     } else if (timeOfDay === 'noon') {
       bgColor = 0x141824;
       fogColor = 0x141824;
-      dirColor = 0xffffff; // 강렬한 정오 태양광
-      dirIntensity = 1.6;
-      dirPos.set(80, 180, 70);
-      ambColor = 0xe0f2fe;
-      ambIntensity = 0.7;
-    } else if (timeOfDay === 'sunset') {
-      bgColor = 0x2e1219;
-      fogColor = 0x2e1219;
-      dirColor = 0xf97316; // 타오르는 석양 노을
+      dirColor = 0xffffff; // 정오 순백색 태양광
       dirIntensity = 1.7;
-      dirPos.set(150, 45, 80);
-      ambColor = 0x7c2d12;
-      ambIntensity = 0.5;
+      dirPos.set(70, 200, 60);
+      ambColor = 0xe2e8f0;
+      ambIntensity = 0.75;
+      hemiSky = 0x7dd3fc;
+      hemiGround = 0x0f172a;
+    } else if (timeOfDay === 'sunset') {
+      bgColor = 0x3b111e; // 노을빛 딥 버건디 퍼플
+      fogColor = 0x3b111e;
+      dirColor = 0xf97316; // 타오르는 오렌지-선셋 석양
+      dirIntensity = 1.9;
+      dirPos.set(190, 28, 90);
+      ambColor = 0x9a3412;
+      ambIntensity = 0.6;
+      hemiSky = 0xfb923c;
+      hemiGround = 0x2e1018;
     } else if (timeOfDay === 'night') {
-      bgColor = 0x070913;
-      fogColor = 0x070913;
-      dirColor = 0x38bdf8; // 푸른 밤하늘 달빛
-      dirIntensity = 0.8;
-      dirPos.set(60, 110, 40);
-      ambColor = 0x0f172a;
-      ambIntensity = 0.4;
+      bgColor = 0x070a14; // 칠흑 같은 미드나잇
+      fogColor = 0x070a14;
+      dirColor = 0x38bdf8; // 은은한 청백색 달빛
+      dirIntensity = 0.55;
+      dirPos.set(60, 120, 40);
+      ambColor = 0x1e293b;
+      ambIntensity = 0.5;
+      hemiSky = 0x334155;
+      hemiGround = 0x0b0f19;
     }
 
     // 2. 날씨(Weather) 복합 효과
     if (weather === 'rain') {
+      this.isRaining = true;
+      if (this.rainParticles) this.rainParticles.visible = true;
       fogColor = 0x1e293b;
-      fogDensity = 0.006;
-      dirIntensity *= 0.7;
+      fogDensity = 0.007;
+      dirIntensity *= 0.6;
       ambColor = 0x475569;
+      this.audio.setRainAudio(true);
+
+      // 비 오는 날 아스팔트 노면 웻 룩 (Glossy Wet Asphalt Reflection)
+      if (this.track && this.track.roadMaterial) {
+        this.track.roadMaterial.roughness = 0.12;
+        this.track.roadMaterial.metalness = 0.55;
+        this.track.roadMaterial.color.setHex(0x181a20);
+      }
     } else if (weather === 'wind_fog') {
-      fogColor = 0x334155;
-      fogDensity = 0.0085;
-      dirIntensity *= 0.55;
+      this.isRaining = false;
+      if (this.rainParticles) this.rainParticles.visible = false;
+      fogColor = 0x334155; // 짙은 슬레이트 안개
+      fogDensity = 0.018;  // 진한 볼류메트릭 안개 농도
+      dirIntensity *= 0.5;
       ambIntensity *= 1.1;
+      this.audio.setRainAudio(false);
+
+      if (this.track && this.track.roadMaterial) {
+        this.track.roadMaterial.roughness = 0.6;
+        this.track.roadMaterial.metalness = 0.2;
+        this.track.roadMaterial.color.setHex(0x282c35);
+      }
+    } else { // clear
+      this.isRaining = false;
+      if (this.rainParticles) this.rainParticles.visible = false;
+      this.audio.setRainAudio(false);
+
+      if (this.track && this.track.roadMaterial) {
+        this.track.roadMaterial.roughness = 0.7;
+        this.track.roadMaterial.metalness = 0.15;
+        this.track.roadMaterial.color.setHex(0x2e323b);
+      }
     }
+
+    // 3. 야간 또는 악천후(비/안개) 시 차량 헤드라이트 & 테일라이트 점등
+    const needHeadlights = timeOfDay === 'night' || weather === 'rain' || weather === 'wind_fog';
+    if (this.playerVehicle) this.playerVehicle.setHeadlights(needHeadlights);
+    if (this.aiManager) this.aiManager.setHeadlights(needHeadlights);
 
     this.scene.background = new THREE.Color(bgColor);
     if (this.scene.fog instanceof THREE.FogExp2) {
@@ -265,6 +411,10 @@ export class Game {
     this.dirLight.position.copy(dirPos);
     this.ambientLight.color.setHex(ambColor);
     this.ambientLight.intensity = ambIntensity;
+    if (this.hemiLight) {
+      this.hemiLight.color.setHex(hemiSky);
+      this.hemiLight.groundColor.setHex(hemiGround);
+    }
   }
 
   public setWeather(weatherId: 'clear' | 'sunset' | 'night' | 'rain'): void {
@@ -280,9 +430,17 @@ export class Game {
   }
 
   public resetCarToStart(): void {
-    // 플레이어 차량을 스타팅 그리드 1번 슬롯(Pole Position)에 정렬!
+    // 플레이어 차량을 스타팅 그리드 1번 슬롯(Pole Position, Y: 0.055m 노면 밀착)에 정렬!
     const gridPos = this.track.getGridPosition(0);
     this.playerVehicle.reset(gridPos.position, gridPos.heading);
+
+    // 주행 모드일 경우 라이벌 AI 차량들도 1, 2, 3번 슬롯에 정렬
+    if (this.mode === 'DRIVING') {
+      this.aiManager.resetToGrids(true);
+    }
+
+    this.skidMarkManager.reset();
+    this.collisionManager.reset();
 
     this.lapTimer.reset();
     this.recorder.clear();
@@ -292,7 +450,6 @@ export class Game {
     this.lastBeepNumber = -1;
 
     this.replayPlayer.pause();
-    this.aiManager.deactivate();
   }
 
   public startCountdown(): void {
@@ -371,6 +528,11 @@ export class Game {
   private updateDriving(delta: number, deltaMs: number): void {
     this.input.update(delta);
 
+    // 주행 준비 상태에서 가속 키(W / ↑) 입력 시 즉시 카운트다운 시작
+    if (this.raceState === 'READY' && this.input.throttle > 0) {
+      this.startCountdown();
+    }
+
     const isRunning = this.raceState === 'RUNNING';
 
     // 트랙 이탈 감지 (오프로드 마찰 저항)
@@ -391,6 +553,24 @@ export class Game {
       this.input.handbrake,
       isOffroad
     );
+
+    // 라이벌 AI 차량 업데이트 (3대 그리드 경쟁)
+    this.aiManager.update(delta, isRunning);
+
+    // 활성 차량 수집 (플레이어 + 라이벌 AI)
+    const activeCars = [
+      this.playerVehicle,
+      ...this.aiManager.agents.filter(a => a.vehicle.mesh.visible).map(a => a.vehicle)
+    ];
+
+    // 차량 간 충돌 감지 및 물리적 반발력 해결 (탄성 반발, 토크, 스파크, 충돌음)
+    this.collisionManager.update(delta, activeCars, this.playerVehicle);
+
+    // 드리프트 스키드마크(검은 고무 자국) 및 타이어 연기 업데이트
+    this.skidMarkManager.update(delta, activeCars);
+
+    // 비 날씨 파티클 업데이트
+    this.updateRain(delta, this.playerVehicle.position);
 
     if (isRunning) {
       // 랩 타이머 & 체크포인트 판정
@@ -421,7 +601,7 @@ export class Game {
     // 사운드 업데이트
     this.audio.update(this.playerVehicle.getSpeedKmh(), this.playerVehicle.isDrifting, this.input.throttle);
 
-    // 카메라 추적 (체이스 카메라)
+    // 카메라 추적 (체이스 카메라 & 충돌 쉐이크)
     this.updateChaseCamera(delta, this.playerVehicle);
 
     // UI 상태 갱신
@@ -433,6 +613,16 @@ export class Game {
     this.aiManager.update(delta, isRunning);
 
     const leader = this.aiManager.getLeaderAgent();
+    const activeCars = this.aiManager.agents.filter(a => a.vehicle.mesh.visible).map(a => a.vehicle);
+
+    // AI 차량 간 충돌 감지 및 물리 반응
+    this.collisionManager.update(delta, activeCars);
+
+    // 드리프트 스키드마크 및 연기 업데이트
+    this.skidMarkManager.update(delta, activeCars);
+
+    // 비 날씨 파티클 업데이트
+    this.updateRain(delta, leader.vehicle.position);
 
     // 데모 중 주행 리플레이 데이터 레코딩 (선두 AI 차량 주행 데이터 수집)
     if (isRunning) {
@@ -484,6 +674,14 @@ export class Game {
       targetVehicle.position.z + cosH * 4.0
     );
     this.camera.lookAt(this.cameraLookTarget);
+
+    // 충돌 시 다이내믹 카메라 쉐이크(Camera Shake) 감쇠 적용
+    if (this.cameraShakeIntensity > 0.001) {
+      this.camera.position.x += (Math.random() - 0.5) * this.cameraShakeIntensity * 1.6;
+      this.camera.position.y += (Math.random() - 0.5) * this.cameraShakeIntensity * 1.4;
+      this.camera.position.z += (Math.random() - 0.5) * this.cameraShakeIntensity * 1.6;
+      this.cameraShakeIntensity *= Math.max(0, 1.0 - 7.5 * delta);
+    }
   }
 
   private async handleFinish(targetVehicle: Vehicle, userId: string, nickname: string): Promise<void> {
@@ -576,7 +774,9 @@ export class Game {
     } else if (mode === 'DEMO') {
       this.playerVehicle.mesh.visible = false;
       this.replayPlayer.pause();
-      this.aiManager.activate(); // 4대 차량 그리드 정렬
+      this.aiManager.activate(false); // 4대 차량 전체 그리드 정렬
+      this.skidMarkManager.reset();
+      this.collisionManager.reset();
       this.raceState = 'READY';
       this.countdownTimer = 3.0;
       this.lastBeepNumber = -1;
@@ -586,7 +786,7 @@ export class Game {
     } else { // DRIVING
       this.playerVehicle.mesh.visible = true;
       this.replayPlayer.pause();
-      this.aiManager.deactivate();
+      this.aiManager.activate(true); // 라이벌 AI 3대 (슬롯 1, 2, 3) 활성화
       this.resetCarToStart();
       this.raceState = 'READY';
       this.countdownTimer = 3.0;

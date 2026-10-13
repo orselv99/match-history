@@ -1,31 +1,3 @@
-/**
- * Cloudflare R2 스토리지 인터페이스 (외부 의존성 없이 완결되는 타입 선언)
- */
-export interface R2Object {
-  key: string;
-  body: ReadableStream;
-  httpEtag?: string;
-  size: number;
-}
-
-export interface R2PutOptions {
-  httpMetadata?: {
-    contentType?: string;
-    cacheControl?: string;
-  };
-  customMetadata?: Record<string, string>;
-}
-
-export interface R2Bucket {
-  put(
-    key: string,
-    value: ArrayBuffer | ArrayBufferView | ReadableStream | string | Blob,
-    options?: R2PutOptions
-  ): Promise<any>;
-  get(key: string): Promise<R2Object | null>;
-  delete(key: string): Promise<void>;
-}
-
 export interface Env {
   REPLAY_BUCKET: R2Bucket;
 }

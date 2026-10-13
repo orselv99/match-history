@@ -553,7 +553,7 @@ html, body {
   margin-top: 4px;
 }
 
-/* 텔레메트리 벤치마크 테이블 */
+/* 리플레이 데이터 벤치마크 테이블 */
 .benchmark-container {
   border: 1px solid var(--border-strong);
   margin-bottom: 20px;
@@ -655,3 +655,160 @@ html, body {
 .secondary-btn:hover {
   background: var(--surface-subtle);
 }
+
+/* =====================================================================
+   5. 환경 설정 (Settings Modal) 스타일링 (Swiss Technical UI)
+   ===================================================================== */
+.modal-close-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  background: var(--surface-subtle);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+}
+
+.settings-group {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-subtle);
+}
+
+.settings-group-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--accent-spec);
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.setting-row:last-child {
+  border-bottom: none;
+}
+
+.setting-label-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.setting-name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.02em;
+}
+
+.setting-desc {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.setting-control-col {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.setting-val-display {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-spec);
+  min-width: 42px;
+  text-align: right;
+}
+
+.settings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 140px;
+  height: 4px;
+  background: var(--border-strong);
+  outline: none;
+  cursor: pointer;
+}
+
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--accent-spec);
+  border-radius: 0;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.settings-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* 스위치 토글 (Swiss Planar Switch) */
+.switch-container {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.switch-container input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: var(--border-strong);
+  transition: .2s;
+  border: 1px solid var(--border-subtle);
+}
+
+.switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 12px;
+  width: 12px;
+  left: 3px;
+  bottom: 3px;
+  background-color: var(--text-secondary);
+  transition: .2s;
+}
+
+input:checked + .switch-slider {
+  background-color: rgba(6, 182, 212, 0.2);
+  border-color: var(--accent-spec);
+}
+
+input:checked + .switch-slider:before {
+  transform: translateX(16px);
+  background-color: var(--accent-spec);
+}
+

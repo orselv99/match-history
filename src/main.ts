@@ -63,6 +63,24 @@ window.addEventListener('DOMContentLoaded', () => {
   const modalBtnDownload = document.getElementById('modal-btn-download')!;
   const modalBtnRestart = document.getElementById('modal-btn-restart')!;
 
+  // 환경 설정 모달 DOM
+  const btnSettings = document.getElementById('btn-settings')!;
+  const settingsModal = document.getElementById('settings-modal')!;
+  const settingsBtnClose = document.getElementById('settings-btn-close')!;
+  const settingsBtnSave = document.getElementById('settings-btn-save')!;
+
+  const volMaster = document.getElementById('vol-master') as HTMLInputElement;
+  const volMasterVal = document.getElementById('vol-master-val')!;
+  const volBgm = document.getElementById('vol-bgm') as HTMLInputElement;
+  const volBgmVal = document.getElementById('vol-bgm-val')!;
+  const volSfx = document.getElementById('vol-sfx') as HTMLInputElement;
+  const volSfxVal = document.getElementById('vol-sfx-val')!;
+  const btnTestSfx = document.getElementById('btn-test-sfx')!;
+  const chkMute = document.getElementById('chk-mute') as HTMLInputElement;
+
+  const settingSteer = document.getElementById('setting-steer') as HTMLInputElement;
+  const settingSteerVal = document.getElementById('setting-steer-val')!;
+
   let latestFinishedMetadata: MatchSummaryMetadata | null = null;
 
   // 1. UI 상태 이벤트 구독
@@ -267,6 +285,82 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('message', (event: MessageEvent) => {
     if (event.data?.type === 'LOAD_REPLAY' && event.data?.matchCode) {
       loadRemoteReplay(event.data.matchCode);
+    }
+  });
+
+  // 7. 환경 설정 모달 이벤트 바인딩
+  const syncAudioSettingsUI = () => {
+    const s = game.audio.settings;
+    volMaster.value = Math.round(s.masterVolume * 100).toString();
+    volMasterVal.textContent = `${volMaster.value}%`;
+
+    volBgm.value = Math.round(s.bgmVolume * 100).toString();
+    volBgmVal.textContent = `${volBgm.value}%`;
+
+    volSfx.value = Math.round(s.sfxVolume * 100).toString();
+    volSfxVal.textContent = `${volSfx.value}%`;
+
+    chkMute.checked = s.isMuted;
+  };
+  syncAudioSettingsUI();
+
+  // 설정 열기/닫기
+  btnSettings.addEventListener('click', () => {
+    syncAudioSettingsUI();
+    settingsModal.classList.add('open');
+  });
+
+  const closeSettings = () => {
+    settingsModal.classList.remove('open');
+  };
+
+  settingsBtnClose.addEventListener('click', closeSettings);
+  settingsBtnSave.addEventListener('click', closeSettings);
+
+  // 실시간 볼륨 조절
+  volMaster.addEventListener('input', () => {
+    const v = Number(volMaster.value);
+    volMasterVal.textContent = `${v}%`;
+    game.audio.setMasterVolume(v / 100);
+  });
+
+  volBgm.addEventListener('input', () => {
+    const v = Number(volBgm.value);
+    volBgmVal.textContent = `${v}%`;
+    game.audio.setBgmVolume(v / 100);
+  });
+
+  volSfx.addEventListener('input', () => {
+    const v = Number(volSfx.value);
+    volSfxVal.textContent = `${v}%`;
+    game.audio.setSfxVolume(v / 100);
+  });
+
+  btnTestSfx.addEventListener('click', () => {
+    game.audio.playTestBeep();
+  });
+
+  chkMute.addEventListener('change', () => {
+    game.audio.setMute(chkMute.checked);
+  });
+
+  settingSteer.addEventListener('input', () => {
+    const val = Number(settingSteer.value);
+    settingSteerVal.textContent = `${(val / 100).toFixed(1)}x`;
+  });
+
+  // 단축키: ESC로 모달 닫기, O로 설정 토글
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      settingsModal.classList.remove('open');
+      finishModal.classList.remove('open');
+    } else if (e.key === 'o' || e.key === 'O') {
+      if (settingsModal.classList.contains('open')) {
+        closeSettings();
+      } else {
+        syncAudioSettingsUI();
+        settingsModal.classList.add('open');
+      }
     }
   });
 });

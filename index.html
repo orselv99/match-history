@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Three.js 레이싱</title>
-  <meta name="description" content="Three.js 기반 레이싱 게임 및 30Hz 고주파 텔레메트리 직렬화, 초압축 파이프라인, 3D 리플레이 서비스 플랫폼" />
+  <meta name="description" content="Three.js 기반 레이싱 게임 및 30Hz 고주파 리플레이 데이터 직렬화, 초압축 파이프라인, 3D 리플레이 서비스 플랫폼" />
   <link rel="stylesheet" href="./src/styles.css" />
 </head>
 <body>
@@ -32,6 +32,9 @@
         </button>
         <button id="btn-mode-replay" class="glass-btn" title="3D 리플레이 보기">
           <span>REPLAY // 3D</span>
+        </button>
+        <button id="btn-settings" class="glass-btn" title="환경 설정 (O)">
+          <span>SETTINGS // 설정</span>
         </button>
         <button id="btn-reset" class="glass-btn" title="초기화 (R)">
           <span>RESET [R]</span>
@@ -115,7 +118,7 @@
     </footer>
   </div>
 
-  <!-- 4. 경기 완주 & 텔레메트리 벤치마크 결과 모달 (Swiss Technical Planar Architecture) -->
+  <!-- 4. 경기 완주 & 리플레이 데이터 압축 벤치마크 결과 모달 (Swiss Technical Planar Architecture) -->
   <div id="finish-modal" class="modal-overlay">
     <div class="modal-card">
       <header class="modal-header-strip">
@@ -144,7 +147,7 @@
           </div>
         </div>
 
-        <!-- 핵심 기술 검증: 텔레메트리 압축 벤치마크 -->
+        <!-- 핵심 기술 검증: 리플레이 데이터 압축 벤치마크 -->
         <div class="benchmark-container">
           <div class="benchmark-header">
             <span class="benchmark-title">BENCHMARK // CODEC</span>
@@ -174,6 +177,103 @@
         <button id="modal-btn-replay" class="primary-btn">3D REPLAY // 재생</button>
         <button id="modal-btn-download" class="secondary-btn">EXPORT .BIN // 다운로드</button>
         <button id="modal-btn-restart" class="secondary-btn">RETRY // 다시 주행</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- 5. 환경 설정 모달 (Audio Master/BGM/SFX & Gameplay) -->
+  <div id="settings-modal" class="modal-overlay">
+    <div class="modal-card">
+      <header class="modal-header-strip">
+        <span class="modal-title">SYSTEM SETTINGS // 환경 설정</span>
+        <button id="settings-btn-close" class="modal-close-btn" title="닫기 [ESC]">✕</button>
+      </header>
+
+      <div class="modal-content-body">
+        <!-- 섹션 1: 오디오 볼륨 -->
+        <div class="settings-group">
+          <div class="settings-group-title">AUDIO // 사운드 제어</div>
+          
+          <div class="setting-row">
+            <div class="setting-label-col">
+              <span class="setting-name">MASTER VOLUME</span>
+              <span class="setting-desc">전체 출력 음량</span>
+            </div>
+            <div class="setting-control-col">
+              <input type="range" id="vol-master" class="settings-slider" min="0" max="100" value="80" />
+              <span id="vol-master-val" class="setting-val-display">80%</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label-col">
+              <span class="setting-name">BGM // 배경음악</span>
+              <span class="setting-desc">절차적 사이버 신스 앰비언스</span>
+            </div>
+            <div class="setting-control-col">
+              <input type="range" id="vol-bgm" class="settings-slider" min="0" max="100" value="40" />
+              <span id="vol-bgm-val" class="setting-val-display">40%</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label-col">
+              <span class="setting-name">SFX // 효과음</span>
+              <span class="setting-desc">엔진 RPM, 타이어 스키드, 비프</span>
+            </div>
+            <div class="setting-control-col">
+              <input type="range" id="vol-sfx" class="settings-slider" min="0" max="100" value="80" />
+              <span id="vol-sfx-val" class="setting-val-display">80%</span>
+              <button id="btn-test-sfx" class="glass-btn" style="padding: 2px 8px; font-size: 10px; margin-left: 6px;">TEST</button>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label-col">
+              <span class="setting-name">MUTE ALL</span>
+              <span class="setting-desc">모든 오디오 출력 음소거</span>
+            </div>
+            <div class="setting-control-col">
+              <label class="switch-container">
+                <input type="checkbox" id="chk-mute" />
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 섹션 2: 게임플레이 & 그래픽 (+ @) -->
+        <div class="settings-group" style="margin-top: 20px;">
+          <div class="settings-group-title">GAMEPLAY // 조작 & 시점 (+ @)</div>
+
+          <div class="setting-row">
+            <div class="setting-label-col">
+              <span class="setting-name">STEER SENSITIVITY</span>
+              <span class="setting-desc">조향 입력 반응 감도</span>
+            </div>
+            <div class="setting-control-col">
+              <input type="range" id="setting-steer" class="settings-slider" min="50" max="150" value="100" />
+              <span id="setting-steer-val" class="setting-val-display">1.0x</span>
+            </div>
+          </div>
+
+          <div class="setting-row">
+            <div class="setting-label-col">
+              <span class="setting-name">DYNAMIC CAMERA TILT</span>
+              <span class="setting-desc">코너링 시 체이스 카메라 롤 회전</span>
+            </div>
+            <div class="setting-control-col">
+              <label class="switch-container">
+                <input type="checkbox" id="chk-cam-tilt" checked />
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-actions">
+        <button id="settings-btn-save" class="primary-btn">SAVE & APPLY // 저장</button>
       </footer>
     </div>
   </div>

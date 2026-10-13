@@ -275,7 +275,7 @@ export class Game {
         (cpId) => this.audio.playCheckpointBeep()
       );
 
-      // 30Hz 텔레메트리 레코딩
+      // 30Hz 주행 리플레이 데이터 레코딩
       this.recorder.update(
         deltaMs,
         this.playerVehicle,
@@ -308,7 +308,7 @@ export class Game {
 
     const leader = this.aiManager.getLeaderAgent();
 
-    // 데모 중 텔레메트리 레코딩 (선두 AI 차량 주행 데이터 수집)
+    // 데모 중 주행 리플레이 데이터 레코딩 (선두 AI 차량 주행 데이터 수집)
     if (isRunning) {
       this.recorder.update(
         deltaMs,

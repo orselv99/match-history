@@ -6,6 +6,8 @@
  * - 절차적 사이버 신스 BGM (Zero-Asset Dual Ambient Pad)
  * - 체크포인트 및 완주 비프 차임
  */
+import { TITLE_BGM_TRACKS, INGAME_BGM_TRACKS, BgmTrack } from '../data/audio.ts';
+
 export interface AudioSettings {
   masterVolume: number; // 0.0 ~ 1.0
   bgmVolume: number;    // 0.0 ~ 1.0
@@ -34,6 +36,9 @@ export class AudioManager {
   private bgmOsc2: OscillatorNode | null = null;
   private bgmLfo: OscillatorNode | null = null;
   private bgmFilter: BiquadFilterNode | null = null;
+  private bgmAudio: HTMLAudioElement | null = null;
+  private bgmSourceNode: MediaElementAudioSourceNode | null = null;
+  private currentBgmTrack: BgmTrack | null = null;
 
   // 설정 상태
   public settings: AudioSettings = {
@@ -133,40 +138,107 @@ export class AudioManager {
   private initBgmAudio(): void {
     if (!this.ctx || !this.bgmGain) return;
 
-    // 절차적 사이버펑크 앰비언트 패드 (Zero-Asset)
-    // 110Hz (A2) + 164.81Hz (E3) 듀얼 오실레이터
-    this.bgmOsc1 = this.ctx.createOscillator();
-    this.bgmOsc1.type = 'triangle';
-    this.bgmOsc1.frequency.setValueAtTime(110, this.ctx.currentTime);
+    // OGG BGM 오디오 엘리먼트 초기화 및 Web Audio API 버스(bgmGain) 연결
+    try {
+      if (!this.bgmAudio) {
+        this.bgmAudio = new Audio();
+        this.bgmAudio.loop = true;
+        this.bgmAudio.preload = 'auto';
 
-    this.bgmOsc2 = this.ctx.createOscillator();
-    this.bgmOsc2.type = 'sine';
-    this.bgmOsc2.frequency.setValueAtTime(164.81, this.ctx.currentTime);
+        // HTMLAudioElement를 Web Audio API 노드로 래핑하여 bgmGain에 연결
+        // -> 기존 마스터 볼륨, BGM 볼륨 슬라이더 및 Mute 설정이 그대로 적용됩니다.
+        this.bgmSourceNode = this.ctx.createMediaElementSource(this.bgmAudio);
+        this.bgmSourceNode.connect(this.bgmGain);
+      }
+    } catch (e) {
+      console.warn('[AudioManager] Failed to initialize media element source for BGM:', e);
+    }
+  }
 
-    this.bgmFilter = this.ctx.createBiquadFilter();
-    this.bgmFilter.type = 'lowpass';
-    this.bgmFilter.frequency.setValueAtTime(320, this.ctx.currentTime);
+  /**
+   * 타이틀 화면 배경음악 재생 (Silk Drive, Velvet Drive 중 선택 또는 랜덤)
+   */
+  public playTitleBgm(trackId?: string): void {
+    const tracks = TITLE_BGM_TRACKS;
+    if (tracks.length === 0) return;
+    const selected = trackId
+      ? tracks.find((t) => t.id === trackId) || tracks[0]
+      : tracks[Math.floor(Math.random() * tracks.length)];
 
-    // 느린 0.15Hz LFO로 필터 주파수 스윕 (신비로운 우주/레이싱 앰비언스)
-    this.bgmLfo = this.ctx.createOscillator();
-    this.bgmLfo.frequency.setValueAtTime(0.15, this.ctx.currentTime);
+    this.playBgmFile(`audio/bgm/${selected.fileName}`, selected);
+  }
 
-    const lfoGain = this.ctx.createGain();
-    lfoGain.gain.setValueAtTime(120, this.ctx.currentTime);
-    this.bgmLfo.connect(lfoGain);
-    lfoGain.connect(this.bgmFilter.frequency);
+  /**
+   * 인게임 주행 배경음악 재생 (6곡 중 선택 또는 랜덤)
+   */
+  public playInGameBgm(trackId?: string): void {
+    const tracks = INGAME_BGM_TRACKS;
+    if (tracks.length === 0) return;
+    const selected = trackId
+      ? tracks.find((t) => t.id === trackId) || tracks[0]
+      : tracks[Math.floor(Math.random() * tracks.length)];
 
-    const padGain = this.ctx.createGain();
-    padGain.gain.setValueAtTime(0.09, this.ctx.currentTime);
+    this.playBgmFile(`audio/bgm/${selected.fileName}`, selected);
+  }
 
-    this.bgmOsc1.connect(this.bgmFilter);
-    this.bgmOsc2.connect(this.bgmFilter);
-    this.bgmFilter.connect(padGain);
-    padGain.connect(this.bgmGain);
+  /**
+   * BGM 파일 스트리밍 재생 실행
+   */
+  private playBgmFile(url: string, track: BgmTrack): void {
+    if (!this.isInitialized) {
+      this.init();
+    }
+    if (!this.bgmAudio) return;
 
-    this.bgmOsc1.start();
-    this.bgmOsc2.start();
-    this.bgmLfo.start();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+
+    this.currentBgmTrack = track;
+    this.bgmAudio.src = url;
+    this.bgmAudio.currentTime = 0;
+    this.bgmAudio.play().catch((err) => {
+      // 사용자 브라우저 첫 인터랙션 전 자동재생 차단(Autoplay Policy) 시 경고
+      console.warn('[AudioManager] Autoplay blocked, waiting for user gesture:', err);
+    });
+  }
+
+  /**
+   * BGM 정지
+   */
+  public stopBgm(): void {
+    if (this.bgmAudio) {
+      this.bgmAudio.pause();
+      this.bgmAudio.currentTime = 0;
+    }
+  }
+
+  /**
+   * BGM 일시정지
+   */
+  public pauseBgm(): void {
+    if (this.bgmAudio) {
+      this.bgmAudio.pause();
+    }
+  }
+
+  /**
+   * BGM 재개
+   */
+  public resumeBgm(): void {
+    if (this.bgmAudio && this.currentBgmTrack) {
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume();
+      }
+      this.bgmAudio.play().catch(() => { });
+    }
+  }
+
+  /**
+   * 현재 재생 중인 BGM 트랙 정보 조회
+   */
+  public getCurrentBgm(): BgmTrack | null {
+    return this.currentBgmTrack;
   }
 
   public update(speedKmh: number, isDrifting: boolean, throttle: number): void {
@@ -350,7 +422,7 @@ export class AudioManager {
           try {
             oldSrc.stop();
             oldSrc.disconnect();
-          } catch (e) {}
+          } catch (e) { }
         }, 500);
         this.rainSource = null;
         this.rainGain = null;

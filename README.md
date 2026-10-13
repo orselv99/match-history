@@ -14,12 +14,22 @@ match-history/
 ├── database/                       # 데이터베이스 SQL 스크립트
 │   ├── queries.sql                 # 전적 조회 및 리더보드 쿼리
 │   └── schema.sql                  # D1 SQLite 테이블 스키마
+├── public/                         # 정적 오디오 에셋 (Vite 배포 에셋)
+│   └── audio/                      # 사운드 에셋
+│       ├── bgm/                    # 레이싱 BGM 트랙 (.ogg)
+│       └── sfx/                    # 게임 효과음 디렉토리 및 가이드
+│           ├── crash/              # 충돌 및 파쇄음
+│           ├── env/                # 날씨/환경 앰비언스
+│           ├── race/               # 카운트다운/체크포인트/피니시
+│           ├── ui/                 # UI 인터랙션 사운드
+│           └── vehicle/            # 엔진음/스키드마크
 ├── src/                            # Three.js 3D 레이싱 웹 애플리케이션 프론트엔드
 │   ├── core/                       # 코어 엔진 시스템
 │   │   ├── AudioManager.ts         # Web Audio API 기반 절차적 사운드 생성기
 │   │   ├── Game.ts                 # 메인 게임 루프, 씬, 조명, 환경 및 일시정지 제어
 │   │   └── InputManager.ts         # 키보드 입력 및 스티어링 제어
 │   ├── data/                       # 모듈화된 게임 정적 데이터
+│   │   ├── audio.ts                # BGM 트랙 목록 및 오디오 메타데이터 상수
 │   │   ├── gameConstants.ts        # 랜덤 드라이버명, 환경 라벨, 로딩 팁 문구
 │   │   ├── tracks.ts               # 서킷별 제어점(Catmull-Rom), 폭, 메타데이터
 │   │   └── vehicles.ts             # 차량 모델 스펙(가속/최고속/에어로) 및 AI 머신 설정

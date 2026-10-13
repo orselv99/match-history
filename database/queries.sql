@@ -36,7 +36,7 @@ SELECT
     ub.best_lap_ms,
     ub.top_speed_kmh,
     -- Cloudflare Worker / R2 CDN 리플레이 다운로드 URL 생성
-    'https://match-history-api.workers.dev/api/replays/' || ub.match_code AS replay_url,
+    'https://match-history-api.orsel.workers.dev/api/replays/' || ub.match_code AS replay_url,
     ub.created_at
 FROM user_best_per_track ub
 JOIN users u ON ub.user_id = u.user_id
@@ -61,7 +61,7 @@ SELECT
     ROUND(m.raw_json_bytes / 1024.0, 1) AS raw_json_kb,
     ROUND(m.compressed_bytes / 1024.0, 1) AS compressed_kb,
     m.compression_ratio AS saved_percent,
-    'https://match-history-api.workers.dev/api/replays/' || m.match_code AS replay_url,
+    'https://match-history-api.orsel.workers.dev/api/replays/' || m.match_code AS replay_url,
     m.created_at
 FROM matches m
 JOIN tracks t ON m.track_id = t.track_id

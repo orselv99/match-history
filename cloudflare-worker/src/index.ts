@@ -380,9 +380,9 @@ export default {
     // -----------------------------------------------------------------
     // [API 4] 3D 리플레이 바이너리 업로드: PUT /api/replays/:matchCode
     // -----------------------------------------------------------------
-    const isUploadPath = url.pathname.startsWith('/api/replays/') || url.pathname.startsWith('/api/telemetry/');
+    const isUploadPath = url.pathname.startsWith('/api/replays/');
     if (method === 'PUT' && isUploadPath) {
-      const matchCode = url.pathname.replace(/^\/api\/(replays|telemetry)\//, '').trim();
+      const matchCode = url.pathname.replace(/^\/api\/replays\//, '').trim();
 
       if (!/^[A-Za-z0-9_-]{4,64}$/.test(matchCode)) {
         return new Response(
@@ -465,9 +465,9 @@ export default {
     // -----------------------------------------------------------------
     // [API 5] 3D 리플레이 바이너리 다운로드: GET /api/replays/:matchCode
     // -----------------------------------------------------------------
-    const isGetPath = url.pathname.startsWith('/api/replays/') || url.pathname.startsWith('/api/telemetry/');
+    const isGetPath = url.pathname.startsWith('/api/replays/');
     if (method === 'GET' && isGetPath) {
-      const matchCode = url.pathname.replace(/^\/api\/(replays|telemetry)\//, '').trim();
+      const matchCode = url.pathname.replace(/^\/api\/replays\//, '').trim();
 
       if (!/^[A-Za-z0-9_-]{4,64}$/.test(matchCode)) {
         return new Response('Invalid matchCode format', { status: 400, headers: corsHeaders });

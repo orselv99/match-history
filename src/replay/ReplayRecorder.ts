@@ -1,12 +1,11 @@
-import { RawTelemetryTick } from './TelemetryTypes.ts';
+import { RawReplayTick } from './ReplayTypes.ts';
 import { Vehicle } from '../game/Vehicle.ts';
-import { TelemetryCodec } from './TelemetryCodec.ts';
 
 /**
- * 30Hz 고주파 주행 텔레메트리 레코더
+ * 30Hz 고주파 주행 리플레이 레코더
  */
-export class TelemetryRecorder {
-  private ticks: RawTelemetryTick[] = [];
+export class ReplayRecorder {
+  private ticks: RawReplayTick[] = [];
   private sampleIntervalMs: number = 33.333; // 30Hz
   private accumulatedMs: number = 0;
   private isRecording: boolean = false;
@@ -51,7 +50,7 @@ export class TelemetryRecorder {
     }
   }
 
-  public getTicks(): RawTelemetryTick[] {
+  public getTicks(): RawReplayTick[] {
     return this.ticks;
   }
 
@@ -66,3 +65,4 @@ export class TelemetryRecorder {
     this.isRecording = false;
   }
 }
+

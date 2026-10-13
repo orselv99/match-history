@@ -1,27 +1,27 @@
-import { RawTelemetryTick, TELEMETRY_PACKET } from './TelemetryTypes.ts';
+import { RawReplayTick, REPLAY_PACKET } from './ReplayTypes.ts';
 
 /**
- * 고주파 텔레메트리 직렬화/역직렬화 및 초압축 코덱
+ * 고주파 리플레이 데이터 직렬화/역직렬화 및 초압축 코덱
  * - Float32 ➡️ Int16 고정소수점 양자화 (cm 단위)
  * - 0~2PI 라디안 ➡️ Uint16 (0~65535) 각도 정규화
  * - 브라우저 네이티브 CompressionStream(Gzip) 파이프라인
  */
-export class TelemetryCodec {
+export class ReplayCodec {
   /**
-   * RawTelemetryTick 배열을 20바이트 고정 바이너리 버퍼로 인코딩
+   * RawReplayTick 배열을 20바이트 고정 바이너리 버퍼로 인코딩
    */
-  public static encode(ticks: RawTelemetryTick[], trackId: string = 'circuit_monaco'): ArrayBuffer {
+  public static encode(ticks: RawReplayTick[], trackId: string = 'circuit_monaco'): ArrayBuffer {
     const totalTicks = ticks.length;
     // 헤더 크기: Magic(4) + Version(2) + TotalTicks(4) + TrackId(16 ASCII) = 26 bytes
     const HEADER_SIZE = 26;
-    const totalBytes = HEADER_SIZE + totalTicks * TELEMETRY_PACKET.TICK_BYTES;
+    const totalBytes = HEADER_SIZE + totalTicks * REPLAY_PACKET.TICK_BYTES;
 
     const buffer = new ArrayBuffer(totalBytes);
     const view = new DataView(buffer);
 
     // 1. 헤더 작성
-    view.setUint32(0, TELEMETRY_PACKET.HEADER_MAGIC, false); // 'RACE' Big-Endian
-    view.setUint16(4, TELEMETRY_PACKET.VERSION, true);       // Version 1 Little-Endian
+    view.setUint32(0, REPLAY_PACKET.HEADER_MAGIC, false); // 'RACE' Big-Endian
+    view.setUint16(4, REPLAY_PACKET.VERSION, true);       // Version 1 Little-Endian
     view.setUint32(6, totalTicks, true);                     // Total Ticks Little-Endian
 
     // Track ID (16바이트 고정 길이 문자열 패딩)
@@ -83,20 +83,20 @@ export class TelemetryCodec {
       // [18..19] Reserved (0)
       view.setUint16(offset + 18, 0, true);
 
-      offset += TELEMETRY_PACKET.TICK_BYTES;
+      offset += REPLAY_PACKET.TICK_BYTES;
     }
 
     return buffer;
   }
 
   /**
-   * 바이너리 버퍼를 RawTelemetryTick 배열로 디코딩
+   * 바이너리 버퍼를 RawReplayTick 배열로 디코딩
    */
-  public static decode(buffer: ArrayBuffer): { ticks: RawTelemetryTick[]; trackId: string } {
+  public static decode(buffer: ArrayBuffer): { ticks: RawReplayTick[]; trackId: string } {
     const view = new DataView(buffer);
     const magic = view.getUint32(0, false);
-    if (magic !== TELEMETRY_PACKET.HEADER_MAGIC) {
-      throw new Error(`Invalid telemetry magic: 0x${magic.toString(16)}`);
+    if (magic !== REPLAY_PACKET.HEADER_MAGIC) {
+      throw new Error(`Invalid replay magic: 0x${magic.toString(16)}`);
     }
 
     const version = view.getUint16(4, true);
@@ -107,7 +107,7 @@ export class TelemetryCodec {
     const trackId = decoder.decode(trackIdBytes).trim();
 
     const HEADER_SIZE = 26;
-    const ticks: RawTelemetryTick[] = [];
+    const ticks: RawReplayTick[] = [];
     let offset = HEADER_SIZE;
     let accumulatedTimeMs = 0;
 
@@ -146,7 +146,7 @@ export class TelemetryCodec {
         lap
       });
 
-      offset += TELEMETRY_PACKET.TICK_BYTES;
+      offset += REPLAY_PACKET.TICK_BYTES;
     }
 
     return { ticks, trackId };
@@ -193,7 +193,7 @@ export class TelemetryCodec {
   /**
    * 실시간 압축 벤치마크 지표 계산
    */
-  public static async benchmark(ticks: RawTelemetryTick[]): Promise<{
+  public static async benchmark(ticks: RawReplayTick[]): Promise<{
     rawJsonBytes: number;
     binaryBytes: number;
     compressedBytes: number;
@@ -221,3 +221,4 @@ export class TelemetryCodec {
     };
   }
 }
+

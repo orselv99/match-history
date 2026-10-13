@@ -1,6 +1,6 @@
 import { Game, GameUIState } from './core/Game.ts';
-import { MatchSummaryMetadata } from './telemetry/TelemetryTypes.ts';
-import { TelemetryCodec } from './telemetry/TelemetryCodec.ts';
+import { MatchSummaryMetadata } from './replay/ReplayTypes.ts';
+import { ReplayCodec } from './replay/ReplayCodec.ts';
 
 window.addEventListener('DOMContentLoaded', () => {
   const container = document.getElementById('game-container') as HTMLElement;
@@ -221,7 +221,7 @@ window.addEventListener('DOMContentLoaded', () => {
   modalBtnDownload.addEventListener('click', () => {
     if (!latestFinishedMetadata) return;
     const ticks = game.recorder.getTicks();
-    const buffer = TelemetryCodec.encode(ticks, latestFinishedMetadata.trackId);
+    const buffer = ReplayCodec.encode(ticks, latestFinishedMetadata.trackId);
 
     const blob = new Blob([buffer], { type: 'application/octet-stream' });
     const url = URL.createObjectURL(blob);
@@ -231,4 +231,43 @@ window.addEventListener('DOMContentLoaded', () => {
     a.click();
     URL.revokeObjectURL(url);
   });
+
+  // 6. Embedding Page & Deep-link Replay Bridge
+  const API_BASE = 'https://match-history-api.orsel.workers.dev';
+
+  const loadRemoteReplay = async (matchCode: string) => {
+    try {
+      modeTag.className = 'mode-tag replay-mode';
+      modeText.textContent = `FETCHING // ${matchCode}`;
+      const res = await fetch(`${API_BASE}/api/replays/${matchCode}`);
+      if (!res.ok) {
+        throw new Error(`Failed to load replay (HTTP ${res.status}): ${res.statusText}`);
+      }
+      const arrayBuffer = await res.arrayBuffer();
+      const { ticks } = ReplayCodec.decode(arrayBuffer);
+      game.replayPlayer.loadReplay(ticks);
+      setModeUI('REPLAY');
+      game.replayPlayer.play();
+      btnReplayPlayPause.textContent = '⏸';
+      console.log(`[ReplayBridge] Loaded ${ticks.length} ticks for ${matchCode}`);
+    } catch (err) {
+      console.error('[ReplayBridge] Failed to load replay:', err);
+      modeText.textContent = 'ERR: REPLAY LOAD FAILED';
+    }
+  };
+
+  // URL Deep Link Support (?replay=RACE-XXXX)
+  const urlParams = new URLSearchParams(window.location.search);
+  const replayParam = urlParams.get('replay');
+  if (replayParam) {
+    loadRemoteReplay(replayParam);
+  }
+
+  // Parent Page Iframe Bridge (window.postMessage)
+  window.addEventListener('message', (event: MessageEvent) => {
+    if (event.data?.type === 'LOAD_REPLAY' && event.data?.matchCode) {
+      loadRemoteReplay(event.data.matchCode);
+    }
+  });
 });
+

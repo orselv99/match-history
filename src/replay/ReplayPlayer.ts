@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RawTelemetryTick } from './TelemetryTypes.ts';
+import { RawReplayTick } from './ReplayTypes.ts';
 import { Vehicle } from '../game/Vehicle.ts';
 
 /**
@@ -7,21 +7,21 @@ import { Vehicle } from '../game/Vehicle.ts';
  * - Catmull-Rom 큐빅 스플라인 위치 보간
  * - 쿼터니언 Slerp 회전 보간으로 120/144fps 부드러운 궤적 복원
  */
-export class TelemetryPlayer {
+export class ReplayPlayer {
   public ghostVehicle: Vehicle;
   public isPlaying: boolean = false;
   public currentTimeMs: number = 0;
   public totalDurationMs: number = 0;
   public playbackSpeed: number = 1.0; // 0.5x, 1x, 2x
 
-  private ticks: RawTelemetryTick[] = [];
+  private ticks: RawReplayTick[] = [];
 
   constructor() {
     this.ghostVehicle = new Vehicle(true, 0x06b6d4); // 반투명 사이언 고스트 카
     this.ghostVehicle.mesh.visible = false;
   }
 
-  public loadTelemetry(ticks: RawTelemetryTick[]): void {
+  public loadReplay(ticks: RawReplayTick[]): void {
     this.ticks = ticks;
     if (ticks.length > 0) {
       this.totalDurationMs = ticks[ticks.length - 1].timeMs;
@@ -126,9 +126,10 @@ export class TelemetryPlayer {
     return (2 * p1 - 2 * p2 + v0 + v1) * t3 + (-3 * p1 + 3 * p2 - 2 * v0 - v1) * t2 + v0 * t + p1;
   }
 
-  public getCurrentTelemetry(): RawTelemetryTick | null {
+  public getCurrentTick(): RawReplayTick | null {
     if (this.ticks.length === 0) return null;
     const idx = Math.min(this.ticks.length - 1, Math.floor((this.currentTimeMs / this.totalDurationMs) * this.ticks.length));
     return this.ticks[idx] || null;
   }
 }
+

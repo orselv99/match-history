@@ -1,7 +1,7 @@
 /**
- * 텔레메트리 원시 틱 데이터 (인메모리 런타임용)
+ * 3D 주행 리플레이 원시 틱 데이터 (인메모리 런타임용)
  */
-export interface RawTelemetryTick {
+export interface RawReplayTick {
   timeMs: number;       // 주행 시작 후 경과 시간 (ms)
   x: number;            // X 좌표 (m)
   y: number;            // Y 좌표 (m)
@@ -43,7 +43,7 @@ export interface MatchSummaryMetadata {
 /**
  * 틱당 20바이트 고정 바이너리 패킷 레이아웃 상수
  */
-export const TELEMETRY_PACKET = {
+export const REPLAY_PACKET = {
   HEADER_MAGIC: 0x52414345, // 'RACE' (4 bytes)
   VERSION: 1,               // 2 bytes uint16
   TICK_BYTES: 20,           // 틱당 20 바이트 고정

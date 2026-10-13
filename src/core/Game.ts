@@ -4,10 +4,10 @@ import { Vehicle } from '../game/Vehicle.ts';
 import { InputManager } from './InputManager.ts';
 import { AudioManager } from './AudioManager.ts';
 import { LapTimer } from '../game/LapTimer.ts';
-import { TelemetryRecorder } from '../telemetry/TelemetryRecorder.ts';
-import { TelemetryPlayer } from '../telemetry/TelemetryPlayer.ts';
-import { TelemetryCodec } from '../telemetry/TelemetryCodec.ts';
-import { MatchSummaryMetadata } from '../telemetry/TelemetryTypes.ts';
+import { ReplayRecorder } from '../replay/ReplayRecorder.ts';
+import { ReplayPlayer } from '../replay/ReplayPlayer.ts';
+import { ReplayCodec } from '../replay/ReplayCodec.ts';
+import { MatchSummaryMetadata } from '../replay/ReplayTypes.ts';
 import { AICarManager } from '../game/AICarManager.ts';
 
 export type GameMode = 'DRIVING' | 'REPLAY' | 'DEMO';
@@ -40,12 +40,12 @@ export class Game {
 
   public track: CircuitTrack;
   public playerVehicle: Vehicle;
-  public replayPlayer: TelemetryPlayer;
+  public replayPlayer: ReplayPlayer;
   public aiManager: AICarManager;
   public input: InputManager;
   public audio: AudioManager;
   public lapTimer: LapTimer;
-  public recorder: TelemetryRecorder;
+  public recorder: ReplayRecorder;
 
   public mode: GameMode = 'DRIVING';
   public raceState: RaceState = 'READY';
@@ -99,7 +99,7 @@ export class Game {
     this.playerVehicle = new Vehicle(false);
     this.scene.add(this.playerVehicle.mesh);
 
-    this.replayPlayer = new TelemetryPlayer();
+    this.replayPlayer = new ReplayPlayer();
     this.scene.add(this.replayPlayer.ghostVehicle.mesh);
 
     this.aiManager = new AICarManager(this.track);
@@ -108,7 +108,7 @@ export class Game {
     this.input = new InputManager();
     this.audio = new AudioManager();
     this.lapTimer = new LapTimer(3); // 3랩 완주
-    this.recorder = new TelemetryRecorder();
+    this.recorder = new ReplayRecorder();
 
     this.clock = new THREE.Clock();
 
@@ -365,7 +365,7 @@ export class Game {
     this.audio.playFinishFanfare();
 
     const ticks = this.recorder.getTicks();
-    const benchmark = await TelemetryCodec.benchmark(ticks);
+    const benchmark = await ReplayCodec.benchmark(ticks);
 
     const totalTimeMs = ticks.length > 0 ? ticks[ticks.length - 1].timeMs : 0;
     const bestLapMs = this.lapTimer.bestLapMs !== Infinity ? this.lapTimer.bestLapMs : Math.round(totalTimeMs / 3);
@@ -396,7 +396,7 @@ export class Game {
     };
 
     // 리플레이 플레이어에 데이터 자동 로드
-    this.replayPlayer.loadTelemetry(ticks);
+    this.replayPlayer.loadReplay(ticks);
 
     if (this.onFinishCallback) {
       this.onFinishCallback(metadata);
@@ -437,7 +437,7 @@ export class Game {
       speed = this.playerVehicle.getSpeedKmh();
       lap = this.lapTimer.currentLap;
     } else if (this.mode === 'REPLAY') {
-      speed = this.replayPlayer.getCurrentTelemetry()?.speedKmh || 0;
+      speed = this.replayPlayer.getCurrentTick()?.speedKmh || 0;
     } else if (this.mode === 'DEMO') {
       const leader = this.aiManager.getLeaderAgent();
       speed = leader.vehicle.getSpeedKmh();

@@ -94,6 +94,7 @@ Offset  Bytes  Field        Type      Scale / Range           설명
 3. `CircuitTrack`:
    - 체크포인트 및 결승선(Start/Finish Line) 콜라이더
    - 현재 랩수, 실시간 랩타임, 섹터 시간 측정
-4. `TelemetryRecorder`:
+4. `ReplayRecorder`:
    - 33.3ms(30Hz) 타이머마다 차량 상태를 추출하여 링 버퍼/배열에 푸시
-   - 완주 시 `TelemetryCodec.encode()` 호출하여 바이너리 생성
+   - 완주 시 `ReplayCodec.encode()` 호출하여 바이너리 생성
+

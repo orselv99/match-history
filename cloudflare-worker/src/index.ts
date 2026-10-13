@@ -20,6 +20,23 @@ const ALLOWED_ORIGINS = [
   'http://localhost:4321', // Astro 기본 포트
 ];
 
+/**
+ * Referer 서브패스 허용 접두사 화이트리스트
+ * - GitHub Pages 서브패스(/match-history) 및 개발 로컬 포트 검증
+ */
+const ALLOWED_REFERER_PREFIXES = [
+  'https://orselv99.github.io/match-history',
+  'https://match-history-api.orsel.workers.dev',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:4321',
+];
+
+function isRefererAllowed(referer: string | null): boolean {
+  if (!referer) return true; // 직접 호출(curl 등) 또는 브라우저 strict-origin-when-cross-origin 정책 시 허용
+  return ALLOWED_REFERER_PREFIXES.some(prefix => referer.startsWith(prefix)) || referer.includes('.github.io/match-history');
+}
+
 function getCorsHeaders(request: Request): HeadersInit {
   const origin = request.headers.get('Origin') || '';
   const isAllowed = ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.github.io');
@@ -32,6 +49,7 @@ function getCorsHeaders(request: Request): HeadersInit {
     'Access-Control-Max-Age': '86400',
   };
 }
+
 
 /**
  * OpenAPI 3.0 명세서
@@ -187,6 +205,20 @@ export default {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // 5. Referer 헤더 검증 (비인가 외부 도메인/경로에서의 API 남용 방지)
+    const referer = request.headers.get('Referer');
+    if (url.pathname.startsWith('/api/') && !isRefererAllowed(referer)) {
+      return new Response(
+        JSON.stringify({
+          error: 'Forbidden: Unauthorized Referer path',
+          message: 'API access is restricted to authorized match-history origins and subpaths.',
+          referer: referer || null,
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
 
     // -----------------------------------------------------------------
     // [API 1] 트랙별 리더보드 순위 조회: GET /api/leaderboard

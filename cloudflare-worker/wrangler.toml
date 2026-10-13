@@ -6,3 +6,9 @@ compatibility_date = "2024-10-01"
 [[r2_buckets]]
 binding = "REPLAY_BUCKET"
 bucket_name = "match-history-replays"
+
+# Cloudflare D1 서버리스 데이터베이스 바인딩
+[[d1_databases]]
+binding = "DB"
+database_name = "match-history-db"
+database_id = "2b2bf5ac-9c9d-4f34-a078-cfbe20d686a5"

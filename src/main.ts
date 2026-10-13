@@ -17,9 +17,36 @@ window.addEventListener('DOMContentLoaded', () => {
   const titleBtnStart = document.getElementById('title-btn-start')!;
   const titleBtnHistory = document.getElementById('title-btn-history')!;
   const titleBtnSettings = document.getElementById('title-btn-settings')!;
-  const titleBtnDemo = document.getElementById('title-btn-demo')!;
   const btnModeTitle = document.getElementById('btn-mode-title')!;
   const modalBtnTitle = document.getElementById('modal-btn-title')!;
+
+  // 게임 설정 모달 DOM
+  const gameSetupModal = document.getElementById('game-setup-modal')!;
+  const setupBtnClose = document.getElementById('setup-btn-close')!;
+  const setupChkAutoDrive = document.getElementById('setup-chk-autodrive') as HTMLInputElement;
+  const setupOptionsContainer = document.getElementById('setup-options-container')!;
+  const setupDriverName = document.getElementById('setup-driver-name') as HTMLInputElement;
+  const setupBtnRandomName = document.getElementById('setup-btn-random-name')!;
+  const setupBtnRandomAll = document.getElementById('setup-btn-random-all')!;
+  const setupBtnStartRace = document.getElementById('setup-btn-start-race')!;
+
+  const trackCards = document.querySelectorAll<HTMLElement>('.setup-card[data-track]');
+  const modelCards = document.querySelectorAll<HTMLElement>('.setup-card[data-model]');
+  const colorChips = document.querySelectorAll<HTMLElement>('.color-chip[data-color]');
+  const weatherChips = document.querySelectorAll<HTMLElement>('.weather-chip[data-weather]');
+
+  const RANDOM_NAMES = [
+    'Apex Hunter',
+    '스피드마스터',
+    'Monaco Ghost',
+    '질주본능',
+    'Turbo Nova',
+    '한밤의질주',
+    'Phantom GT',
+    '드리프트킹',
+    'Redline Fox',
+    '분노의질주'
+  ];
 
   const modeTag = document.getElementById('mode-tag')!;
   const modeText = document.getElementById('mode-text')!;
@@ -210,10 +237,122 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  // 4. 게임 설정 인터랙션 핸들러
+  let selectedTrack = 'circuit_monaco';
+  let selectedModel = 'gt_turbo';
+  let selectedColor = '#ef4444';
+  let selectedWeather = 'clear';
+
+  const selectRadioGroup = (elements: NodeListOf<HTMLElement>, activeEl: HTMLElement) => {
+    elements.forEach(el => {
+      el.classList.remove('active');
+      const input = el.querySelector('input');
+      if (input) input.checked = false;
+    });
+    activeEl.classList.add('active');
+    const input = activeEl.querySelector('input');
+    if (input) input.checked = true;
+  };
+
+  trackCards.forEach(card => {
+    card.addEventListener('click', () => {
+      if (setupChkAutoDrive.checked) return;
+      selectRadioGroup(trackCards, card);
+      selectedTrack = card.dataset.track || 'circuit_monaco';
+    });
+  });
+
+  modelCards.forEach(card => {
+    card.addEventListener('click', () => {
+      if (setupChkAutoDrive.checked) return;
+      selectRadioGroup(modelCards, card);
+      selectedModel = card.dataset.model || 'gt_turbo';
+    });
+  });
+
+  colorChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      if (setupChkAutoDrive.checked) return;
+      selectRadioGroup(colorChips, chip);
+      selectedColor = chip.dataset.color || '#ef4444';
+    });
+  });
+
+  weatherChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+      if (setupChkAutoDrive.checked) return;
+      selectRadioGroup(weatherChips, chip);
+      selectedWeather = chip.dataset.weather || 'clear';
+    });
+  });
+
+  const pickRandomName = () => {
+    const rand = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
+    setupDriverName.value = rand;
+  };
+  pickRandomName(); // 기본 1개 세팅
+
+  setupBtnRandomName.addEventListener('click', pickRandomName);
+
+  setupBtnRandomAll.addEventListener('click', () => {
+    if (setupChkAutoDrive.checked) return;
+    pickRandomName();
+
+    const randTrack = trackCards[Math.floor(Math.random() * trackCards.length)];
+    selectRadioGroup(trackCards, randTrack);
+    selectedTrack = randTrack.dataset.track || 'circuit_monaco';
+
+    const randModel = modelCards[Math.floor(Math.random() * modelCards.length)];
+    selectRadioGroup(modelCards, randModel);
+    selectedModel = randModel.dataset.model || 'gt_turbo';
+
+    const randColor = colorChips[Math.floor(Math.random() * colorChips.length)];
+    selectRadioGroup(colorChips, randColor);
+    selectedColor = randColor.dataset.color || '#ef4444';
+
+    const randWeather = weatherChips[Math.floor(Math.random() * weatherChips.length)];
+    selectRadioGroup(weatherChips, randWeather);
+    selectedWeather = randWeather.dataset.weather || 'clear';
+  });
+
+  // 자동주행 체크박스 토글 -> 하위 옵션 disabled 처리
+  setupChkAutoDrive.addEventListener('change', () => {
+    if (setupChkAutoDrive.checked) {
+      setupOptionsContainer.classList.add('disabled');
+    } else {
+      setupOptionsContainer.classList.remove('disabled');
+    }
+  });
+
   // 타이틀 씬 메뉴 버튼 이벤트
   titleBtnStart.addEventListener('click', () => {
     game.audio.init();
-    setModeUI('DRIVING');
+    gameSetupModal.classList.add('open');
+  });
+
+  setupBtnClose.addEventListener('click', () => {
+    gameSetupModal.classList.remove('open');
+  });
+
+  setupBtnStartRace.addEventListener('click', () => {
+    gameSetupModal.classList.remove('open');
+    game.audio.init();
+
+    if (setupChkAutoDrive.checked) {
+      // 자동 주행 모드 실행 (컴퓨터 AI 4대 배틀)
+      setModeUI('DEMO');
+    } else {
+      // 직접 주행 모드 실행 - 선택된 옵션 엔진에 반영
+      const driverName = setupDriverName.value.trim() || 'Apex Hunter';
+      game.currentDriverName = driverName;
+      game.currentTrackId = selectedTrack;
+      game.playerVehicle.setModel(selectedModel as any);
+      const hex = parseInt(selectedColor.replace('#', '0x'), 16);
+      game.playerVehicle.setColor(hex);
+      game.setWeather(selectedWeather as any);
+
+      setModeUI('DRIVING');
+    }
   });
 
   titleBtnHistory.addEventListener('click', () => {
@@ -226,13 +365,10 @@ window.addEventListener('DOMContentLoaded', () => {
     settingsModal.classList.add('open');
   });
 
-  titleBtnDemo.addEventListener('click', () => {
-    game.audio.init();
-    setModeUI('DEMO');
-  });
-
   btnModeTitle.addEventListener('click', () => setModeUI('TITLE'));
-  btnModeDrive.addEventListener('click', () => setModeUI('DRIVING'));
+  btnModeDrive.addEventListener('click', () => {
+    gameSetupModal.classList.add('open');
+  });
   btnModeDemo.addEventListener('click', () => setModeUI('DEMO'));
   btnModeReplay.addEventListener('click', () => setModeUI('REPLAY'));
   btnReset.addEventListener('click', () => {
@@ -401,7 +537,9 @@ window.addEventListener('DOMContentLoaded', () => {
   // 단축키: ESC로 타이틀 복귀 및 모달 닫기, O로 설정 토글
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (settingsModal.classList.contains('open')) {
+      if (gameSetupModal.classList.contains('open')) {
+        gameSetupModal.classList.remove('open');
+      } else if (settingsModal.classList.contains('open')) {
         closeSettings();
       } else if (finishModal.classList.contains('open')) {
         finishModal.classList.remove('open');

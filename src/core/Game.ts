@@ -62,6 +62,16 @@ export class Game {
   // 카메라 파라미터
   private cameraLookTarget: THREE.Vector3 = new THREE.Vector3();
 
+  // 조명 레퍼런스
+  private dirLight!: THREE.DirectionalLight;
+  private ambientLight!: THREE.AmbientLight;
+  private hemiLight!: THREE.HemisphereLight;
+
+  // 게임 세션 설정 메타데이터
+  public currentDriverName: string = 'Apex Hunter';
+  public currentTrackId: string = 'circuit_monaco';
+  public currentWeatherId: string = 'clear';
+
   // 콜백
   public onFinishCallback?: (metadata: MatchSummaryMetadata) => void;
   public onStateUpdate?: (state: GameUIState) => void;
@@ -136,25 +146,58 @@ export class Game {
   }
 
   private setupLighting(): void {
-    const ambientLight = new THREE.AmbientLight(0xdbeafe, 0.6);
-    this.scene.add(ambientLight);
+    this.ambientLight = new THREE.AmbientLight(0xdbeafe, 0.6);
+    this.scene.add(this.ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffedd5, 1.4);
-    dirLight.position.set(120, 150, 80);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    dirLight.shadow.camera.near = 10;
-    dirLight.shadow.camera.far = 400;
+    this.dirLight = new THREE.DirectionalLight(0xffedd5, 1.4);
+    this.dirLight.position.set(120, 150, 80);
+    this.dirLight.castShadow = true;
+    this.dirLight.shadow.mapSize.width = 2048;
+    this.dirLight.shadow.mapSize.height = 2048;
+    this.dirLight.shadow.camera.near = 10;
+    this.dirLight.shadow.camera.far = 400;
     const d = 120;
-    dirLight.shadow.camera.left = -d;
-    dirLight.shadow.camera.right = d;
-    dirLight.shadow.camera.top = d;
-    dirLight.shadow.camera.bottom = -d;
-    this.scene.add(dirLight);
+    this.dirLight.shadow.camera.left = -d;
+    this.dirLight.shadow.camera.right = d;
+    this.dirLight.shadow.camera.top = d;
+    this.dirLight.shadow.camera.bottom = -d;
+    this.scene.add(this.dirLight);
 
-    const hemiLight = new THREE.HemisphereLight(0x7dd3fc, 0x121316, 0.4);
-    this.scene.add(hemiLight);
+    this.hemiLight = new THREE.HemisphereLight(0x7dd3fc, 0x121316, 0.4);
+    this.scene.add(this.hemiLight);
+  }
+
+  public setWeather(weatherId: 'clear' | 'sunset' | 'night' | 'rain'): void {
+    this.currentWeatherId = weatherId;
+    if (weatherId === 'sunset') {
+      this.scene.background = new THREE.Color(0x2d1219);
+      if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(0x2d1219);
+      this.dirLight.color.setHex(0xf97316);
+      this.dirLight.intensity = 1.6;
+      this.ambientLight.color.setHex(0xfde047);
+      this.ambientLight.intensity = 0.5;
+    } else if (weatherId === 'night') {
+      this.scene.background = new THREE.Color(0x060814);
+      if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(0x060814);
+      this.dirLight.color.setHex(0x38bdf8);
+      this.dirLight.intensity = 0.8;
+      this.ambientLight.color.setHex(0x1e1b4b);
+      this.ambientLight.intensity = 0.4;
+    } else if (weatherId === 'rain') {
+      this.scene.background = new THREE.Color(0x111827);
+      if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(0x1e293b);
+      this.dirLight.color.setHex(0x94a3b8);
+      this.dirLight.intensity = 0.9;
+      this.ambientLight.color.setHex(0x64748b);
+      this.ambientLight.intensity = 0.7;
+    } else { // clear
+      this.scene.background = new THREE.Color(0x121316);
+      if (this.scene.fog instanceof THREE.FogExp2) this.scene.fog.color.setHex(0x121316);
+      this.dirLight.color.setHex(0xffedd5);
+      this.dirLight.intensity = 1.4;
+      this.ambientLight.color.setHex(0xdbeafe);
+      this.ambientLight.intensity = 0.6;
+    }
   }
 
   public resetCarToStart(): void {
@@ -377,9 +420,9 @@ export class Game {
     const metadata: MatchSummaryMetadata = {
       matchCode: `RACE-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
       userId,
-      userNickname: nickname,
-      trackId: 'circuit_monaco',
-      vehicleId: 'gt_turbo',
+      userNickname: this.currentDriverName || nickname,
+      trackId: this.currentTrackId,
+      vehicleId: this.playerVehicle.currentModelId,
       totalLaps: 3,
       totalTimeMs,
       bestLapMs,

@@ -35,12 +35,14 @@ export class Vehicle {
   private rearLeftWheel!: THREE.Mesh;
   private rearRightWheel!: THREE.Mesh;
   private brakeLightMaterial!: THREE.MeshStandardMaterial;
+  public bodyMaterial!: THREE.MeshStandardMaterial;
+  public currentModelId: string = 'gt_turbo';
 
-  // 스펙 상수
-  private readonly MAX_SPEED_MS = 58.3; // 약 210 km/h
-  private readonly REVERSE_MAX_SPEED_MS = -12.0; // 약 -43 km/h
-  private readonly ACCELERATION = 14.0; // m/s^2
-  private readonly BRAKING = 26.0; // m/s^2
+  // 스펙 상수 (가변)
+  private MAX_SPEED_MS = 58.3; // 약 210 km/h
+  private REVERSE_MAX_SPEED_MS = -12.0; // 약 -43 km/h
+  private ACCELERATION = 14.0; // m/s^2
+  private BRAKING = 26.0; // m/s^2
   private readonly DRAG = 0.45; // 공기 저항
   private readonly OFFROAD_DRAG = 2.5; // 오프로드 잔디 저항
 
@@ -48,8 +50,34 @@ export class Vehicle {
     this.buildCarMesh(isGhost, ghostColor);
   }
 
+  public setColor(colorHex: number): void {
+    if (this.bodyMaterial) {
+      this.bodyMaterial.color.setHex(colorHex);
+    }
+  }
+
+  public setModel(modelId: 'gt_turbo' | 'formula_aero' | 'cyber_speedster'): void {
+    this.currentModelId = modelId;
+    if (modelId === 'formula_aero') {
+      // 포뮬러 머신: 가볍고 날렵한 조향, 초고속 가속
+      this.mesh.scale.set(0.92, 0.75, 1.05);
+      this.ACCELERATION = 17.5;
+      this.MAX_SPEED_MS = 62.5; // 225 km/h
+    } else if (modelId === 'cyber_speedster') {
+      // 사이버 스피드스터: 최고속 지향 하이퍼카
+      this.mesh.scale.set(1.05, 0.85, 1.12);
+      this.ACCELERATION = 15.5;
+      this.MAX_SPEED_MS = 66.7; // 240 km/h
+    } else {
+      // GT 터보 (기본)
+      this.mesh.scale.set(1.0, 1.0, 1.0);
+      this.ACCELERATION = 14.0;
+      this.MAX_SPEED_MS = 58.3;
+    }
+  }
+
   private buildCarMesh(isGhost: boolean, ghostColor: number): void {
-    const bodyMat = isGhost
+    this.bodyMaterial = isGhost
       ? new THREE.MeshStandardMaterial({
           color: ghostColor,
           transparent: true,
@@ -64,6 +92,9 @@ export class Vehicle {
           roughness: 0.25,
           metalness: 0.7,
         });
+
+    const bodyMat = this.bodyMaterial;
+
 
     const darkMat = new THREE.MeshStandardMaterial({
       color: 0x111827,

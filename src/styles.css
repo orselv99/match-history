@@ -996,5 +996,280 @@ body.in-title-mode .bottom-hud {
   transition: opacity 0.25s ease;
 }
 
+/* =====================================================================
+   7. 2단계 게임 설정 모달 (Game Setup & Customization)
+   ===================================================================== */
+.setup-modal-card {
+  max-width: 660px;
+  width: 92%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.setup-modal-card .modal-content-body {
+  overflow-y: auto;
+  max-height: calc(88vh - 120px);
+}
+
+.setup-autodrive-banner {
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid var(--accent-spec);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.autodrive-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.autodrive-label input {
+  display: none;
+}
+
+.autodrive-custom-chk {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--accent-spec);
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.autodrive-label input:checked + .autodrive-custom-chk {
+  background: var(--accent-spec);
+}
+
+.autodrive-label input:checked + .autodrive-custom-chk:after {
+  content: '✓';
+  color: #000;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.autodrive-text-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.autodrive-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-spec);
+  letter-spacing: 0.04em;
+}
+
+.autodrive-desc {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* 옵션 비활성화 컨테이너 */
+.setup-options-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: opacity 0.25s ease, filter 0.25s ease;
+}
+
+.setup-options-container.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+  filter: grayscale(70%);
+}
+
+.setup-group {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-subtle);
+  padding: 12px 16px;
+}
+
+.setup-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.setup-group-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-spec);
+  letter-spacing: 0.05em;
+  display: block;
+}
+
+.small-action-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.setup-input-wrap {
+  display: flex;
+}
+
+.setup-text-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.setup-text-input:focus {
+  border-color: var(--accent-spec);
+}
+
+.setup-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.setup-card {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.setup-card input {
+  display: none;
+}
+
+.setup-card.active,
+.setup-card:hover {
+  border-color: var(--accent-spec);
+  background: rgba(6, 182, 212, 0.06);
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.card-sub {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* 컬러 칩 */
+.setup-color-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.color-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.color-chip input {
+  display: none;
+}
+
+.color-chip.active {
+  border-color: var(--chip-color);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.color-dot {
+  width: 12px;
+  height: 12px;
+  background: var(--chip-color);
+  display: inline-block;
+}
+
+.color-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+/* 날씨 선택 그리드 */
+.setup-weather-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.weather-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  user-select: none;
+}
+
+.weather-chip input {
+  display: none;
+}
+
+.weather-chip.active,
+.weather-chip:hover {
+  border-color: var(--accent-spec);
+  background: rgba(6, 182, 212, 0.06);
+}
+
+.weather-icon {
+  font-size: 18px;
+}
+
+.weather-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+
 
 

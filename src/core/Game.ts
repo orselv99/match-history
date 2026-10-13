@@ -10,7 +10,7 @@ import { ReplayCodec } from '../replay/ReplayCodec.ts';
 import { MatchSummaryMetadata } from '../replay/ReplayTypes.ts';
 import { AICarManager } from '../game/AICarManager.ts';
 
-export type GameMode = 'DRIVING' | 'REPLAY' | 'DEMO';
+export type GameMode = 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO';
 export type RaceState = 'READY' | 'COUNTDOWN' | 'RUNNING' | 'FINISHED';
 
 export interface GameUIState {
@@ -47,7 +47,7 @@ export class Game {
   public lapTimer: LapTimer;
   public recorder: ReplayRecorder;
 
-  public mode: GameMode = 'DRIVING';
+  public mode: GameMode = 'TITLE';
   public raceState: RaceState = 'READY';
 
   private clock: THREE.Clock;
@@ -112,23 +112,20 @@ export class Game {
 
     this.clock = new THREE.Clock();
 
-    // 초기 배치 (스타팅 그리드 1번 슬롯)
-    this.resetCarToStart();
+    // 초기 모드 설정 (타이틀 씬 대기)
+    this.setMode('TITLE');
 
-    // 리사이즈 이벤트
-    window.addEventListener('resize', () => this.onResize());
-
-    // 키보드/클릭 이벤트 시 오디오 활성화 및 카운트다운 시작
+    // 키보드/클릭 이벤트 시 오디오 활성화 및 레이스 시작
     window.addEventListener('click', () => {
       this.audio.init();
-      if (this.raceState === 'READY') {
+      if (this.mode === 'DRIVING' && this.raceState === 'READY') {
         this.startCountdown();
       }
     });
 
     window.addEventListener('keydown', (e) => {
       this.audio.init();
-      if (this.raceState === 'READY' && e.code !== 'KeyR') {
+      if (this.mode === 'DRIVING' && this.raceState === 'READY' && e.code !== 'KeyR' && e.code !== 'KeyO' && e.code !== 'Escape') {
         this.startCountdown();
       }
     });
@@ -203,7 +200,9 @@ export class Game {
       this.updateCountdown(delta);
     }
 
-    if (this.mode === 'DRIVING') {
+    if (this.mode === 'TITLE') {
+      this.updateTitle(delta);
+    } else if (this.mode === 'DRIVING') {
       this.updateDriving(delta, deltaMs);
     } else if (this.mode === 'REPLAY') {
       this.updateReplay(delta, deltaMs);
@@ -406,7 +405,16 @@ export class Game {
   public setMode(mode: GameMode): void {
     this.mode = mode;
 
-    if (mode === 'REPLAY') {
+    if (mode === 'TITLE') {
+      this.playerVehicle.mesh.visible = true;
+      this.resetCarToStart();
+      this.replayPlayer.pause();
+      this.aiManager.deactivate();
+      this.raceState = 'READY';
+      this.countdownTimer = 3.0;
+      this.lastBeepNumber = -1;
+      this.titleCameraAngle = 0;
+    } else if (mode === 'REPLAY') {
       this.playerVehicle.mesh.visible = false;
       this.aiManager.deactivate();
       this.replayPlayer.play();
@@ -421,9 +429,33 @@ export class Game {
       this.recorder.clear();
       // 데모 선택 시 자동으로 카운트다운 시작
       this.startCountdown();
-    } else {
+    } else { // DRIVING
+      this.playerVehicle.mesh.visible = true;
+      this.replayPlayer.pause();
+      this.aiManager.deactivate();
       this.resetCarToStart();
+      this.raceState = 'READY';
+      this.countdownTimer = 3.0;
+      this.lastBeepNumber = -1;
     }
+  }
+
+  private titleCameraAngle: number = 0;
+
+  private updateTitle(delta: number): void {
+    this.titleCameraAngle += delta * 0.2;
+    const radius = 8.5;
+    const height = 2.8;
+    const carPos = this.playerVehicle.position;
+
+    this.camera.position.set(
+      carPos.x + Math.sin(this.titleCameraAngle) * radius,
+      carPos.y + height,
+      carPos.z + Math.cos(this.titleCameraAngle) * radius
+    );
+    this.camera.lookAt(carPos.x, carPos.y + 0.8, carPos.z);
+
+    this.emitUIState();
   }
 
   private emitUIState(): void {
@@ -433,7 +465,10 @@ export class Game {
     let lap = this.lapTimer.currentLap;
     const totalLaps = 3;
 
-    if (this.mode === 'DRIVING') {
+    if (this.mode === 'TITLE') {
+      speed = 0;
+      lap = 1;
+    } else if (this.mode === 'DRIVING') {
       speed = this.playerVehicle.getSpeedKmh();
       lap = this.lapTimer.currentLap;
     } else if (this.mode === 'REPLAY') {

@@ -11,6 +11,69 @@
   <!-- 3D WebGL 캔버스 컨테이너 -->
   <div id="game-container"></div>
 
+  <!-- 0. 타이틀 씬 오버레이 (Title Scene & Main Menu) -->
+  <div id="title-scene-overlay" class="title-scene-overlay active">
+    <div class="title-scrim-left">
+      <header class="title-brand-header">
+        <div class="title-sys-indicator">
+          <span class="pulse-dot"></span>
+          <span>SYSTEM READY // CLIENT MOTORSPORT SIMULATION</span>
+        </div>
+        <h1 class="title-main-logo">APEX RACING</h1>
+        <p class="title-tagline">PRECISION MATCH HISTORY & 3D REPLAY ARCHITECTURE</p>
+        
+        <div class="title-pills">
+          <span class="title-pill">BUILD 1.2.0</span>
+          <span class="title-pill">EDGE // CF R2 + D1</span>
+          <span class="title-pill">TICK // 30Hz INT16</span>
+        </div>
+      </header>
+
+      <!-- 주 메뉴 리스트 -->
+      <nav class="title-menu-nav">
+        <button id="title-btn-start" class="title-menu-item active">
+          <span class="menu-num">01</span>
+          <div class="menu-info">
+            <span class="menu-name">GAME START // 게임 시작</span>
+            <span class="menu-desc">서킷 모나코 트랙 즉시 진입 & 기록 측정</span>
+          </div>
+          <span class="menu-chevron">▶</span>
+        </button>
+
+        <button id="title-btn-history" class="title-menu-item">
+          <span class="menu-num">02</span>
+          <div class="menu-info">
+            <span class="menu-name">MATCH HISTORY // 전적 검색</span>
+            <span class="menu-desc">글로벌 리더보드 순위 및 드라이버 전적 조회</span>
+          </div>
+          <span class="menu-chevron">▶</span>
+        </button>
+
+        <button id="title-btn-settings" class="title-menu-item">
+          <span class="menu-num">03</span>
+          <div class="menu-info">
+            <span class="menu-name">SETTINGS // 환경 설정</span>
+            <span class="menu-desc">마스터/BGM/SFX 사운드 및 조작 감도 설정</span>
+          </div>
+          <span class="menu-chevron">▶</span>
+        </button>
+
+        <button id="title-btn-demo" class="title-menu-item">
+          <span class="menu-num">04</span>
+          <div class="menu-info">
+            <span class="menu-name">DEMO AI RACE // 자동 주행</span>
+            <span class="menu-desc">컴퓨터 AI 4대 포뮬러 관전 데모</span>
+          </div>
+          <span class="menu-chevron">▶</span>
+        </button>
+      </nav>
+
+      <footer class="title-footer-note">
+        <span>[CLICK] 메뉴 선택 &nbsp;|&nbsp; [O] 환경설정 &nbsp;|&nbsp; [ESC] 타이틀 복귀</span>
+      </footer>
+    </div>
+  </div>
+
   <!-- 레이싱 대시보드 HUD 오버레이 -->
   <div id="ui-overlay">
     <!-- 1. 상단 글로벌 바 (Hairline Grid) -->
@@ -24,7 +87,10 @@
       </div>
 
       <nav class="top-actions interactive">
-        <button id="btn-mode-drive" class="glass-btn active" title="직접 운전 모드">
+        <button id="btn-mode-title" class="glass-btn active" title="타이틀 메뉴로 나가기 (ESC)">
+          <span>MENU // 타이틀</span>
+        </button>
+        <button id="btn-mode-drive" class="glass-btn" title="직접 운전 모드">
           <span>DRIVE // 주행</span>
         </button>
         <button id="btn-mode-demo" class="glass-btn" title="컴퓨터 4대 자동주행 데모">
@@ -175,8 +241,9 @@
       <!-- 액션 버튼 -->
       <footer class="modal-actions">
         <button id="modal-btn-replay" class="primary-btn">3D REPLAY // 재생</button>
-        <button id="modal-btn-download" class="secondary-btn">EXPORT .BIN // 다운로드</button>
+        <button id="modal-btn-download" class="secondary-btn">EXPORT .BIN</button>
         <button id="modal-btn-restart" class="secondary-btn">RETRY // 다시 주행</button>
+        <button id="modal-btn-title" class="secondary-btn" style="border-left: 1px solid var(--border-strong);">TITLE // 메인 메뉴</button>
       </footer>
     </div>
   </div>

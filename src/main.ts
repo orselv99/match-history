@@ -12,6 +12,15 @@ window.addEventListener('DOMContentLoaded', () => {
   const game = new Game(container, minimapCanvas);
 
   // DOM 요소 참조
+  // 타이틀 씬 DOM
+  const titleSceneOverlay = document.getElementById('title-scene-overlay')!;
+  const titleBtnStart = document.getElementById('title-btn-start')!;
+  const titleBtnHistory = document.getElementById('title-btn-history')!;
+  const titleBtnSettings = document.getElementById('title-btn-settings')!;
+  const titleBtnDemo = document.getElementById('title-btn-demo')!;
+  const btnModeTitle = document.getElementById('btn-mode-title')!;
+  const modalBtnTitle = document.getElementById('modal-btn-title')!;
+
   const modeTag = document.getElementById('mode-tag')!;
   const modeText = document.getElementById('mode-text')!;
   const btnModeDrive = document.getElementById('btn-mode-drive')!;
@@ -162,32 +171,67 @@ window.addEventListener('DOMContentLoaded', () => {
   };
 
   // 3. 모드 전환 버튼 핸들러
-  const setModeUI = (mode: 'DRIVING' | 'REPLAY' | 'DEMO') => {
+  const setModeUI = (mode: 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO') => {
     game.setMode(mode);
 
     // 버튼 활성 상태 초기화
+    btnModeTitle.classList.remove('active');
     btnModeDrive.classList.remove('active');
     btnModeDemo.classList.remove('active');
     btnModeReplay.classList.remove('active');
 
-    if (mode === 'DRIVING') {
+    if (mode === 'TITLE') {
+      document.body.classList.add('in-title-mode');
+      titleSceneOverlay.classList.add('active');
+      btnModeTitle.classList.add('active');
       modeTag.className = 'mode-tag';
-      modeText.textContent = 'LIVE_DRIVING';
-      btnModeDrive.classList.add('active');
-      replayController.classList.remove('visible');
-    } else if (mode === 'DEMO') {
-      modeTag.className = 'mode-tag demo-mode';
-      modeText.textContent = 'DEMO_AI // 4 CARS';
-      btnModeDemo.classList.add('active');
+      modeText.textContent = 'TITLE // APEX RACING';
       replayController.classList.remove('visible');
     } else {
-      modeTag.className = 'mode-tag replay-mode';
-      modeText.textContent = 'REPLAY_3D // MATCH REPLAY';
-      btnModeReplay.classList.add('active');
-      replayController.classList.add('visible');
+      document.body.classList.remove('in-title-mode');
+      titleSceneOverlay.classList.remove('active');
+
+      if (mode === 'DRIVING') {
+        modeTag.className = 'mode-tag';
+        modeText.textContent = 'LIVE_DRIVING';
+        btnModeDrive.classList.add('active');
+        replayController.classList.remove('visible');
+      } else if (mode === 'DEMO') {
+        modeTag.className = 'mode-tag demo-mode';
+        modeText.textContent = 'DEMO_AI // 4 CARS';
+        btnModeDemo.classList.add('active');
+        replayController.classList.remove('visible');
+      } else {
+        modeTag.className = 'mode-tag replay-mode';
+        modeText.textContent = 'REPLAY_3D // MATCH REPLAY';
+        btnModeReplay.classList.add('active');
+        replayController.classList.add('visible');
+      }
     }
   };
 
+  // 타이틀 씬 메뉴 버튼 이벤트
+  titleBtnStart.addEventListener('click', () => {
+    game.audio.init();
+    setModeUI('DRIVING');
+  });
+
+  titleBtnHistory.addEventListener('click', () => {
+    alert('전적 검색 & 글로벌 리더보드는 다음 순서(3단계)에서 구현될 예정입니다.');
+  });
+
+  titleBtnSettings.addEventListener('click', () => {
+    game.audio.init();
+    syncAudioSettingsUI();
+    settingsModal.classList.add('open');
+  });
+
+  titleBtnDemo.addEventListener('click', () => {
+    game.audio.init();
+    setModeUI('DEMO');
+  });
+
+  btnModeTitle.addEventListener('click', () => setModeUI('TITLE'));
   btnModeDrive.addEventListener('click', () => setModeUI('DRIVING'));
   btnModeDemo.addEventListener('click', () => setModeUI('DEMO'));
   btnModeReplay.addEventListener('click', () => setModeUI('REPLAY'));
@@ -234,6 +278,11 @@ window.addEventListener('DOMContentLoaded', () => {
     finishModal.classList.remove('open');
     game.resetCarToStart();
     setModeUI('DRIVING');
+  });
+
+  modalBtnTitle.addEventListener('click', () => {
+    finishModal.classList.remove('open');
+    setModeUI('TITLE');
   });
 
   modalBtnDownload.addEventListener('click', () => {
@@ -349,11 +398,17 @@ window.addEventListener('DOMContentLoaded', () => {
     settingSteerVal.textContent = `${(val / 100).toFixed(1)}x`;
   });
 
-  // 단축키: ESC로 모달 닫기, O로 설정 토글
+  // 단축키: ESC로 타이틀 복귀 및 모달 닫기, O로 설정 토글
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      settingsModal.classList.remove('open');
-      finishModal.classList.remove('open');
+      if (settingsModal.classList.contains('open')) {
+        closeSettings();
+      } else if (finishModal.classList.contains('open')) {
+        finishModal.classList.remove('open');
+        setModeUI('TITLE');
+      } else if (game.mode !== 'TITLE') {
+        setModeUI('TITLE');
+      }
     } else if (e.key === 'o' || e.key === 'O') {
       if (settingsModal.classList.contains('open')) {
         closeSettings();
@@ -363,5 +418,8 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+
+  // 초기 시작 화면: 타이틀 씬
+  setModeUI('TITLE');
 });
 

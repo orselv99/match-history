@@ -86,12 +86,15 @@ export class Game {
     this.scene.background = new THREE.Color(0x121316);
     this.scene.fog = new THREE.FogExp2(0x121316, 0.0035);
 
+    const initWidth = Math.max(container.clientWidth || window.innerWidth, 1088);
+    const initHeight = Math.max(container.clientHeight || window.innerHeight, 612);
+
     // 2. 카메라
-    this.camera = new THREE.PerspectiveCamera(65, container.clientWidth / container.clientHeight, 0.1, 1000);
+    this.camera = new THREE.PerspectiveCamera(65, initWidth / initHeight, 0.1, 1000);
 
     // 3. 렌더러
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-    this.renderer.setSize(container.clientWidth, container.clientHeight);
+    this.renderer.setSize(initWidth, initHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -645,8 +648,10 @@ export class Game {
   }
 
   public onResize(): void {
-    const width = this.container.clientWidth || window.innerWidth;
-    const height = this.container.clientHeight || window.innerHeight;
+    const rawWidth = this.container.clientWidth || window.innerWidth;
+    const rawHeight = this.container.clientHeight || window.innerHeight;
+    const width = Math.max(rawWidth, 1088);
+    const height = Math.max(rawHeight, 612);
     if (width === 0 || height === 0) return;
 
     this.camera.aspect = width / height;

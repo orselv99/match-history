@@ -27,6 +27,7 @@
   height: 100%;
   width: 520px;
   max-width: 92%;
+  z-index: 2;
   background: linear-gradient(90deg, rgba(9, 11, 16, 0.96) 0%, rgba(9, 11, 16, 0.88) 75%, rgba(9, 11, 16, 0) 100%);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);

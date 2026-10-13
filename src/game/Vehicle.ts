@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { VEHICLE_MODELS } from '../data/vehicles.ts';
 
 export interface VehiclePhysicsState {
   x: number;
@@ -68,22 +69,10 @@ export class Vehicle {
 
   public setModel(modelId: 'gt_turbo' | 'formula_aero' | 'cyber_speedster'): void {
     this.currentModelId = modelId;
-    if (modelId === 'formula_aero') {
-      // 포뮬러 머신: 가볍고 날렵한 조향, 초고속 가속
-      this.mesh.scale.set(0.92, 0.75, 1.05);
-      this.ACCELERATION = 17.5;
-      this.MAX_SPEED_MS = 62.5; // 225 km/h
-    } else if (modelId === 'cyber_speedster') {
-      // 사이버 스피드스터: 최고속 지향 하이퍼카
-      this.mesh.scale.set(1.05, 0.85, 1.12);
-      this.ACCELERATION = 15.5;
-      this.MAX_SPEED_MS = 66.7; // 240 km/h
-    } else {
-      // GT 터보 (기본)
-      this.mesh.scale.set(1.0, 1.0, 1.0);
-      this.ACCELERATION = 14.0;
-      this.MAX_SPEED_MS = 58.3;
-    }
+    const meta = VEHICLE_MODELS[modelId] || VEHICLE_MODELS['gt_turbo'];
+    this.mesh.scale.set(meta.scale[0], meta.scale[1], meta.scale[2]);
+    this.ACCELERATION = meta.acceleration;
+    this.MAX_SPEED_MS = meta.maxSpeedMs;
   }
 
   private buildCarMesh(isGhost: boolean, ghostColor: number): void {

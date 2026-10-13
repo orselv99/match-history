@@ -11,8 +11,54 @@
   <!-- 3D WebGL 캔버스 컨테이너 -->
   <div id="game-container"></div>
 
+  <!-- DUAL LOADING SCENE OVERLAY (게임 초기화 및 인게임전 로딩 겸용) -->
+  <div id="loading-overlay" class="loading-overlay active">
+    <div class="loading-bg-wrapper">
+      <div class="loading-bg-grid"></div>
+      <div class="screenshot-placeholder-badge">
+        <span class="badge-icon">📷</span>
+        <span class="badge-text">[ IN-GAME SCREENSHOT // BACKGROUND PLACEHOLDER ]</span>
+        <span class="badge-sub">APEX MOTORSPORT SIMULATION · 3D CIRCUIT CAPTURE</span>
+      </div>
+    </div>
+
+    <div class="loading-card">
+      <div class="loading-header">
+        <div class="loading-title-group">
+          <span class="loading-brand-tag">APEX MOTORSPORT</span>
+          <span id="loading-title" class="loading-main-title">INITIALIZING SIMULATION ENGINE</span>
+        </div>
+        <span id="loading-percent" class="loading-percent-text">0%</span>
+      </div>
+
+      <div class="loading-bar-track">
+        <div id="loading-bar-fill" class="loading-bar-fill"></div>
+      </div>
+
+      <div class="loading-task-row">
+        <span id="loading-task" class="loading-task-text">Three.js WebGL 렌더러 준비 중...</span>
+        <span class="loading-spinner-dots"></span>
+      </div>
+
+      <div class="loading-tip-box">
+        <span class="loading-tip-badge">SYSTEM TIP</span>
+        <span id="loading-tip-text" class="loading-tip-text">핸드브레이크(Space)를 살짝 끊어 누르면 코너 진입 시 슬립 앵글을 유지하며 다이내믹 드리프트를 구사할 수 있습니다.</span>
+      </div>
+    </div>
+  </div>
+
   <!-- 0. 타이틀 씬 오버레이 (Title Scene & Main Menu) -->
   <div id="title-scene-overlay" class="title-scene-overlay active">
+    <!-- 타이틀 화면 배경 스크린샷 플레이스홀더 (나중에 인게임 캡처 에셋 삽입 예정) -->
+    <div class="title-bg-placeholder">
+      <div class="loading-bg-grid"></div>
+      <div class="screenshot-placeholder-badge">
+        <span class="badge-icon">📷</span>
+        <span class="badge-text">[ IN-GAME SCREENSHOT // BACKGROUND PLACEHOLDER ]</span>
+        <span class="badge-sub">CIRCUIT HIGHLIGHT SHOT · MONACO GP HARBOR TURN</span>
+      </div>
+    </div>
+
     <div class="title-scrim-left">
       <header class="title-brand-header">
         <div class="title-sys-indicator">

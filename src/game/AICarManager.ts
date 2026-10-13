@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Vehicle } from './Vehicle.ts';
 import { CircuitTrack } from './CircuitTrack.ts';
+import { AI_CAR_CONFIGS } from '../data/vehicles.ts';
 
 export interface AICarAgent {
   id: number;
@@ -33,15 +34,7 @@ export class AICarManager {
   constructor(track: CircuitTrack) {
     this.track = track;
 
-    // 4대 차량 스펙 정의 (스위스 테크니컬 팔레트 기반)
-    const carConfigs = [
-      { id: 1, name: 'AI_01 // APEX_RED', color: 0xef4444, baseSpeed: 47.0, laneOffset: -2.2 },
-      { id: 2, name: 'AI_02 // SWISS_ROSE', color: 0xc45a72, baseSpeed: 49.2, laneOffset: 2.2 },
-      { id: 3, name: 'AI_03 // PASTEL_SKY', color: 0x7dd3fc, baseSpeed: 45.8, laneOffset: -2.2 },
-      { id: 4, name: 'AI_04 // AMBER_GOLD', color: 0xf59e0b, baseSpeed: 48.0, laneOffset: 2.2 },
-    ];
-
-    carConfigs.forEach((cfg, idx) => {
+    AI_CAR_CONFIGS.forEach((cfg) => {
       const vehicle = new Vehicle(false);
       this.customizeCarColor(vehicle, cfg.color);
 

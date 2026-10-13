@@ -19,12 +19,17 @@ match-history/
 │   │   ├── AudioManager.ts         # Web Audio API 기반 절차적 사운드 생성기
 │   │   ├── Game.ts                 # 메인 게임 루프, 씬, 조명, 환경 및 일시정지 제어
 │   │   └── InputManager.ts         # 키보드 입력 및 스티어링 제어
+│   ├── data/                       # 모듈화된 게임 정적 데이터
+│   │   ├── gameConstants.ts        # 랜덤 드라이버명, 환경 라벨, 로딩 팁 문구
+│   │   ├── tracks.ts               # 서킷별 제어점(Catmull-Rom), 폭, 메타데이터
+│   │   └── vehicles.ts             # 차량 모델 스펙(가속/최고속/에어로) 및 AI 머신 설정
 │   ├── game/                       # 인게임 엔티티 및 게임플레이 로직
 │   │   ├── AICarManager.ts         # 자율주행 AI 차량 에이전트 및 경로 추종
-│   │   ├── CircuitTrack.ts         # 서킷 트랙 지오메트리 및 체크포인트
+│   │   ├── CircuitTrack.ts         # 동적 서킷 트랙 지오메트리, 연석, 그리드 및 체크포인트
 │   │   ├── CollisionManager.ts     # 차량 간 탄성 물리 충돌, 반발 임펄스, 카메라 쉐이크 및 스파크
 │   │   ├── HoneycombPicker.ts      # 127셀 헥사곤 허니콤 컬러 팔레트 컴포넌트
 │   │   ├── LapTimer.ts             # 랩 타임 및 섹터 기록 측정기
+│   │   ├── LoadingScreen.ts        # 초기화 및 인게임전 겸용 로딩 씬 제어기
 │   │   ├── SkidMarkManager.ts      # 실시간 드리프트 타이어 스키드마크 쿼드 및 타이어 연기
 │   │   ├── Vehicle.ts              # 레이싱 머신 3D 메시, 물리, 헤드라이트/조명 및 리버리 컬러
 │   │   └── VehiclePreview.ts       # 게임 설정 Step 2용 독립 3D 턴테이블 뷰어
@@ -38,6 +43,7 @@ match-history/
 │   │   ├── history.css             # 전적 검색 및 글로벌 리더보드 모달
 │   │   ├── honeycomb-picker.css    # 허니콤 헥사곤 컬러 팔레트 스타일
 │   │   ├── hud.css                 # HUD 계기판, 속도계, 미니맵, 카운트다운
+│   │   ├── loading.css             # 로딩 씬 오버레이, 프로그레스바, 스크린샷 배경
 │   │   ├── pause.css               # 인게임 일시정지 (Pause) 메뉴
 │   │   ├── replay.css              # 완주 통계 모달 및 벤치마크 테이블
 │   │   ├── settings.css            # 환경설정 (오디오/조작) 모달

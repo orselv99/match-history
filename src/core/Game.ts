@@ -429,6 +429,16 @@ export class Game {
     }
   }
 
+  /**
+   * 선택된 서킷(Monaco, Silverstone, Nürburgring)을 인게임에 실시간 적용 및 재배치
+   */
+  public loadTrack(trackId: string): void {
+    this.currentTrackId = trackId;
+    this.track.loadTrack(trackId);
+    this.resetCarToStart();
+    this.drawMinimap();
+  }
+
   public resetCarToStart(): void {
     // 플레이어 차량을 스타팅 그리드 1번 슬롯(Pole Position, Y: 0.055m 노면 밀착)에 정렬!
     const gridPos = this.track.getGridPosition(0);

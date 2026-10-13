@@ -1,0 +1,219 @@
+/* ==========================================================================
+   APEX RACING - DUAL LOADING SCENE & SCREENSHOT BACKGROUND
+   ========================================================================== */
+
+/* 1. 로딩 씬 오버레이 (게임 최초 초기화 및 인게임 진입 전 로딩 겸용) */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding-bottom: 50px;
+  background-color: var(--color-bg-base);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.loading-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 2. 인게임 스크린샷 배경화면 컨테이너 (추후 실제 스크린샷 에셋 삽입용) */
+.loading-bg-wrapper,
+.title-bg-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background: radial-gradient(circle at 60% 40%, #1c2230 0%, #10141d 55%, #080a0f 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* 테크니컬 메쉬 그리드 및 비네팅 */
+.loading-bg-grid {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(196, 90, 114, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+  mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9) 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9) 30%, transparent 80%);
+}
+
+/* 임시 텍스트 표시 배너 (나중에 인게임 스크린샷으로 교체 예정) */
+.screenshot-placeholder-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 28px;
+  background: rgba(18, 19, 22, 0.7);
+  border: 1px dashed rgba(196, 90, 114, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  z-index: 1;
+  transform: translateY(-40px);
+}
+
+.screenshot-placeholder-badge .badge-icon {
+  font-size: 1.1rem;
+  color: var(--color-spec-accent);
+}
+
+.screenshot-placeholder-badge .badge-text {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  letter-spacing: 0.18em;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+}
+
+.screenshot-placeholder-badge .badge-sub {
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+}
+
+/* 3. 하단 테크니컬 로딩 카드 */
+.loading-card {
+  position: relative;
+  z-index: 10;
+  width: 90%;
+  max-width: 680px;
+  background: rgba(18, 20, 26, 0.9);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  padding: 24px 28px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.loading-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.loading-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.loading-brand-tag {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  background: rgba(196, 90, 114, 0.2);
+  color: var(--color-spec-accent);
+  border: 1px solid rgba(196, 90, 114, 0.4);
+  letter-spacing: 0.12em;
+}
+
+.loading-main-title {
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-text-main);
+  letter-spacing: 0.1em;
+}
+
+.loading-percent-text {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-spec-accent);
+  letter-spacing: 0.05em;
+}
+
+/* 프로그레스 바 트랙 및 채움 */
+.loading-bar-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+  margin: 10px 0 14px 0;
+}
+
+.loading-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #38bdf8 0%, var(--color-spec-accent) 100%);
+  box-shadow: 0 0 12px rgba(196, 90, 114, 0.8);
+  transition: width 0.15s ease-out;
+}
+
+/* 작업 상태 텍스트 */
+.loading-task-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.loading-task-text {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--color-accent-blue);
+  letter-spacing: 0.08em;
+}
+
+.loading-spinner-dots {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(56, 189, 248, 0.2);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: loading-spin 0.8s linear infinite;
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 하단 팁 / 설명 상자 */
+.loading-tip-box {
+  padding: 10px 14px;
+  background: rgba(10, 12, 16, 0.6);
+  border-left: 3px solid var(--color-spec-accent);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.loading-tip-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--color-spec-accent);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.loading-tip-text {
+  font-family: var(--font-body);
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: var(--color-text-dim);
+}

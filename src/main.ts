@@ -3,6 +3,10 @@ import { MatchSummaryMetadata } from './replay/ReplayTypes.ts';
 import { ReplayCodec } from './replay/ReplayCodec.ts';
 import { VehiclePreview } from './game/VehiclePreview.ts';
 import { HoneycombPicker } from './game/HoneycombPicker.ts';
+import { TRACK_DEFINITIONS } from './data/tracks.ts';
+import { VEHICLE_MODELS } from './data/vehicles.ts';
+import { RANDOM_DRIVER_NAMES, TIME_OF_DAY_LABELS, WEATHER_LABELS } from './data/gameConstants.ts';
+import { LoadingScreen } from './game/LoadingScreen.ts';
 
 window.addEventListener('DOMContentLoaded', () => {
   const container = document.getElementById('game-container') as HTMLElement;
@@ -12,6 +16,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 게임 메인 인스턴스 초기화
   const game = new Game(container, minimapCanvas);
+
+  // 로딩 씬 인스턴스 초기화 (Dual-purpose: 엔진 초기화 및 인게임 전 로딩)
+  const loadingScreen = new LoadingScreen();
 
   // DOM 요소 참조
   // 타이틀 씬 DOM
@@ -95,18 +102,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const historyBtnRefresh = document.getElementById('history-btn-refresh')!;
   const historyReplayBtns = document.querySelectorAll<HTMLElement>('.history-replay-btn');
 
-  const RANDOM_NAMES = [
-    'Apex Hunter',
-    '스피드마스터',
-    'Monaco Ghost',
-    '질주본능',
-    'Turbo Nova',
-    '한밤의질주',
-    'Phantom GT',
-    '드리프트킹',
-    'Redline Fox',
-    '분노의질주'
-  ];
+
 
   const modeTag = document.getElementById('mode-tag')!;
   const modeText = document.getElementById('mode-text')!;
@@ -307,78 +303,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  const TRACK_METADATA: Record<string, {
-    title: string;
-    badge: string;
-    badgeClass: string;
-    desc: string;
-    len: string;
-    corners: string;
-    record: string;
-    type: string;
-  }> = {
-    circuit_monaco: {
-      title: 'Circuit de Monaco',
-      badge: '★★★★★ HARD',
-      badgeClass: 'badge-expert',
-      desc: '모나코 몬테카를로 항만을 끼고 달리는 전설적인 도심 서킷. 폭이 매우 좁고 가드레일이 가까워 극한의 집중력과 브레이킹 포인트 제어가 요구됩니다.',
-      len: '3.337 km',
-      corners: '19 CORNERS',
-      record: '01:14.260',
-      type: 'TECHNICAL STREET',
-    },
-    circuit_silverstone: {
-      title: 'Silverstone GP',
-      badge: '★★★☆☆ MEDIUM',
-      badgeClass: 'badge-medium',
-      desc: '영국 모터스포츠의 성지. 초고속 Maggotts-Becketts 복합 코너와 긴 직선주로를 통해 고속 코너링 다운포스와 슬립스트림 추월의 진수를 선사합니다.',
-      len: '5.891 km',
-      corners: '18 CORNERS',
-      record: '01:27.097',
-      type: 'HIGH-SPEED GP',
-    },
-    circuit_nurburgring: {
-      title: 'Nürburgring Nordschleife',
-      badge: '★★★★★★ INSANE',
-      badgeClass: 'badge-insane',
-      desc: '악명 높은 녹색 지옥(Green Hell). 극심한 고저차와 154개의 연속 블라인드 코너, 점프 구간까지 공존하는 세계에서 가장 위험하고 장대한 서킷입니다.',
-      len: '20.832 km',
-      corners: '154 CORNERS',
-      record: '06:40.330',
-      type: 'ROLLERCOASTER',
-    },
-  };
-
-  const MODEL_METADATA: Record<string, {
-    title: string;
-    speed: string;
-    accel: string;
-    downforce: string;
-    handling: string;
-  }> = {
-    gt_turbo: {
-      title: 'GT-86 Turbo',
-      speed: '210 km/h',
-      accel: '4.8s',
-      downforce: 'MEDIUM',
-      handling: 'STABLE',
-    },
-    formula_aero: {
-      title: 'Formula Aero',
-      speed: '228 km/h',
-      accel: '2.6s',
-      downforce: 'ULTRA HIGH',
-      handling: 'RAZOR SHARP',
-    },
-    cyber_speedster: {
-      title: 'Cyber Speedster',
-      speed: '242 km/h',
-      accel: '3.2s',
-      downforce: 'HIGH',
-      handling: 'HYPER DYNAMIC',
-    },
-  };
-
   let currentWizardStep: 1 | 2 | 3 | 4 = 1;
   let selectedTrack: 'circuit_monaco' | 'circuit_silverstone' | 'circuit_nurburgring' = 'circuit_monaco';
   let selectedModel: 'gt_turbo' | 'formula_aero' | 'cyber_speedster' = 'gt_turbo';
@@ -396,7 +320,7 @@ window.addEventListener('DOMContentLoaded', () => {
     trackSvgSilverstone.classList.toggle('active', selectedTrack === 'circuit_silverstone');
     trackSvgNurburgring.classList.toggle('active', selectedTrack === 'circuit_nurburgring');
 
-    const meta = TRACK_METADATA[selectedTrack];
+    const meta = TRACK_DEFINITIONS[selectedTrack];
     if (meta) {
       trackShowcaseTitle.textContent = meta.title;
       trackShowcaseBadge.textContent = meta.badge;
@@ -416,7 +340,7 @@ window.addEventListener('DOMContentLoaded', () => {
       c.classList.toggle('active', c.dataset.model === selectedModel);
     });
 
-    const meta = MODEL_METADATA[selectedModel];
+    const meta = VEHICLE_MODELS[selectedModel];
     if (meta) {
       vehicleSpecSpeed.textContent = meta.speed;
       vehicleSpecAccel.textContent = meta.accel;
@@ -463,20 +387,8 @@ window.addEventListener('DOMContentLoaded', () => {
       c.classList.toggle('active', c.dataset.weather === selectedWeather);
     });
 
-    const timeNames: Record<string, string> = {
-      morning: 'MORNING [아침]',
-      noon: 'NOON [점심]',
-      sunset: 'SUNSET [저녁]',
-      night: 'NIGHT [밤]',
-    };
-    const weatherNames: Record<string, string> = {
-      clear: 'CLEAR [맑음]',
-      rain: 'RAIN [비]',
-      wind_fog: 'WIND & FOG [바람/안개]',
-    };
-
     if (envSummaryText) {
-      envSummaryText.textContent = `${timeNames[selectedTime] || selectedTime} + ${weatherNames[selectedWeather] || selectedWeather}`;
+      envSummaryText.textContent = `${TIME_OF_DAY_LABELS[selectedTime] || selectedTime} + ${WEATHER_LABELS[selectedWeather] || selectedWeather}`;
     }
 
     game.setEnvironment(selectedTime, selectedWeather);
@@ -488,8 +400,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Step 4: 세션 브리핑 카드 갱신
   const updateBriefingCard = () => {
-    if (briefingTrack) briefingTrack.textContent = TRACK_METADATA[selectedTrack]?.title || selectedTrack;
-    if (briefingModel) briefingModel.textContent = MODEL_METADATA[selectedModel]?.title || selectedModel;
+    if (briefingTrack) briefingTrack.textContent = TRACK_DEFINITIONS[selectedTrack]?.title || selectedTrack;
+    if (briefingModel) briefingModel.textContent = VEHICLE_MODELS[selectedModel]?.title || selectedModel;
     if (briefingColorDot) briefingColorDot.style.backgroundColor = selectedColor;
 
     const timeUpper = selectedTime.toUpperCase();
@@ -603,7 +515,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Step 4: 드라이버 랜덤 닉네임 & 자동주행 모드 토글
   const pickRandomName = () => {
-    const rand = RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
+    const rand = RANDOM_DRIVER_NAMES[Math.floor(Math.random() * RANDOM_DRIVER_NAMES.length)];
     wizardDriverName.value = rand;
     if (currentWizardStep === 4) updateBriefingCard();
   };
@@ -681,21 +593,33 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   // 위저드 4단계: 레이스 시작 버튼
-  wizardBtnStart.addEventListener('click', () => {
+  wizardBtnStart.addEventListener('click', async () => {
     gameSetupModal.classList.remove('open');
     vehiclePreview?.stop();
     game.audio.init();
 
+    const trackMeta = TRACK_DEFINITIONS[selectedTrack] || TRACK_DEFINITIONS.circuit_monaco;
+    const modelMeta = VEHICLE_MODELS[selectedModel] || VEHICLE_MODELS.gt_turbo;
+
+    // 인게임 전 로딩 씬 실행 (Dual-purpose Pre-Race Loading: 프로그레스바 + 배경화면 + 설명팁)
+    await loadingScreen.runPreRaceLoad(trackMeta.title, modelMeta.title);
+
+    // 1. 서킷 실시간 동적 로드 (선택된 트랙 반영 및 3D 지오메트리/미니맵 리빌드!)
+    game.loadTrack(selectedTrack);
+
+    // 2. 환경 (시간대, 날씨) 적용
     game.setEnvironment(selectedTime, selectedWeather);
+
+    // 3. 머신 모델 및 커스텀 컬러 적용
+    game.playerVehicle.setModel(selectedModel);
+    updateColor(selectedColor);
 
     if (wizardChkAutodrive.checked) {
       setModeUI('DEMO');
     } else {
       const driverName = wizardDriverName.value.trim() || 'Apex Hunter';
       game.currentDriverName = driverName;
-      game.currentTrackId = selectedTrack;
       updateModelShowcase();
-      updateColor(selectedColor);
       setModeUI('DRIVING');
       game.startCountdown();
     }
@@ -944,8 +868,8 @@ window.addEventListener('DOMContentLoaded', () => {
     if (game.mode !== 'DRIVING' && game.mode !== 'DEMO' && game.mode !== 'REPLAY') return;
     game.pause();
 
-    if (pauseInfoTrack) pauseInfoTrack.textContent = TRACK_METADATA[selectedTrack]?.title || game.currentTrackId;
-    if (pauseInfoCar) pauseInfoCar.textContent = MODEL_METADATA[selectedModel]?.title || game.playerVehicle.currentModelId;
+    if (pauseInfoTrack) pauseInfoTrack.textContent = TRACK_DEFINITIONS[selectedTrack]?.title || game.currentTrackId;
+    if (pauseInfoCar) pauseInfoCar.textContent = VEHICLE_MODELS[selectedModel]?.title || game.playerVehicle.currentModelId;
     if (pauseInfoLap) pauseInfoLap.textContent = `LAP ${game.lapTimer.currentLap.toString().padStart(2, '0')} / ${game.lapTimer.totalLaps.toString().padStart(2, '0')}`;
     const s = (game.lapTimer.currentLapTimeMs / 1000).toFixed(3);
     if (pauseInfoTime) pauseInfoTime.textContent = `${s}s`;
@@ -1016,7 +940,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 초기 시작 화면: 타이틀 씬
+  // 초기 시작 화면: 타이틀 씬 설정 및 비동기 최초 부팅 로딩 씬 실행
   setModeUI('TITLE');
+  loadingScreen.runInitialLoad();
 });
 

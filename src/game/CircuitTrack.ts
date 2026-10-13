@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { TRACK_DEFINITIONS, TrackMetadata } from '../data/tracks.ts';
 
 export interface CheckpointTrigger {
   id: number;
@@ -12,43 +13,53 @@ export interface CheckpointTrigger {
  * Three.js 폐루프 서킷 트랙 (Circuit Track)
  * - 아스팔트 노면 + 적백 연석(Curbs) + 3개 섹터 체크포인트
  * - CatmullRomCurve3 기반의 중심선 궤적
+ * - 서킷별(Monaco, Silverstone, Nürburgring) 실시간 동적 레이아웃 리빌드 지원
  */
 export class CircuitTrack {
   public group: THREE.Group = new THREE.Group();
-  public trackCurve: THREE.CatmullRomCurve3;
-  public trackWidth: number = 14; // 도로 폭 14m
+  public trackCurve!: THREE.CatmullRomCurve3;
+  public trackWidth: number = 14; // 도로 폭
   public checkpoints: CheckpointTrigger[] = [];
   public trackPoints2D: { x: number; z: number }[] = [];
+  public currentTrackId: string = 'circuit_monaco';
 
-  constructor() {
-    // 1. 서킷 제어점 (F1 스타일 테크니컬 루프 서킷)
-    const rawPoints = [
-      new THREE.Vector3(0, 0, 0),         // 스타트/피니시 라인
-      new THREE.Vector3(80, 0, 0),        // 메인 스트레이트
-      new THREE.Vector3(140, 0, -30),     // 고속 우코너 진입
-      new THREE.Vector3(170, 0, -90),     // 헤어핀 1
-      new THREE.Vector3(130, 0, -140),
-      new THREE.Vector3(60, 0, -120),     // 섹터 1 체크포인트 부근
-      new THREE.Vector3(10, 0, -150),     // 시케인 진입
-      new THREE.Vector3(-40, 0, -130),
-      new THREE.Vector3(-80, 0, -170),    // 백 스트레이트
-      new THREE.Vector3(-150, 0, -130),   // 섹터 2 체크포인트 부근
-      new THREE.Vector3(-160, 0, -60),    // 깊은 헤어핀 2
-      new THREE.Vector3(-120, 0, -20),
-      new THREE.Vector3(-80, 0, 40),      // 마지막 코너 복귀 구간
-      new THREE.Vector3(-30, 0, 20),
-    ];
+  constructor(trackId: string = 'circuit_monaco') {
+    this.loadTrack(trackId);
+  }
 
-    this.trackCurve = new THREE.CatmullRomCurve3(rawPoints, true, 'centripetal');
+  /**
+   * 지정된 서킷 ID로 트랙 지오메트리, 연석, 마킹 및 체크포인트를 실시간으로 완전 재구축
+   */
+  public loadTrack(trackId: string): TrackMetadata {
+    this.currentTrackId = trackId;
+    const def = TRACK_DEFINITIONS[trackId] || TRACK_DEFINITIONS['circuit_monaco'];
 
-    // 미니맵용 2D 샘플 점 추출 (200개)
+    // 1. 기존 그룹 내 모든 하위 3D 객체 및 지오메트리 해제
+    while (this.group.children.length > 0) {
+      const child = this.group.children[0];
+      this.group.remove(child);
+      child.traverse((node) => {
+        if (node instanceof THREE.Mesh) {
+          node.geometry?.dispose();
+        }
+      });
+    }
+
+    // 2. 새 서킷 파라미터 적용
+    this.checkpoints = [];
+    this.trackWidth = def.trackWidth;
+    this.trackCurve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
+
+    // 3. 미니맵용 2D 샘플 점 추출 (200개 균일 샘플링)
     const samplePoints = this.trackCurve.getPoints(200);
     this.trackPoints2D = samplePoints.map(p => ({ x: p.x, z: p.z }));
 
-    // 트랙 3D 지오메트리 빌드
+    // 4. 지오메트리 및 환경 재빌드
     this.buildTrackMesh();
     this.buildGround();
     this.setupCheckpoints();
+
+    return def;
   }
 
   public roadMaterial: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial({
@@ -536,7 +547,7 @@ export class CircuitTrack {
    */
   public getDistanceFromCenter(pos: THREE.Vector3): number {
     let minDistSq = Infinity;
-    const sampleCount = 60;
+    const sampleCount = 120;
 
     for (let i = 0; i < sampleCount; i++) {
       const sample = this.trackCurve.getPointAt(i / sampleCount);

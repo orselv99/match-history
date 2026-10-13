@@ -1,0 +1,68 @@
+import { RawTelemetryTick } from './TelemetryTypes.ts';
+import { Vehicle } from '../game/Vehicle.ts';
+import { TelemetryCodec } from './TelemetryCodec.ts';
+
+/**
+ * 30Hz 고주파 주행 텔레메트리 레코더
+ */
+export class TelemetryRecorder {
+  private ticks: RawTelemetryTick[] = [];
+  private sampleIntervalMs: number = 33.333; // 30Hz
+  private accumulatedMs: number = 0;
+  private isRecording: boolean = false;
+  private sessionElapsedMs: number = 0;
+
+  public start(): void {
+    this.ticks = [];
+    this.accumulatedMs = 0;
+    this.sessionElapsedMs = 0;
+    this.isRecording = true;
+  }
+
+  public stop(): void {
+    this.isRecording = false;
+  }
+
+  public update(deltaMs: number, vehicle: Vehicle, currentLap: number, steerInput: number, throttleInput: number, brakeInput: number): void {
+    if (!this.isRecording) return;
+
+    this.sessionElapsedMs += deltaMs;
+    this.accumulatedMs += deltaMs;
+
+    // 33.33ms (30Hz) 주기로 틱 샘플링
+    while (this.accumulatedMs >= this.sampleIntervalMs) {
+      this.accumulatedMs -= this.sampleIntervalMs;
+
+      this.ticks.push({
+        timeMs: Math.round(this.sessionElapsedMs),
+        x: Number(vehicle.position.x.toFixed(3)),
+        y: Number(vehicle.position.y.toFixed(3)),
+        z: Number(vehicle.position.z.toFixed(3)),
+        yaw: Number(vehicle.heading.toFixed(4)),
+        pitch: 0,
+        roll: Number(vehicle.mesh.rotation.z.toFixed(4)),
+        speedKmh: Number(vehicle.getSpeedKmh().toFixed(1)),
+        steer: Number(steerInput.toFixed(2)),
+        throttle: Number(throttleInput.toFixed(2)),
+        brake: Number(brakeInput.toFixed(2)),
+        isDrifting: vehicle.isDrifting,
+        lap: currentLap,
+      });
+    }
+  }
+
+  public getTicks(): RawTelemetryTick[] {
+    return this.ticks;
+  }
+
+  public getTickCount(): number {
+    return this.ticks.length;
+  }
+
+  public clear(): void {
+    this.ticks = [];
+    this.accumulatedMs = 0;
+    this.sessionElapsedMs = 0;
+    this.isRecording = false;
+  }
+}

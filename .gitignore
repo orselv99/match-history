@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+cloudflare-worker/node_modules/
+.pnp
+.pnp.js
+
+# Production build artifacts
+dist/
+dist-ssr/
+
+# Environment variables & Secrets (중요: API 토큰 유출 방지)
+.env
+.env.local
+.env.*.local
+*.pem
+terraform/terraform.tfvars
+
+# Terraform local state & cache
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/*.tfstate
+terraform/*.tfstate.*
+terraform/*.tfplan
+
+# Cloudflare Wrangler runtime cache
+.wrangler/
+cloudflare-worker/.wrangler/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

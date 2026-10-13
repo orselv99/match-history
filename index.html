@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js 레이싱</title>
+  <meta name="description" content="Three.js 기반 레이싱 게임 및 30Hz 고주파 텔레메트리 직렬화, 초압축 파이프라인, 3D 리플레이 서비스 플랫폼" />
+  <link rel="stylesheet" href="./src/styles.css" />
+</head>
+<body>
+  <!-- 3D WebGL 캔버스 컨테이너 -->
+  <div id="game-container"></div>
+
+  <!-- 레이싱 대시보드 HUD 오버레이 -->
+  <div id="ui-overlay">
+    <!-- 1. 상단 글로벌 바 (Hairline Grid) -->
+    <header class="top-bar">
+      <div class="brand-badge">
+        <span class="brand-title">RACING GAME</span>
+        <div id="mode-tag" class="mode-tag">
+          <span class="pulse-dot"></span>
+          <span id="mode-text">LIVE_DRIVING</span>
+        </div>
+      </div>
+
+      <nav class="top-actions interactive">
+        <button id="btn-mode-drive" class="glass-btn active" title="직접 운전 모드">
+          <span>DRIVE // 주행</span>
+        </button>
+        <button id="btn-mode-demo" class="glass-btn" title="컴퓨터 4대 자동주행 데모">
+          <span>DEMO // AI 4대</span>
+        </button>
+        <button id="btn-mode-replay" class="glass-btn" title="3D 리플레이 보기">
+          <span>REPLAY // 3D</span>
+        </button>
+        <button id="btn-reset" class="glass-btn" title="초기화 (R)">
+          <span>RESET [R]</span>
+        </button>
+      </nav>
+    </header>
+
+    <!-- 2. HUD 상단 정보 (랩타임 & 미니맵) -->
+    <section class="hud-grid">
+      <!-- 랩 타이머 & 섹터 카드 -->
+      <div class="lap-card">
+        <div class="lap-header">
+          <span class="lap-title-text">CIRCUIT_MONACO</span>
+          <span id="lap-counter" class="lap-count">LAP 01 / 02</span>
+        </div>
+        <div class="lap-body">
+          <div class="time-row">
+            <span class="time-label">TIME // CURRENT</span>
+            <span id="current-lap-time" class="time-value">00:00.000</span>
+          </div>
+          <div class="time-row">
+            <span class="time-label">TIME // BEST</span>
+            <span id="best-lap-time" class="time-value best">--:--.---</span>
+          </div>
+          <div class="sectors-row">
+            <div id="sector-1" class="sector-chip">S1: --.-s</div>
+            <div id="sector-2" class="sector-chip">S2: --.-s</div>
+            <div id="sector-3" class="sector-chip">S3: --.-s</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 실시간 미니맵 -->
+      <div class="minimap-wrapper">
+        <canvas id="minimap-canvas" width="160" height="160"></canvas>
+      </div>
+    </section>
+
+    <!-- 3. 중앙 카운트다운 (게임 스타일 순수 숫자만 표시) -->
+    <div id="countdown-overlay" class="countdown-overlay">
+      <div id="countdown-number" class="countdown-game-number">3</div>
+    </div>
+
+    <!-- 4. HUD 하단 (조작 가이드, 리플레이 컨트롤러, 디지털 계기판) -->
+    <footer class="bottom-hud">
+      <!-- 조작 가이드 -->
+      <div class="control-guide">
+        <div><span class="key-badge">W</span> <span class="key-badge">↑</span> THROTTLE &nbsp;|&nbsp; <span class="key-badge">S</span> <span class="key-badge">↓</span> BRAKE/REV</div>
+        <div style="margin-top: 4px;"><span class="key-badge">A</span> <span class="key-badge">D</span> STEER &nbsp;|&nbsp; <span class="key-badge">SPACE</span> DRIFT &nbsp;|&nbsp; <span class="key-badge">R</span> RESET</div>
+      </div>
+
+      <!-- 리플레이 전용 컨트롤러 타임라인 바 -->
+      <div id="replay-controller" class="replay-controller interactive">
+        <button id="btn-replay-playpause" class="glass-btn" style="padding: 4px 10px;">⏸</button>
+        <input type="range" id="replay-seek-slider" class="seek-slider" min="0" max="1000" value="0" />
+        <span id="replay-time-display" class="replay-time-label">00:00.000 / 00:00.000</span>
+        <div style="display: flex; gap: 1px; background: var(--border-strong);">
+          <button id="btn-speed-05" class="glass-btn" style="padding: 4px 8px; font-size: 9px;">0.5x</button>
+          <button id="btn-speed-10" class="glass-btn active" style="padding: 4px 8px; font-size: 9px;">1x</button>
+          <button id="btn-speed-20" class="glass-btn" style="padding: 4px 8px; font-size: 9px;">2x</button>
+        </div>
+      </div>
+
+      <!-- 디지털 계기판 클러스터 -->
+      <div class="speedometer-card">
+        <div class="cluster-header">
+          <span class="cluster-label">SPEED</span>
+          <span id="drift-badge" class="drift-badge">DRIFT_OFF</span>
+        </div>
+        <div class="cluster-body">
+          <div id="gear-indicator" class="gear-display">N</div>
+          <div class="speed-main">
+            <span id="speed-indicator" class="speed-number">0</span>
+            <span class="speed-unit">KM/H</span>
+          </div>
+        </div>
+        <div class="rpm-bar-container">
+          <div id="rpm-bar" class="rpm-bar-fill"></div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- 4. 경기 완주 & 텔레메트리 벤치마크 결과 모달 (Swiss Technical Planar Architecture) -->
+  <div id="finish-modal" class="modal-overlay">
+    <div class="modal-card">
+      <header class="modal-header-strip">
+        <span class="modal-title">SESSION COMPLETE // RACE_FINISH</span>
+        <span class="modal-code-tag">CODE // MONACO_01</span>
+      </header>
+
+      <div class="modal-content-body">
+        <!-- 주행 성적 지표 -->
+        <div class="stats-grid">
+          <div class="stat-box">
+            <div class="stat-title">LAP // BEST</div>
+            <div id="modal-best-lap" class="stat-value">01:14.280</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-title">TIME // TOTAL</div>
+            <div id="modal-total-time" class="stat-value">02:31.540</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-title">VELOCITY // TOP</div>
+            <div id="modal-top-speed" class="stat-value">188 km/h</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-title">VELOCITY // AVG</div>
+            <div id="modal-avg-speed" class="stat-value">124 km/h</div>
+          </div>
+        </div>
+
+        <!-- 핵심 기술 검증: 텔레메트리 압축 벤치마크 -->
+        <div class="benchmark-container">
+          <div class="benchmark-header">
+            <span class="benchmark-title">BENCHMARK // CODEC</span>
+            <span id="modal-reduction-rate" class="compression-badge">98.5% SAVED</span>
+          </div>
+          <table class="benchmark-table">
+            <tbody>
+              <tr>
+                <td>Raw JSON (Naive string)</td>
+                <td id="modal-json-size">2,850 KB</td>
+              </tr>
+              <tr>
+                <td>Int16 Fixed-Point Quantization (Packed Array)</td>
+                <td id="modal-binary-size">108 KB (-96.2%)</td>
+              </tr>
+              <tr>
+                <td>Brotli / Gzip Compression (Final Blob)</td>
+                <td id="modal-compressed-size" style="color: var(--accent-spec);">34 KB (-98.8%)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 액션 버튼 -->
+      <footer class="modal-actions">
+        <button id="modal-btn-replay" class="primary-btn">3D REPLAY // 재생</button>
+        <button id="modal-btn-download" class="secondary-btn">EXPORT .BIN // 다운로드</button>
+        <button id="modal-btn-restart" class="secondary-btn">RETRY // 다시 주행</button>
+      </footer>
+    </div>
+  </div>
+
+  <script type="module" src="./src/main.ts"></script>
+</body>
+</html>

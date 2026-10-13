@@ -1,0 +1,665 @@
+/* =====================================================================
+   게임 설정 위저드 모달 (Game Setup Wizard)
+   ===================================================================== */
+.wizard-modal-card {
+  max-width: 880px;
+  width: 94%;
+  height: 100%;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.wizard-header-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+}
+
+.wizard-header-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* 위저드 스텝 인디케이터 바 */
+.wizard-stepper {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  background: var(--surface-subtle);
+  border-bottom: 1px solid var(--border-strong);
+  flex-shrink: 0;
+}
+
+.wizard-step-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.wizard-step-tab:last-child {
+  border-right: none;
+}
+
+.wizard-step-tab .step-num {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+
+.wizard-step-tab .step-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wizard-step-tab .step-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.wizard-step-tab .step-desc {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.wizard-step-tab:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.wizard-step-tab.active {
+  background: rgba(196, 90, 114, 0.08);
+  border-bottom-color: var(--accent-spec);
+}
+
+.wizard-step-tab.active .step-num {
+  color: var(--accent-spec);
+}
+
+.wizard-step-tab.active .step-name {
+  color: var(--text-primary);
+}
+
+/* 위저드 본문 영역 (스크롤 공간 사전 확보) */
+.wizard-content-body {
+  flex: 1;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  padding: 20px;
+}
+
+.wizard-step-panel {
+  display: none;
+}
+
+.wizard-step-panel.active {
+  display: block;
+}
+
+/* 2컬럼 분할 레이아웃 */
+.wizard-split-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.wizard-choice-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wizard-col-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-spec);
+  letter-spacing: 0.06em;
+  display: block;
+}
+
+.wizard-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wizard-choice-card {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.wizard-choice-card:hover {
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.wizard-choice-card.active {
+  border-color: var(--accent-spec);
+  background: rgba(196, 90, 114, 0.08);
+}
+
+.choice-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.choice-card-num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.choice-card-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.badge-medium {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.badge-expert {
+  border-color: #f59e0b;
+  color: #f59e0b;
+}
+
+.badge-insane {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.choice-card-title {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.choice-card-meta {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+/* 서킷 쇼케이스 패널 */
+.track-showcase-card {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.track-map-viewport {
+  background: radial-gradient(circle at center, rgba(6, 182, 212, 0.06) 0%, rgba(18, 19, 22, 0.8) 100%);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 14px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.track-svg {
+  display: none;
+  width: 100%;
+  height: 100%;
+}
+
+.track-svg.active {
+  display: block;
+}
+
+.track-svg-outline {
+  fill: none;
+  stroke: #06b6d4;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.5));
+}
+
+.track-start-pin {
+  fill: #ef4444;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.track-start-text {
+  fill: #ededed;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.track-info-detail {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.track-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.track-detail-title {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.track-detail-desc {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.track-spec-grid,
+.turntable-specs-footer {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.spec-cell {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  padding: 6px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.spec-k {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.spec-v {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* 3D 차량 턴테이블 컨테이너 */
+.vehicle-turntable-container {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.turntable-header-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-spec);
+  letter-spacing: 0.05em;
+}
+
+.turntable-canvas-wrap {
+  width: 100%;
+  height: 240px;
+  background: #13151b;
+  position: relative;
+}
+
+.turntable-canvas-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.turntable-specs-footer {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* STEP 3: 환경 선택 (시간 & 날씨) */
+.environment-step-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.env-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.env-options-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.env-time-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.env-weather-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.env-chip-btn {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.env-chip-btn:hover {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--border-strong);
+}
+
+.env-chip-btn.active {
+  background: rgba(196, 90, 114, 0.08);
+  border-color: var(--accent-spec);
+}
+
+.env-icon {
+  font-size: 26px;
+}
+
+.env-chip-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.env-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.env-desc {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.env-summary-banner {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.env-summary-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.env-summary-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+/* STEP 4: 드라이버 설정 및 최종 요약 */
+.driver-step-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.setup-group {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-subtle);
+  padding: 12px 16px;
+}
+
+.setup-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.setup-group-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent-spec);
+  letter-spacing: 0.05em;
+  display: block;
+}
+
+.small-action-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.setup-input-wrap {
+  display: flex;
+}
+
+.setup-text-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 10px 14px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.setup-text-input:focus {
+  border-color: var(--accent-spec);
+}
+
+.setup-autodrive-banner {
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid var(--accent-spec);
+  padding: 12px 16px;
+}
+
+.autodrive-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.autodrive-label input {
+  display: none;
+}
+
+.autodrive-custom-chk {
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--accent-spec);
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.autodrive-label input:checked + .autodrive-custom-chk {
+  background: var(--accent-spec);
+}
+
+.autodrive-label input:checked + .autodrive-custom-chk:after {
+  content: '✓';
+  color: #000;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.autodrive-text-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.autodrive-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent-spec);
+  letter-spacing: 0.04em;
+}
+
+.autodrive-desc {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.race-briefing-card {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-strong);
+}
+
+.briefing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.briefing-status {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.briefing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px;
+  background: var(--border-subtle);
+}
+
+.briefing-item {
+  background: var(--surface-card);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.briefing-k {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.briefing-v {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.briefing-machine-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.briefing-color-dot {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  border: 1px solid #ffffff;
+}
+
+/* 위저드 풋터 네비게이션 버튼 */
+.wizard-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+}
+
+.wizard-footer-left,
+.wizard-footer-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.wizard-footer-right .primary-btn {
+  min-width: 160px;
+}
+
+.start-race-btn {
+  background: #22c55e !important;
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+.start-race-btn:hover {
+  background: #16a34a !important;
+}

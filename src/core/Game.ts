@@ -129,7 +129,12 @@ export class Game {
     this.setMode('TITLE');
 
     // 키보드/클릭 이벤트 시 오디오 활성화 및 레이스 시작
-    window.addEventListener('click', () => {
+    window.addEventListener('click', (e) => {
+      if (this.isPaused) return;
+      const target = e.target as HTMLElement;
+      if (target?.closest('.modal-overlay') || target?.closest('.title-scene-overlay') || target?.closest('.interactive')) {
+        return;
+      }
       this.audio.init();
       if (this.mode === 'DRIVING' && this.raceState === 'READY') {
         this.startCountdown();
@@ -137,6 +142,7 @@ export class Game {
     });
 
     window.addEventListener('keydown', (e) => {
+      if (this.isPaused) return;
       this.audio.init();
       if (this.mode === 'DRIVING' && this.raceState === 'READY' && e.code !== 'KeyR' && e.code !== 'KeyO' && e.code !== 'Escape') {
         this.startCountdown();
@@ -298,6 +304,11 @@ export class Game {
 
   private animate(): void {
     requestAnimationFrame(this.animate);
+
+    if (this.isPaused) {
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
 
     const delta = Math.min(this.clock.getDelta(), 0.1);
     const deltaMs = delta * 1000;
@@ -518,7 +529,34 @@ export class Game {
     }
   }
 
+  public isPaused: boolean = false;
+
+  public pause(): void {
+    if (this.mode !== 'DRIVING' && this.mode !== 'DEMO' && this.mode !== 'REPLAY') return;
+    this.isPaused = true;
+    this.audio.pauseEngine();
+  }
+
+  public resume(): void {
+    this.isPaused = false;
+  }
+
+  public restartRace(): void {
+    this.isPaused = false;
+    if (this.mode === 'DEMO') {
+      this.setMode('DEMO');
+    } else {
+      this.resetCarToStart();
+      this.recorder.clear();
+      this.raceState = 'READY';
+      this.countdownTimer = 3.0;
+      this.lastBeepNumber = -1;
+      this.startCountdown();
+    }
+  }
+
   public setMode(mode: GameMode): void {
+    this.isPaused = false;
     this.mode = mode;
 
     if (mode === 'TITLE') {

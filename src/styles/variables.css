@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  /* Editorial Rationalism (Swiss Technical) Dark Tokens */
+  --surface-canvas: #121316;
+  --surface-card: #1a1b20;
+  --surface-subtle: #202227;
+  --surface-muted: #26282f;
+  --surface-inverse: #e2e4e9;
+
+  --border-strong: #3a3d47;
+  --border-subtle: #26282f;
+
+  --text-primary: #ededed;
+  --text-secondary: #9b9ea8;
+  --text-muted: #636672;
+  --text-inverse: #121316;
+
+  --accent-spec: #c45a72;
+
+  --font-sans: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  border-radius: 0 !important; /* Zero Border-Radius 규격 준수 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) rgba(18, 19, 22, 0.7);
+}
+
+/* Chrome, Edge, Safari WebKit 커스텀 스크롤바 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(18, 19, 22, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.15s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-spec);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #e2728b;
+}
+
+::-webkit-scrollbar-corner {
+  background: rgba(18, 19, 22, 0.85);
+}

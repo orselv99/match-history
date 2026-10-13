@@ -2,6 +2,7 @@ import { Game, GameUIState } from './core/Game.ts';
 import { MatchSummaryMetadata } from './replay/ReplayTypes.ts';
 import { ReplayCodec } from './replay/ReplayCodec.ts';
 import { VehiclePreview } from './game/VehiclePreview.ts';
+import { HoneycombPicker } from './game/HoneycombPicker.ts';
 
 window.addEventListener('DOMContentLoaded', () => {
   const container = document.getElementById('game-container') as HTMLElement;
@@ -49,14 +50,23 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Step 2: 머신 & 컬러 DOM
   const wizardModelCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-model]');
-  const wizardColorInput = document.getElementById('wizard-color-input') as HTMLInputElement;
-  const wizardColorSwatch = document.getElementById('wizard-color-swatch') as HTMLElement;
-  const wizardColorHex = document.getElementById('wizard-color-hex') as HTMLElement;
+  const wizardHoneycombContainer = document.getElementById('wizard-honeycomb-picker-container');
   const wizardVehicleCanvas = document.getElementById('wizard-vehicle-canvas') as HTMLCanvasElement;
   const vehicleSpecSpeed = document.getElementById('vehicle-spec-speed')!;
   const vehicleSpecAccel = document.getElementById('vehicle-spec-accel')!;
   const vehicleSpecDownforce = document.getElementById('vehicle-spec-downforce')!;
   const vehicleSpecHandling = document.getElementById('vehicle-spec-handling')!;
+
+  // 7. 인게임 일시정지 모달 DOM
+  const pauseModal = document.getElementById('pause-modal')!;
+  const pauseBtnResume = document.getElementById('pause-btn-resume')!;
+  const pauseBtnRestart = document.getElementById('pause-btn-restart')!;
+  const pauseBtnSettings = document.getElementById('pause-btn-settings')!;
+  const pauseBtnExit = document.getElementById('pause-btn-exit')!;
+  const pauseInfoTrack = document.getElementById('pause-info-track')!;
+  const pauseInfoCar = document.getElementById('pause-info-car')!;
+  const pauseInfoLap = document.getElementById('pause-info-lap')!;
+  const pauseInfoTime = document.getElementById('pause-info-time')!;
 
   // Step 3: 환경 (시간 & 날씨) DOM
   const envTimeChips = document.querySelectorAll<HTMLElement>('.env-chip-btn[data-time]');
@@ -419,12 +429,24 @@ window.addEventListener('DOMContentLoaded', () => {
     if (briefingModel) briefingModel.textContent = meta?.title || selectedModel;
   };
 
+  // Step 2: 허니콤 헥사곤 컬러 팔레트 인스턴스 초기화 (설정에 임베디드)
+  let honeycombPicker: HoneycombPicker | null = null;
+  if (wizardHoneycombContainer) {
+    try {
+      honeycombPicker = new HoneycombPicker(wizardHoneycombContainer, selectedColor, (hex) => {
+        updateColor(hex, false);
+      });
+    } catch (e) {
+      console.warn('HoneycombPicker init failed', e);
+    }
+  }
+
   // Step 2: 차량 리버리 컬러 동적 갱신
-  const updateColor = (hexVal: string) => {
+  const updateColor = (hexVal: string, syncPicker: boolean = false) => {
     selectedColor = hexVal;
-    if (wizardColorInput) wizardColorInput.value = hexVal;
-    if (wizardColorSwatch) wizardColorSwatch.style.backgroundColor = hexVal;
-    if (wizardColorHex) wizardColorHex.textContent = hexVal.toUpperCase();
+    if (syncPicker && honeycombPicker) {
+      honeycombPicker.selectColor(hexVal);
+    }
 
     const hexNum = parseInt(hexVal.replace('#', '0x'), 16);
     vehiclePreview?.setColor(hexNum);
@@ -564,14 +586,6 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Step 2: 컬러 픽커 이벤트 (프리셋 없이 단독 기본 표시)
-  wizardColorInput.addEventListener('input', (e) => {
-    updateColor((e.target as HTMLInputElement).value);
-  });
-  wizardColorInput.addEventListener('change', (e) => {
-    updateColor((e.target as HTMLInputElement).value);
-  });
-
   // Step 3: 환경 (시간대 & 기후) 이벤트
   envTimeChips.forEach(chip => {
     chip.addEventListener('click', () => {
@@ -633,7 +647,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateModelShowcase();
 
     const randHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-    updateColor(randHex);
+    updateColor(randHex, true);
 
     const times: Array<'morning' | 'noon' | 'sunset' | 'night'> = ['morning', 'noon', 'sunset', 'night'];
     selectedTime = times[Math.floor(Math.random() * times.length)];
@@ -923,20 +937,66 @@ window.addEventListener('DOMContentLoaded', () => {
     settingSteerVal.textContent = `${(val / 100).toFixed(1)}x`;
   });
 
-  // 단축키: ESC로 타이틀 복귀 및 모달 닫기, O로 설정 토글, F로 전체화면
+  // 인게임 일시정지 (Pause / Resume) 제어 핸들러
+  const pauseRace = () => {
+    if (game.mode !== 'DRIVING' && game.mode !== 'DEMO' && game.mode !== 'REPLAY') return;
+    game.pause();
+
+    if (pauseInfoTrack) pauseInfoTrack.textContent = TRACK_METADATA[selectedTrack]?.title || game.currentTrackId;
+    if (pauseInfoCar) pauseInfoCar.textContent = MODEL_METADATA[selectedModel]?.title || game.playerVehicle.currentModelId;
+    if (pauseInfoLap) pauseInfoLap.textContent = `LAP ${game.lapTimer.currentLap.toString().padStart(2, '0')} / ${game.lapTimer.totalLaps.toString().padStart(2, '0')}`;
+    const s = (game.lapTimer.currentLapTimeMs / 1000).toFixed(3);
+    if (pauseInfoTime) pauseInfoTime.textContent = `${s}s`;
+
+    pauseModal.classList.add('open');
+  };
+
+  const resumeRace = () => {
+    pauseModal.classList.remove('open');
+    game.resume();
+  };
+
+  const restartRace = () => {
+    pauseModal.classList.remove('open');
+    game.restartRace();
+  };
+
+  const exitRaceToTitle = () => {
+    pauseModal.classList.remove('open');
+    setModeUI('TITLE');
+  };
+
+  pauseBtnResume?.addEventListener('click', resumeRace);
+  pauseBtnRestart?.addEventListener('click', restartRace);
+  pauseBtnSettings?.addEventListener('click', () => {
+    syncAudioSettingsUI();
+    settingsModal.classList.add('open');
+  });
+  pauseBtnExit?.addEventListener('click', exitRaceToTitle);
+
+  // 단축키: ESC로 일시정지/재개 및 모달 닫기, O로 설정 토글, R로 재시작, F로 전체화면
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (gameSetupModal.classList.contains('open')) {
+      if (settingsModal.classList.contains('open')) {
+        closeSettings();
+      } else if (gameSetupModal.classList.contains('open')) {
         gameSetupModal.classList.remove('open');
+        vehiclePreview?.stop();
       } else if (matchHistoryModal.classList.contains('open')) {
         matchHistoryModal.classList.remove('open');
-      } else if (settingsModal.classList.contains('open')) {
-        closeSettings();
       } else if (finishModal.classList.contains('open')) {
         finishModal.classList.remove('open');
         setModeUI('TITLE');
-      } else if (game.mode !== 'TITLE') {
-        setModeUI('TITLE');
+      } else if (game.mode === 'DRIVING' || game.mode === 'DEMO' || game.mode === 'REPLAY') {
+        if (pauseModal.classList.contains('open')) {
+          resumeRace();
+        } else {
+          pauseRace();
+        }
+      }
+    } else if (e.key === 'r' || e.key === 'R') {
+      if (pauseModal.classList.contains('open')) {
+        restartRace();
       }
     } else if (e.key === 'o' || e.key === 'O') {
       if (settingsModal.classList.contains('open')) {

@@ -513,22 +513,10 @@
                 </button>
               </div>
 
-              <!-- 리버리 색상 픽커 (기본 표시, 프리셋 제거) -->
+              <!-- 리버리 색상 허니콤 헥사곤 팔레트 (임베디드 상시 표시) -->
               <div class="wizard-color-section">
-                <span class="wizard-col-title">LIVERY COLOR // 차량 색상 픽커</span>
-                <div class="wizard-color-picker-box">
-                  <div class="color-picker-swatch-wrap">
-                    <input type="color" id="wizard-color-input" value="#ef4444" class="wizard-color-input-native" />
-                    <div id="wizard-color-swatch" class="wizard-color-swatch-preview" style="background-color: #ef4444;"></div>
-                  </div>
-                  <div class="color-picker-meta-col">
-                    <div class="color-picker-meta-top">
-                      <span class="color-hex-title">HEX CODE</span>
-                      <span id="wizard-color-hex" class="color-hex-tag">#EF4444</span>
-                    </div>
-                    <span class="color-picker-guide">원하는 색상을 선택하면 오른쪽 3D 뷰어와 인게임 차량에 실시간으로 반영됩니다.</span>
-                  </div>
-                </div>
+                <span class="wizard-col-title">LIVERY COLOR PALETTE // 허니콤 색상 팔레트</span>
+                <div id="wizard-honeycomb-picker-container"></div>
               </div>
             </div>
 
@@ -716,7 +704,79 @@
     </div>
   </div>
 
-  <!-- 7. 전적 검색 & 글로벌 리더보드 모달 (Step 3: Match History Archive) -->
+  <!-- 7. 인게임 일시정지 모달 (Pause / Resume Menu) -->
+  <div id="pause-modal" class="modal-overlay">
+    <div class="modal-card pause-modal-card">
+      <header class="modal-header-strip pause-header-strip">
+        <div class="pause-header-left">
+          <span class="system-tag-badge">RACE SUSPENDED // 경기 일시 정지</span>
+          <h2 class="modal-title">GAME PAUSED</h2>
+        </div>
+        <span class="pause-shortcut-tag">[ESC] TO RESUME</span>
+      </header>
+
+      <div class="modal-content-body pause-content-body">
+        <div class="pause-status-banner">
+          <div class="pause-status-item">
+            <span class="pause-k">CIRCUIT // 서킷</span>
+            <strong id="pause-info-track" class="pause-v">Silverstone GP</strong>
+          </div>
+          <div class="pause-status-item">
+            <span class="pause-k">MACHINE // 차량</span>
+            <strong id="pause-info-car" class="pause-v">Formula Aero</strong>
+          </div>
+          <div class="pause-status-item">
+            <span class="pause-k">CURRENT LAP // 랩</span>
+            <strong id="pause-info-lap" class="pause-v">LAP 01 / 02</strong>
+          </div>
+          <div class="pause-status-item">
+            <span class="pause-k">ELAPSED // 경과 시간</span>
+            <strong id="pause-info-time" class="pause-v">00:45.320</strong>
+          </div>
+        </div>
+
+        <div class="pause-nav-list">
+          <button type="button" id="pause-btn-resume" class="pause-menu-btn active">
+            <span class="pause-btn-num">01</span>
+            <div class="pause-btn-text">
+              <span class="pause-btn-title">RESUME // 경기 계속하기</span>
+              <span class="pause-btn-desc">현재 위치와 시간에서 레이스를 재개합니다 [ESC]</span>
+            </div>
+            <span class="pause-btn-chevron">▶</span>
+          </button>
+
+          <button type="button" id="pause-btn-restart" class="pause-menu-btn">
+            <span class="pause-btn-num">02</span>
+            <div class="pause-btn-text">
+              <span class="pause-btn-title">RESTART // 레이스 재도전</span>
+              <span class="pause-btn-desc">현재 트랙의 출발선 그리드로 돌아가 처음부터 다시 시작합니다 [R]</span>
+            </div>
+            <span class="pause-btn-chevron">↺</span>
+          </button>
+
+          <button type="button" id="pause-btn-settings" class="pause-menu-btn">
+            <span class="pause-btn-num">03</span>
+            <div class="pause-btn-text">
+              <span class="pause-btn-title">SETTINGS // 오디오 & 조작 설정</span>
+              <span class="pause-btn-desc">마스터/BGM/SFX 볼륨 및 스티어링 감도를 변경합니다 [O]</span>
+            </div>
+            <span class="pause-btn-chevron">⚙</span>
+          </button>
+
+          <button type="button" id="pause-btn-exit" class="pause-menu-btn pause-btn-danger">
+            <span class="pause-btn-num">04</span>
+            <div class="pause-btn-text">
+              <span class="pause-btn-title">EXIT TO TITLE // 메인 메뉴로 나가기</span>
+              <span class="pause-btn-desc">현재 레이스를 종료하고 타이틀 메뉴로 돌아갑니다</span>
+            </div>
+            <span class="pause-btn-chevron">✕</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. 전적 검색 & 글로벌 리더보드 모달 (Step 3: Match History Archive) -->
   <div id="match-history-modal" class="modal-overlay">
     <div class="modal-card history-modal-card">
       <header class="modal-header-strip">

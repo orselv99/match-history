@@ -189,6 +189,12 @@ export class AudioManager {
     this.skidGain.gain.setTargetAtTime(skidVol, this.ctx.currentTime, 0.08);
   }
 
+  public pauseEngine(): void {
+    if (!this.ctx || !this.engineGain || !this.skidGain) return;
+    this.engineGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+    this.skidGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.05);
+  }
+
   public playCheckpointBeep(): void {
     if (!this.ctx || !this.sfxGain) return;
     const osc = this.ctx.createOscillator();

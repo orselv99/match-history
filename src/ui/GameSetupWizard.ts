@@ -1,6 +1,6 @@
 import { BaseModal } from './BaseModal.ts';
-import { VehiclePreview } from '../game/VehiclePreview.ts';
-import { HoneycombPicker } from '../game/HoneycombPicker.ts';
+import { VehiclePreview } from './VehiclePreview.ts';
+import { HoneycombPicker } from './HoneycombPicker.ts';
 import { TRACK_DEFINITIONS, getCircuitSvgData } from '../data/circuitTracks.ts';
 import { VEHICLE_MODELS } from '../data/vehicles.ts';
 import { RANDOM_DRIVER_NAMES, TIME_OF_DAY_LABELS, WEATHER_LABELS } from '../data/gameConstants.ts';
@@ -504,7 +504,7 @@ export class GameSetupWizard extends BaseModal {
   }
 
   public open(): void {
-    this.modal?.classList.add('open');
+    this.showModal();
     this.updateTrackShowcase();
     this.updateModelShowcase();
     this.updateEnvironmentShowcase();

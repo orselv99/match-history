@@ -68,6 +68,6 @@ export class PauseModal extends BaseModal<PauseModalInfo> {
       if (this.infoLap) this.infoLap.textContent = info.lapStr;
       if (this.infoTime) this.infoTime.textContent = info.timeStr;
     }
-    this.modal?.classList.add('open');
+    this.showModal();
   }
 }

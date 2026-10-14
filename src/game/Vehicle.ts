@@ -46,15 +46,15 @@ export class Vehicle {
   public bodyMaterial!: THREE.MeshStandardMaterial;
   public currentModelId: string = 'gt_turbo';
 
-  // 헤드라이트 & 테일라이트 조명
-  public leftSpotLight!: THREE.SpotLight;
-  public rightSpotLight!: THREE.SpotLight;
-  public leftTarget!: THREE.Object3D;
-  public rightTarget!: THREE.Object3D;
-  public leftBeamMesh!: THREE.Mesh;
-  public rightBeamMesh!: THREE.Mesh;
+  public headSpotLight!: THREE.SpotLight;
+  public headTarget!: THREE.Object3D;
+  public groundBeamMesh!: THREE.Mesh;
+  public leftLensGlow!: THREE.Sprite;
+  public rightLensGlow!: THREE.Sprite;
+  public headLightMaterial!: THREE.MeshStandardMaterial;
   public tailPointLight!: THREE.PointLight;
-  public headlightsEnabled: boolean = false;
+  public headlightsEnabled: boolean = true;
+  public bodyColorHex: number = 0xef4444;
   private isGhost: boolean = false;
   private ghostColor: number = 0x06b6d4;
 
@@ -74,6 +74,7 @@ export class Vehicle {
   }
 
   public setColor(colorHex: number): void {
+    this.bodyColorHex = colorHex;
     if (this.bodyMaterial) {
       this.bodyMaterial.color.setHex(colorHex);
     }
@@ -160,6 +161,7 @@ export class Vehicle {
       emissive: isGhost ? ghostColor : 0xffffff,
       emissiveIntensity: isGhost ? 2.0 : 3.2,
     });
+    this.headLightMaterial = headLightMat;
 
     this.brakeLightMaterial = new THREE.MeshStandardMaterial({
       color: isGhost ? ghostColor : 0xdc2626,
@@ -228,47 +230,131 @@ export class Vehicle {
     isGhost: boolean,
     ghostColor: number
   ): void {
-    // 1. 전방 스포트라이트 (SpotLights)
-    this.leftSpotLight = new THREE.SpotLight(0xfffbeb, 0, 65, Math.PI / 6, 0.5, 1.2);
-    this.leftSpotLight.position.copy(leftHeadPos);
-    this.leftTarget = new THREE.Object3D();
-    this.leftTarget.position.set(leftHeadPos.x, 0.0, 35.0);
-    this.mesh.add(this.leftSpotLight, this.leftTarget);
-    this.leftSpotLight.target = this.leftTarget;
+    // 1. 전방 고성능 스포트라이트 (차량 전면 중앙에서 노면 전방으로 뻗어 나가는 단일 고성능 빔)
+    const centerHeadY = (leftHeadPos.y + rightHeadPos.y) * 0.5;
+    const centerHeadZ = (leftHeadPos.z + rightHeadPos.z) * 0.5;
 
-    this.rightSpotLight = new THREE.SpotLight(0xfffbeb, 0, 65, Math.PI / 6, 0.5, 1.2);
-    this.rightSpotLight.position.copy(rightHeadPos);
-    this.rightTarget = new THREE.Object3D();
-    this.rightTarget.position.set(rightHeadPos.x, 0.0, 35.0);
-    this.mesh.add(this.rightSpotLight, this.rightTarget);
-    this.rightSpotLight.target = this.rightTarget;
+    this.headSpotLight = new THREE.SpotLight(0xfffbeb, 0, 55, Math.PI / 3.4, 0.75, 1.2);
+    this.headSpotLight.position.set(0, centerHeadY, centerHeadZ);
+    this.headTarget = new THREE.Object3D();
+    this.headTarget.position.set(0, 0.05, 30.0);
+    this.mesh.add(this.headSpotLight, this.headTarget);
+    this.headSpotLight.target = this.headTarget;
 
-    // 2. 헤드라이트 볼류메트릭 빔 콘 (AdditiveBlending으로 자연스러운 빛 번짐)
-    const beamGeom = new THREE.ConeGeometry(3.2, 24, 24, 1, true);
-    beamGeom.rotateX(Math.PI / 2);
-    beamGeom.translate(0, 0, 12);
-    const beamMat = new THREE.MeshBasicMaterial({
-      color: isGhost ? ghostColor : 0xfff8db,
+    // 2. 차량 정면에서 바라볼 때 선명하게 빛나는 듀얼 LED 프로젝터 렌즈 플레어
+    this.leftLensGlow = this.createLensGlowSprite();
+    this.leftLensGlow.position.set(leftHeadPos.x, leftHeadPos.y, leftHeadPos.z + 0.08);
+    this.leftLensGlow.visible = this.headlightsEnabled;
+    this.mesh.add(this.leftLensGlow);
+
+    this.rightLensGlow = this.createLensGlowSprite();
+    this.rightLensGlow.position.set(rightHeadPos.x, rightHeadPos.y, rightHeadPos.z + 0.08);
+    this.rightLensGlow.visible = this.headlightsEnabled;
+    this.mesh.add(this.rightLensGlow);
+
+    // 3. 전방 아스팔트 노면 헤드라이트 투사 빔 (두 갈래 분할 없이 하나로 비추는 단일 일루미네이션 카펫)
+    this.groundBeamMesh = this.createGroundBeamMesh();
+    this.groundBeamMesh.visible = this.headlightsEnabled;
+    this.mesh.add(this.groundBeamMesh);
+
+    if (this.headlightsEnabled) {
+      this.headSpotLight.intensity = 55.0;
+    }
+
+    // 4. 후방 레드 포인트 라이트 (평소에는 0으로 꺼져 있고, 브레이크/드리프트 시에만 점등)
+    this.tailPointLight = new THREE.PointLight(0xef4444, 0, 10, 1.5);
+    this.tailPointLight.position.copy(tailPos);
+    this.mesh.add(this.tailPointLight);
+  }
+
+  private createLensGlowSprite(): THREE.Sprite {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      // 차량 정면에서 직접 바라볼 때 선명한 듀얼 LED 프로젝터 코어 & 광배
+      const grad = ctx.createRadialGradient(64, 64, 2, 64, 64, 60);
+      grad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+      grad.addColorStop(0.18, 'rgba(254, 243, 199, 0.95)');
+      grad.addColorStop(0.45, 'rgba(186, 230, 253, 0.45)');
+      grad.addColorStop(0.75, 'rgba(125, 211, 252, 0.12)');
+      grad.addColorStop(1.0, 'rgba(56, 189, 248, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(64, 64, 60, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
       transparent: true,
-      opacity: 0.11,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.set(0.75, 0.75, 1.0);
+    return sprite;
+  }
+
+  private createGroundBeamMesh(): THREE.Mesh {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, 512, 512);
+
+      // 차량 전방 도로 전체를 하나로 자연스럽게 비추는 단일(Unified) 로드 일루미네이션 광선
+      // 두 갈래(줄기)로 나뉘지 않고 범퍼 전방 노면 전체를 하나로 부드럽게 밝힘
+      const grad = ctx.createRadialGradient(256, 30, 10, 256, 260, 250);
+      grad.addColorStop(0.0, 'rgba(255, 255, 250, 0.65)');
+      grad.addColorStop(0.25, 'rgba(254, 243, 199, 0.38)');
+      grad.addColorStop(0.55, 'rgba(224, 242, 254, 0.16)');
+      grad.addColorStop(0.80, 'rgba(186, 230, 253, 0.05)');
+      grad.addColorStop(1.0, 'rgba(147, 197, 253, 0)');
+
+      ctx.save();
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      // 차량 전방 범퍼 폭(약 2m)에서 전방 30m 노면으로 고르게 퍼지는 단일 부채꼴
+      ctx.moveTo(180, 20);
+      ctx.lineTo(332, 20);
+      ctx.bezierCurveTo(385, 160, 420, 310, 435, 490);
+      ctx.lineTo(77, 490);
+      ctx.bezierCurveTo(92, 310, 127, 160, 180, 20);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // 전방 도로 중앙 핫스팟 (단일 중앙 집중 광선 - 두 갈래 분할 완전 제거)
+      const gradCenter = ctx.createRadialGradient(256, 170, 10, 256, 210, 150);
+      gradCenter.addColorStop(0.0, 'rgba(255, 255, 255, 0.50)');
+      gradCenter.addColorStop(0.35, 'rgba(254, 249, 195, 0.22)');
+      gradCenter.addColorStop(0.70, 'rgba(224, 242, 254, 0.06)');
+      gradCenter.addColorStop(1.0, 'rgba(186, 230, 253, 0)');
+
+      ctx.save();
+      ctx.fillStyle = gradCenter;
+      ctx.beginPath();
+      ctx.ellipse(256, 210, 100, 160, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    const geom = new THREE.PlaneGeometry(8.5, 32);
+    geom.rotateX(-Math.PI / 2);
+    geom.translate(0, 0.04, 16.5);
+
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      opacity: 0.65,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide,
     });
-
-    this.leftBeamMesh = new THREE.Mesh(beamGeom, beamMat);
-    this.leftBeamMesh.position.copy(leftHeadPos);
-    this.leftBeamMesh.visible = this.headlightsEnabled;
-
-    this.rightBeamMesh = new THREE.Mesh(beamGeom, beamMat);
-    this.rightBeamMesh.position.copy(rightHeadPos);
-    this.rightBeamMesh.visible = this.headlightsEnabled;
-    this.mesh.add(this.leftBeamMesh, this.rightBeamMesh);
-
-    // 3. 후방 레드 포인트 라이트
-    this.tailPointLight = new THREE.PointLight(0xef4444, 0, 10, 1.5);
-    this.tailPointLight.position.copy(tailPos);
-    this.mesh.add(this.tailPointLight);
+    return new THREE.Mesh(geom, mat);
   }
 
 
@@ -366,24 +452,36 @@ export class Vehicle {
     this.frontLeftWheel.rotation.y = -steerAngle;
     this.frontRightWheel.rotation.y = -steerAngle;
 
-    // 6. 브레이크등 및 후방 조명 발광
+    // 6. 브레이크등 및 후방 조명 발광 (평소에는 완전히 꺼지고, 브레이크 또는 드리프트 시에만 점등!)
     const isBraking = brake > 0.1 || handbrake;
+    const isBrakingOrDrifting = isBraking || this.isDrifting;
     if (this.brakeLightMaterial) {
-      this.brakeLightMaterial.emissiveIntensity = isBraking ? 2.8 : (this.headlightsEnabled ? 1.2 : 0.6);
+      this.brakeLightMaterial.emissiveIntensity = isBrakingOrDrifting ? 3.2 : 0.4;
     }
     if (this.tailPointLight) {
-      this.tailPointLight.intensity = (this.headlightsEnabled ? 1.2 : 0) + (isBraking ? 2.8 : 0);
+      this.tailPointLight.intensity = isBrakingOrDrifting ? 3.5 : 0;
     }
   }
 
   public setHeadlights(enabled: boolean): void {
     this.headlightsEnabled = enabled;
-    const intensity = enabled ? 3.5 : 0;
-    if (this.leftSpotLight) this.leftSpotLight.intensity = intensity;
-    if (this.rightSpotLight) this.rightSpotLight.intensity = intensity;
-    if (this.leftBeamMesh) this.leftBeamMesh.visible = enabled;
-    if (this.rightBeamMesh) this.rightBeamMesh.visible = enabled;
-    if (this.tailPointLight) this.tailPointLight.intensity = enabled ? 1.2 : 0;
+    const spotIntensity = enabled ? 55.0 : 0;
+    if (this.headSpotLight) this.headSpotLight.intensity = spotIntensity;
+    if (this.leftLensGlow) this.leftLensGlow.visible = enabled;
+    if (this.rightLensGlow) this.rightLensGlow.visible = enabled;
+    if (this.groundBeamMesh) this.groundBeamMesh.visible = enabled;
+    if (this.headLightMaterial) {
+      this.headLightMaterial.emissiveIntensity = enabled ? 4.5 : 0.4;
+    }
+    // 후방 레드 포인트 라이트는 브레이크/드리프트 전용이므로 평소에는 0 유지!
+    if (this.tailPointLight) {
+      this.tailPointLight.intensity = this.isDrifting ? 3.5 : 0;
+    }
+  }
+
+  public toggleHeadlights(): boolean {
+    this.setHeadlights(!this.headlightsEnabled);
+    return this.headlightsEnabled;
   }
 
   public getRearWheelWorldPositions(): { left: THREE.Vector3; right: THREE.Vector3 } {

@@ -93,6 +93,6 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
       }
     }
 
-    this.modal?.classList.add('open');
+    this.showModal();
   }
 }

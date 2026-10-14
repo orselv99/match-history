@@ -1,14 +1,18 @@
 import { BaseModal } from './BaseModal.ts';
 import { AudioManager } from '../core/AudioManager.ts';
 import { appDB } from '../storage/AppDatabase.ts';
+import { keyBindingManager, KeyAction } from '../core/KeyBindingManager.ts';
 
 /**
  * 오디오 및 게임플레이 환경 설정 모달 전담 컨트롤러
+ * - 사운드 볼륨 & 오프라인 캐시 관리
+ * - 조작 키 바인딩 (WASD / 방향키 프리셋 & 완전 커스텀 키 설정)
  */
 export class SettingsModal extends BaseModal {
   private btnClose: HTMLElement | null;
   private btnSave: HTMLElement | null;
 
+  // 오디오 컨트롤
   private volMaster: HTMLInputElement | null;
   private volMasterVal: HTMLElement | null;
   private volBgm: HTMLInputElement | null;
@@ -18,11 +22,21 @@ export class SettingsModal extends BaseModal {
   private btnTestSfx: HTMLElement | null;
   private chkMute: HTMLInputElement | null;
 
+  // 게임플레이 & 스토리지
   private settingSteer: HTMLInputElement | null;
   private settingSteerVal: HTMLElement | null;
   private settingBgmDesc: HTMLElement | null;
   private storageStatsEl: HTMLElement | null;
   private btnClearCache: HTMLElement | null;
+
+  // 키 바인딩 컨트롤
+  private btnPresetWasd: HTMLButtonElement | null;
+  private btnPresetArrows: HTMLButtonElement | null;
+  private badgePresetCustom: HTMLElement | null;
+  private keybindButtons: NodeListOf<HTMLButtonElement>;
+
+  private listeningAction: KeyAction | null = null;
+  private activeKeydownListener: ((e: KeyboardEvent) => void) | null = null;
 
   private audio: AudioManager;
 
@@ -48,12 +62,20 @@ export class SettingsModal extends BaseModal {
     this.storageStatsEl = document.getElementById('setting-storage-stats');
     this.btnClearCache = document.getElementById('btn-clear-cache');
 
+    this.btnPresetWasd = document.getElementById('btn-preset-wasd') as HTMLButtonElement | null;
+    this.btnPresetArrows = document.getElementById('btn-preset-arrows') as HTMLButtonElement | null;
+    this.badgePresetCustom = document.getElementById('badge-preset-custom');
+    this.keybindButtons = document.querySelectorAll('.keybind-btn');
+
     this.bindEvents();
     this.syncUI();
   }
 
   private bindEvents(): void {
-    const close = () => this.close();
+    const close = () => {
+      this.stopListening();
+      this.close();
+    };
     this.btnClose?.addEventListener('click', close);
     this.btnSave?.addEventListener('click', close);
 
@@ -94,11 +116,74 @@ export class SettingsModal extends BaseModal {
       await appDB.clearAudioCache();
       this.syncUI();
     });
+
+    // 프리셋 선택 이벤트
+    this.btnPresetWasd?.addEventListener('click', () => {
+      this.stopListening();
+      keyBindingManager.setPreset('wasd');
+      this.syncUI();
+    });
+
+    this.btnPresetArrows?.addEventListener('click', () => {
+      this.stopListening();
+      keyBindingManager.setPreset('arrows');
+      this.syncUI();
+    });
+
+    // 개별 키 커스텀 바인딩 클릭 이벤트
+    this.keybindButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = btn.getAttribute('data-action') as KeyAction;
+        if (!action) return;
+        this.startListening(action, btn);
+      });
+    });
+  }
+
+  private startListening(action: KeyAction, buttonEl: HTMLButtonElement): void {
+    this.stopListening();
+
+    this.listeningAction = action;
+    buttonEl.classList.add('listening');
+    buttonEl.textContent = '[입력 대기...]';
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.key === 'Escape') {
+        this.stopListening();
+        this.syncUI();
+        return;
+      }
+
+      // 새 키 코드로 커스텀 바인딩 설정
+      keyBindingManager.setCustomActionKey(action, e.code);
+      this.stopListening();
+      this.syncUI();
+    };
+
+    this.activeKeydownListener = onKeyDown;
+    window.addEventListener('keydown', onKeyDown, { capture: true, once: true });
+  }
+
+  private stopListening(): void {
+    if (this.activeKeydownListener) {
+      window.removeEventListener('keydown', this.activeKeydownListener, { capture: true });
+      this.activeKeydownListener = null;
+    }
+    this.listeningAction = null;
+    this.keybindButtons.forEach((btn) => btn.classList.remove('listening'));
   }
 
   public open(): void {
     this.syncUI();
-    this.modal?.classList.add('open');
+    this.showModal();
+  }
+
+  public override close(): void {
+    this.stopListening();
+    super.close();
   }
 
   public syncUI(): void {
@@ -126,5 +211,24 @@ export class SettingsModal extends BaseModal {
         this.storageStatsEl.textContent = `${mb}MB (로비 ${stats.lobbyAudioCount}곡 / 인게임 ${stats.inGameAudioCount}곡)`;
       }
     }).catch(() => {});
+
+    // 키 바인딩 UI 동기화
+    const preset = keyBindingManager.getPreset();
+    if (this.btnPresetWasd) {
+      this.btnPresetWasd.classList.toggle('active', preset === 'wasd');
+    }
+    if (this.btnPresetArrows) {
+      this.btnPresetArrows.classList.toggle('active', preset === 'arrows');
+    }
+    if (this.badgePresetCustom) {
+      this.badgePresetCustom.style.display = preset === 'custom' ? 'inline-block' : 'none';
+    }
+
+    this.keybindButtons.forEach((btn) => {
+      const action = btn.getAttribute('data-action') as KeyAction;
+      if (action && this.listeningAction !== action) {
+        btn.textContent = keyBindingManager.formatActionKeys(action);
+      }
+    });
   }
 }

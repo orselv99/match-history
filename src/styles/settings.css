@@ -1,6 +1,10 @@
 /* =====================================================================
    환경 설정 (Settings Modal) 스타일링 (Swiss Technical UI)
    ===================================================================== */
+#settings-modal {
+  z-index: 60;
+}
+
 .settings-modal-card {
   max-width: 680px;
   width: 92%;
@@ -152,3 +156,109 @@ input:checked + .switch-slider:before {
   transform: translateX(16px);
   background-color: var(--accent-spec);
 }
+
+/* =====================================================================
+   키 조작 설정 (Key Binding UI) 스타일링
+   ===================================================================== */
+.preset-btn-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.preset-choice-btn {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.preset-choice-btn:hover {
+  background: var(--surface-card);
+  color: var(--text-primary);
+  border-color: var(--accent-spec);
+}
+
+.preset-choice-btn.active {
+  background: rgba(6, 182, 212, 0.18);
+  border-color: var(--accent-spec);
+  color: var(--accent-spec);
+}
+
+.custom-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 3px 6px;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #f59e0b;
+  letter-spacing: 0.08em;
+}
+
+/* 키 바인딩 2열 그리드 */
+.keybind-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+  background: rgba(10, 12, 16, 0.4);
+  padding: 10px;
+  border: 1px solid var(--border-subtle);
+}
+
+.keybind-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.keybind-action-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.keybind-btn {
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  min-width: 52px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.keybind-btn:hover {
+  border-color: var(--accent-spec);
+  color: var(--accent-spec);
+  background: rgba(6, 182, 212, 0.1);
+}
+
+.keybind-btn.listening {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  color: #ef4444;
+  animation: pulse-danger 0.5s infinite alternate;
+}
+
+.keybind-help-note {
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+

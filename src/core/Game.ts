@@ -70,6 +70,11 @@ export class Game {
   public cameraController!: CameraController;
   public environmentManager!: EnvironmentManager;
 
+  // 좌/우 백미러 카메라 및 렌더링 상태
+  private leftMirrorCamera: THREE.PerspectiveCamera;
+  private rightMirrorCamera: THREE.PerspectiveCamera;
+  private shouldRenderMirrors: boolean = false;
+
   // 게임 세션 설정 메타데이터
   public currentDriverName: string = 'Apex Hunter';
   public currentTrackId: string = 'circuit_monaco';
@@ -95,6 +100,10 @@ export class Game {
     // 2. 카메라
     this.cameraController = new CameraController(65, initWidth / initHeight, 0.1, 1000);
     this.camera = this.cameraController.camera;
+
+    // 좌/우 백미러 카메라 (사이드 미러 비율 220:116, FOV 52도)
+    this.leftMirrorCamera = new THREE.PerspectiveCamera(52, 220 / 116, 0.2, 140);
+    this.rightMirrorCamera = new THREE.PerspectiveCamera(52, 220 / 116, 0.2, 140);
 
     // 3. 렌더러
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -220,6 +229,15 @@ export class Game {
     );
   }
 
+  public toggleHeadlights(): boolean {
+    const next = !this.playerVehicle.headlightsEnabled;
+    this.playerVehicle.setHeadlights(next);
+    if (this.mode === 'DEMO' && this.aiManager.agents[0]) {
+      this.aiManager.agents[0].vehicle.setHeadlights(next);
+    }
+    return next;
+  }
+
   /**
    * 선택된 서킷(Monaco, Silverstone, Nürburgring)을 인게임에 실시간 적용 및 재배치
    */
@@ -245,6 +263,7 @@ export class Game {
 
     this.lapTimer.reset();
     this.recorder.clear();
+    this.audio.pauseEngine();
     this.mode = 'DRIVING';
     this.raceState = 'READY';
     this.countdownTimer = 3.0;
@@ -298,8 +317,10 @@ export class Game {
     // 미니맵 드로잉
     this.drawMinimap();
 
-    // 렌더링
+    // 렌더링 (메인 뷰포트 + 좌/우 백미러 시저 렌더링)
+    this.renderer.setViewport(0, 0, this.renderer.domElement.width, this.renderer.domElement.height);
     this.renderer.render(this.scene, this.camera);
+    this.renderMirrors();
   }
 
   private updateCountdown(delta: number): void {
@@ -317,12 +338,8 @@ export class Game {
       this.audio.playCountdownBeep(true);
       this.raceState = 'RUNNING';
 
-      if (this.mode === 'DRIVING') {
-        this.lapTimer.start();
-        this.recorder.start();
-      } else if (this.mode === 'DEMO') {
-        this.recorder.start();
-      }
+      this.lapTimer.start();
+      this.recorder.start();
     }
   }
 
@@ -400,10 +417,17 @@ export class Game {
     }
 
     // 사운드 업데이트
-    this.audio.update(this.playerVehicle.getSpeedKmh(), this.playerVehicle.isDrifting, this.input.throttle);
+    if (this.raceState === 'FINISHED') {
+      this.audio.pauseEngine();
+    } else {
+      this.audio.update(this.playerVehicle.getSpeedKmh(), this.playerVehicle.isDrifting, this.input.throttle);
+    }
 
     // 카메라 추적 (체이스 카메라 & 충돌 쉐이크)
     this.cameraController.updateChase(delta, this.playerVehicle);
+
+    // 후방 추격 차량 감지 및 백미러 업데이트
+    this.updateRearviewMirrors(this.playerVehicle);
 
     // UI 상태 갱신
     this.emitUIState();
@@ -413,7 +437,9 @@ export class Game {
     const isRunning = this.raceState === 'RUNNING';
     this.aiManager.update(delta, isRunning);
 
-    const leader = this.aiManager.getLeaderAgent();
+    // 처음에 설정한 플레이어 차량(슬롯 0)을 타겟으로 고정 추적
+    const playerAgent = this.aiManager.agents[0];
+    const targetVehicle = playerAgent ? playerAgent.vehicle : this.playerVehicle;
     const activeCars = this.aiManager.agents.filter(a => a.vehicle.mesh.visible).map(a => a.vehicle);
 
     // AI 차량 간 충돌 감지 및 물리 반응
@@ -422,35 +448,50 @@ export class Game {
     // 드리프트 스키드마크 및 연기 업데이트
     this.skidMarkManager.update(delta, activeCars);
 
-    // 비 날씨 파티클 업데이트
-    this.environmentManager.updateRain(delta, leader.vehicle.position);
+    // 비 날씨 파티클 업데이트 (플레이어 차량 기준)
+    this.environmentManager.updateRain(delta, targetVehicle.position);
 
-    // 데모 중 주행 리플레이 데이터 레코딩 (선두 AI 차량 주행 데이터 수집)
-    if (isRunning) {
+    // 데모 중 주행 리플레이 데이터 레코딩 및 플레이어 차량 랩 타이머 갱신
+    if (isRunning && playerAgent) {
+      this.lapTimer.update(
+        deltaMs,
+        targetVehicle.position,
+        this.track.checkpoints,
+        (cpId) => this.audio.playCheckpointBeep()
+      );
+
       this.recorder.update(
         deltaMs,
-        leader.vehicle,
-        leader.currentLap,
+        targetVehicle,
+        playerAgent.currentLap,
         0, 0.9, 0
       );
 
-      // 3 Lap 완주 판정
-      if (this.aiManager.isAllFinished && this.raceState === 'RUNNING') {
+      // 플레이어 차량 또는 AI 전체 완주 판정
+      if ((playerAgent.isFinished || this.aiManager.isAllFinished || this.lapTimer.isFinished) && this.raceState === 'RUNNING') {
         this.raceState = 'FINISHED';
-        this.handleFinish(leader.vehicle, 'ai_champion', leader.name);
+        this.handleFinish(targetVehicle, 'player_demo', playerAgent.name);
       }
     }
 
-    // 1위(선두) AI 차량을 역동적으로 추적
-    this.cameraController.updateChase(delta, leader.vehicle);
+    // 처음 설정한 플레이어 차량을 일관되게 고정 추적 (순위가 바뀌어도 카메라 전환 없음)
+    this.cameraController.updateChase(delta, targetVehicle);
+
+    // 후방 추격 차량 감지 및 백미러 업데이트
+    this.updateRearviewMirrors(targetVehicle);
 
     // 오디오 사운드 업데이트
-    this.audio.update(leader.vehicle.getSpeedKmh(), false, isRunning ? 0.9 : 0.0);
+    if (this.raceState === 'FINISHED') {
+      this.audio.pauseEngine();
+    } else {
+      this.audio.update(targetVehicle.getSpeedKmh(), false, isRunning ? 0.9 : 0.0);
+    }
 
     this.emitUIState();
   }
 
   private updateReplay(delta: number, deltaMs: number): void {
+    this.deactivateMirrors();
     this.replayPlayer.update(deltaMs);
     this.cameraController.updateChase(delta, this.replayPlayer.ghostVehicle);
     this.emitUIState();
@@ -458,6 +499,7 @@ export class Game {
 
   private async handleFinish(targetVehicle: Vehicle, userId: string, nickname: string): Promise<void> {
     this.recorder.stop();
+    this.audio.pauseEngine();
     this.audio.duckBgm(true, 0.2);
     this.audio.playFinishFanfare();
     setTimeout(() => {
@@ -537,6 +579,7 @@ export class Game {
     this.mode = mode;
 
     if (mode === 'TITLE') {
+      this.audio.pauseEngine();
       this.audio.playLobbyBgm();
       this.playerVehicle.mesh.visible = true;
       this.resetCarToStart();
@@ -547,6 +590,7 @@ export class Game {
       this.lastBeepNumber = -1;
       this.titleCameraAngle = 0;
     } else if (mode === 'REPLAY') {
+      this.audio.pauseEngine();
       this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = false;
       this.aiManager.deactivate();
@@ -556,9 +600,20 @@ export class Game {
       this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = false;
       this.replayPlayer.pause();
+      // 슬롯 0을 위저드에서 설정한 플레이어 차량 스펙 및 컬러로 동기화
+      this.aiManager.setSlotConfig(
+        0,
+        this.playerVehicle.currentModelId as any,
+        this.playerVehicle.bodyColorHex,
+        this.currentDriverName || 'Apex Hunter'
+      );
       this.aiManager.activate(false); // 4대 차량 전체 그리드 정렬
+      if (this.aiManager.agents[0]) {
+        this.aiManager.agents[0].vehicle.setHeadlights(this.playerVehicle.headlightsEnabled);
+      }
       this.skidMarkManager.reset();
       this.collisionManager.reset();
+      this.lapTimer.reset();
       this.raceState = 'READY';
       this.countdownTimer = 3.0;
       this.lastBeepNumber = -1;
@@ -580,6 +635,7 @@ export class Game {
   private titleCameraAngle: number = 0;
 
   private updateTitle(delta: number): void {
+    this.deactivateMirrors();
     this.titleCameraAngle += delta * 0.2;
     const radius = 8.5;
     const height = 2.8;
@@ -611,9 +667,14 @@ export class Game {
     } else if (this.mode === 'REPLAY') {
       speed = this.replayPlayer.getCurrentTick()?.speedKmh || 0;
     } else if (this.mode === 'DEMO') {
-      const leader = this.aiManager.getLeaderAgent();
-      speed = leader.vehicle.getSpeedKmh();
-      lap = Math.min(3, leader.currentLap);
+      const playerAgent = this.aiManager.agents[0];
+      if (playerAgent) {
+        speed = playerAgent.vehicle.getSpeedKmh();
+        lap = Math.min(3, Math.max(playerAgent.currentLap, this.lapTimer.currentLap));
+      } else {
+        speed = 0;
+        lap = 1;
+      }
     }
 
     const rpmRatio = Math.min(1.0, (speed % 55) / 55);
@@ -637,7 +698,9 @@ export class Game {
       rpmRatio,
       currentLap: lap,
       totalLaps,
-      currentLapTimeStr: this.formatTime(this.lapTimer.currentLapTimeMs),
+      currentLapTimeStr: this.mode === 'REPLAY'
+        ? this.formatTime(this.replayPlayer.currentTimeMs)
+        : this.formatTime(this.lapTimer.currentLapTimeMs),
       bestLapTimeStr: this.lapTimer.bestLapMs !== Infinity ? this.formatTime(this.lapTimer.bestLapMs) : '--:--.---',
       sectorsMs: this.lapTimer.currentSectorTimes,
       isDrifting: this.mode === 'DRIVING' ? this.playerVehicle.isDrifting : false,
@@ -652,7 +715,7 @@ export class Game {
   private drawMinimap(): void {
     let targetVehicle = this.playerVehicle;
     if (this.mode === 'DEMO') {
-      targetVehicle = this.aiManager.getLeaderAgent().vehicle;
+      targetVehicle = this.aiManager.agents[0]?.vehicle || this.playerVehicle;
     } else if (this.mode === 'REPLAY') {
       targetVehicle = this.replayPlayer.ghostVehicle;
     }
@@ -687,5 +750,206 @@ export class Game {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  }
+
+  /**
+   * 백미러 비활성화 처리
+   */
+  private deactivateMirrors(): void {
+    if (!this.shouldRenderMirrors) return;
+    this.shouldRenderMirrors = false;
+    const leftFrame = document.getElementById('left-mirror-frame');
+    const rightFrame = document.getElementById('right-mirror-frame');
+    if (leftFrame) leftFrame.classList.remove('active', 'danger');
+    if (rightFrame) rightFrame.classList.remove('active', 'danger');
+  }
+
+  /**
+   * 후방 추격 차량 감지 및 좌/우 백미러 카메라/HUD 업데이트
+   */
+  private updateRearviewMirrors(targetVehicle: Vehicle): void {
+    const leftFrame = document.getElementById('left-mirror-frame');
+    const rightFrame = document.getElementById('right-mirror-frame');
+    const leftDistEl = document.getElementById('left-mirror-dist');
+    const rightDistEl = document.getElementById('right-mirror-dist');
+
+    if (!leftFrame || !rightFrame) {
+      this.shouldRenderMirrors = false;
+      return;
+    }
+
+    if (this.mode !== 'DRIVING' && this.mode !== 'DEMO') {
+      this.deactivateMirrors();
+      return;
+    }
+
+    const heading = targetVehicle.heading + targetVehicle.slipAngle;
+    const fwdX = Math.sin(heading);
+    const fwdZ = Math.cos(heading);
+    const rightX = Math.cos(heading);
+    const rightZ = -Math.sin(heading);
+
+    const targetPos = targetVehicle.position;
+
+    let nearestLeftDist = Infinity;
+    let nearestRightDist = Infinity;
+    let hasCarBehind = false;
+
+    // 라이벌 차량 목록 확인 (현재 타겟 차량 제외)
+    const opponents = this.aiManager.agents
+      .filter((a) => a.vehicle.mesh.visible && a.vehicle !== targetVehicle)
+      .map((a) => a.vehicle);
+
+    if (this.mode === 'DEMO' && targetVehicle !== this.playerVehicle && this.playerVehicle.mesh.visible) {
+      opponents.push(this.playerVehicle);
+    }
+
+    for (const opp of opponents) {
+      const dx = opp.position.x - targetPos.x;
+      const dz = opp.position.z - targetPos.z;
+      const fwdProj = dx * fwdX + dz * fwdZ;   // 양수면 전방, 음수면 후방
+      const latProj = dx * rightX + dz * rightZ; // 양수면 우측, 음수면 좌측
+      const totalDist = Math.hypot(dx, dz);
+
+      // 후방 55m 이내 및 트랙 도로 폭 반경(좌우 12m 이내)에 위치한 후방 차량만 백미러 유효 감지
+      if (fwdProj < 1.0 && fwdProj > -55.0 && Math.abs(latProj) < 12.0 && totalDist <= 55.0) {
+        hasCarBehind = true;
+
+        if (latProj <= 1.0) {
+          if (totalDist < nearestLeftDist) nearestLeftDist = totalDist;
+        }
+        if (latProj >= -1.0) {
+          if (totalDist < nearestRightDist) nearestRightDist = totalDist;
+        }
+      }
+    }
+
+    this.shouldRenderMirrors = hasCarBehind;
+
+    if (!hasCarBehind) {
+      leftFrame.classList.remove('active', 'danger');
+      rightFrame.classList.remove('active', 'danger');
+      return;
+    }
+
+    // 백미러 UI 활성화
+    leftFrame.classList.add('active');
+    rightFrame.classList.add('active');
+
+    // 좌측 미러 거리 및 위험 경고 (< 14m)
+    if (nearestLeftDist < Infinity) {
+      if (leftDistEl) leftDistEl.textContent = `${nearestLeftDist.toFixed(1)}m`;
+      if (nearestLeftDist < 14.0) {
+        leftFrame.classList.add('danger');
+      } else {
+        leftFrame.classList.remove('danger');
+      }
+    } else {
+      if (leftDistEl) leftDistEl.textContent = '--.-m';
+      leftFrame.classList.remove('danger');
+    }
+
+    // 우측 미러 거리 및 위험 경고 (< 14m)
+    if (nearestRightDist < Infinity) {
+      if (rightDistEl) rightDistEl.textContent = `${nearestRightDist.toFixed(1)}m`;
+      if (nearestRightDist < 14.0) {
+        rightFrame.classList.add('danger');
+      } else {
+        rightFrame.classList.remove('danger');
+      }
+    } else {
+      if (rightDistEl) rightDistEl.textContent = '--.-m';
+      rightFrame.classList.remove('danger');
+    }
+
+    // 3D 백미러 카메라 위치 및 시선 각도 설정
+    const mirrorHeight = targetPos.y + 0.82;
+    const mirrorFore = 0.25;
+    const mirrorSpan = 0.98;
+
+    // 좌측 미러 카메라: 좌측 뒤편을 향하며 바깥쪽으로 약 12도 펼쳐 사각지대 커버
+    const leftCamPos = new THREE.Vector3(
+      targetPos.x - rightX * mirrorSpan + fwdX * mirrorFore,
+      mirrorHeight,
+      targetPos.z - rightZ * mirrorSpan + fwdZ * mirrorFore
+    );
+    const leftLookTarget = new THREE.Vector3(
+      leftCamPos.x - fwdX * 25.0 - rightX * 4.5,
+      mirrorHeight - 0.2,
+      leftCamPos.z - fwdZ * 25.0 - rightZ * 4.5
+    );
+    this.leftMirrorCamera.position.copy(leftCamPos);
+    this.leftMirrorCamera.lookAt(leftLookTarget);
+
+    // 우측 미러 카메라: 우측 뒤편을 향하며 바깥쪽으로 약 12도 펼침
+    const rightCamPos = new THREE.Vector3(
+      targetPos.x + rightX * mirrorSpan + fwdX * mirrorFore,
+      mirrorHeight,
+      targetPos.z + rightZ * mirrorSpan + fwdZ * mirrorFore
+    );
+    const rightLookTarget = new THREE.Vector3(
+      rightCamPos.x - fwdX * 25.0 + rightX * 4.5,
+      mirrorHeight - 0.2,
+      rightCamPos.z - fwdZ * 25.0 + rightZ * 4.5
+    );
+    this.rightMirrorCamera.position.copy(rightCamPos);
+    this.rightMirrorCamera.lookAt(rightLookTarget);
+  }
+
+  /**
+   * Three.js 하드웨어 가속 뷰포트/시저(Scissor)를 이용한 초고속 백미러 렌더링
+   */
+  private renderMirrors(): void {
+    if (!this.shouldRenderMirrors) return;
+
+    const leftFrame = document.getElementById('left-mirror-frame');
+    const rightFrame = document.getElementById('right-mirror-frame');
+    if (!leftFrame || !rightFrame) return;
+
+    const leftViewArea = (leftFrame.querySelector('.mirror-view-area') as HTMLElement) || leftFrame;
+    const rightViewArea = (rightFrame.querySelector('.mirror-view-area') as HTMLElement) || rightFrame;
+
+    const containerRect = this.container.getBoundingClientRect();
+    const leftRect = leftViewArea.getBoundingClientRect();
+    const rightRect = rightViewArea.getBoundingClientRect();
+
+    if (leftRect.width <= 0 || leftRect.height <= 0) return;
+
+    const pixelRatio = this.renderer.getPixelRatio();
+
+    this.renderer.setScissorTest(true);
+
+    // 좌측 미러 뷰포트 (WebGL Y좌표는 캔버스 하단 기준)
+    const leftX = Math.round((leftRect.left - containerRect.left) * pixelRatio);
+    const leftY = Math.round((containerRect.bottom - leftRect.bottom) * pixelRatio);
+    const leftW = Math.round(leftRect.width * pixelRatio);
+    const leftH = Math.round(leftRect.height * pixelRatio);
+
+    if (leftW > 0 && leftH > 0) {
+      this.renderer.setViewport(leftX, leftY, leftW, leftH);
+      this.renderer.setScissor(leftX, leftY, leftW, leftH);
+      this.renderer.render(this.scene, this.leftMirrorCamera);
+    }
+
+    // 우측 미러 뷰포트
+    const rightX = Math.round((rightRect.left - containerRect.left) * pixelRatio);
+    const rightY = Math.round((containerRect.bottom - rightRect.bottom) * pixelRatio);
+    const rightW = Math.round(rightRect.width * pixelRatio);
+    const rightH = Math.round(rightRect.height * pixelRatio);
+
+    if (rightW > 0 && rightH > 0) {
+      this.renderer.setViewport(rightX, rightY, rightW, rightH);
+      this.renderer.setScissor(rightX, rightY, rightW, rightH);
+      this.renderer.render(this.scene, this.rightMirrorCamera);
+    }
+
+    // 메인 뷰포트 복원 & 시저 테스트 종료
+    this.renderer.setScissorTest(false);
+    this.renderer.setViewport(
+      0,
+      0,
+      this.renderer.domElement.width,
+      this.renderer.domElement.height
+    );
   }
 }

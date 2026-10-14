@@ -33,15 +33,29 @@ match-history/
 │   │   ├── gameConstants.ts        # 랜덤 드라이버명, 환경 라벨, 로딩 팁 문구
 │   │   ├── tracks.ts               # 서킷별 제어점(Catmull-Rom), 폭, 메타데이터
 │   │   └── vehicles.ts             # 차량 모델 스펙(가속/최고속/에어로) 및 AI 머신 설정
-│   ├── game/                       # 인게임 엔티티 및 게임플레이 로직
+│   ├── game/                       # 인게임 엔티티 및 게임플레이 물리/시뮬레이션 로직
 │   │   ├── AICarManager.ts         # 자율주행 AI 차량 에이전트 및 경로 추종
 │   │   ├── CircuitTrack.ts         # 동적 서킷 트랙 지오메트리, 연석, 그리드 및 체크포인트
 │   │   ├── CollisionManager.ts     # 차량 간 탄성 물리 충돌, 반발 임펄스, 카메라 쉐이크 및 스파크
-│   │   ├── HoneycombPicker.ts      # 127셀 헥사곤 허니콤 컬러 팔레트 컴포넌트
+│   │   ├── EnvironmentManager.ts   # 시간대 및 날씨별 태양/안개/비/앰비언스 환경 시뮬레이션
 │   │   ├── LapTimer.ts             # 랩 타임 및 섹터 기록 측정기
-│   │   ├── LoadingScreen.ts        # 초기화 및 인게임전 겸용 로딩 씬 제어기
+│   │   ├── MinimapRenderer.ts      # 2D 캔버스 실시간 미니맵 및 레이더 렌더러
 │   │   ├── SkidMarkManager.ts      # 실시간 드리프트 타이어 스키드마크 쿼드 및 타이어 연기
+│   │   ├── TrackDecorations.ts     # 그랜드스탠드, 방호벽, 관중석, 라이트 타워 절차적 장식물
 │   │   ├── Vehicle.ts              # 레이싱 머신 3D 메시, 물리, 헤드라이트/조명 및 리버리 컬러
+│   │   └── vehicleModels/          # 세부 차량 모델 지오메트리 빌더
+│   ├── ui/                         # DOM UI 컴포넌트, 모달 및 프리뷰 제어기
+│   │   ├── BaseModal.ts            # 공통 모달 베이스 추상 클래스
+│   │   ├── FinishModal.ts          # 레이스 완주 및 결과 요약 모달
+│   │   ├── GameSetupWizard.ts      # 4단계 레이스 세팅 위저드 모달
+│   │   ├── HoneycombPicker.ts      # 127셀 헥사곤 허니콤 컬러 팔레트 컴포넌트
+│   │   ├── HUDController.ts        # 속도계, 기어, 랩 타임 HUD 컨트롤러
+│   │   ├── LoadingScreen.ts        # 초기화 및 인게임전 겸용 로딩 씬 제어기
+│   │   ├── MatchHistoryModal.ts    # 전적 검색 및 리더보드 모달
+│   │   ├── ModalManager.ts         # 모달 상태 관리 및 오케스트레이션
+│   │   ├── PauseModal.ts           # 인게임 일시정지 메뉴 모달
+│   │   ├── ReplayBarController.ts  # 리플레이 하단 재생바 컨트롤러
+│   │   ├── SettingsModal.ts        # 그래픽/오디오/조작 환경설정 모달
 │   │   └── VehiclePreview.ts       # 게임 설정 Step 2용 독립 3D 턴테이블 뷰어
 │   ├── replay/                     # 30Hz 틱 레코딩 및 압축 코덱
 │   │   ├── ReplayCodec.ts          # 양자화 및 Gzip/Deflate 압축 코덱

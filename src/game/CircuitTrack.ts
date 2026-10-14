@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TRACK_DEFINITIONS, TrackMetadata } from '../data/circuitTracks.ts';
+import { TrackDecorations } from './TrackDecorations.ts';
 
 export interface CheckpointTrigger {
   id: number;
@@ -56,7 +57,7 @@ export class CircuitTrack {
 
     // 4. 지오메트리 및 환경 재빌드
     this.buildTrackMesh();
-    this.buildGround();
+    this.group.add(TrackDecorations.buildGround());
     this.setupCheckpoints();
 
     return def;
@@ -120,7 +121,7 @@ export class CircuitTrack {
     this.group.add(roadMesh);
 
     // 연석(Curbs) 및 트랙 도로 마킹 추가
-    this.buildCurbs(roadPoints, halfWidth);
+    this.group.add(TrackDecorations.buildCurbs(roadPoints, halfWidth));
     this.buildRoadMarkings(roadPoints, halfWidth);
   }
 
@@ -255,129 +256,7 @@ export class CircuitTrack {
     this.group.add(centerLine);
 
     // 4. 스타팅 그리드 마킹 & 체커 라인
-    this.buildStartingGrids(points);
-  }
-
-  private buildStartingGrids(points: THREE.Vector3[]): void {
-    const trackLength = this.trackCurve.getLength();
-    const whiteMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc, side: THREE.DoubleSide, depthWrite: true });
-    const blackMat = new THREE.MeshBasicMaterial({ color: 0x121316, side: THREE.DoubleSide, depthWrite: true });
-    const specMat = new THREE.MeshBasicMaterial({ color: 0xc45a72, side: THREE.DoubleSide, depthWrite: true });
-
-    // 1) 결승선 체커 라인 (가로로 반듯하게 정렬된 2행 체커보드 스트립)
-    const startPt = this.trackCurve.getPointAt(0);
-    const startTangent = this.trackCurve.getTangentAt(0).normalize();
-    const startRight = new THREE.Vector3(-startTangent.z, 0, startTangent.x).normalize();
-
-    // 양쪽 외곽 실선 안쪽에 딱 맞게 정렬 (실선 침범 방지: 12.9m)
-    const checkerTotalW = this.trackWidth - 2 * (0.15 + 0.35 + 0.05);
-    const cols = 18;
-    const rows = 2;
-    const blockW = checkerTotalW / cols; // 가로 블록 폭
-    const blockL = 0.55; // 진행 방향 길이
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const isWhite = (r + c) % 2 === 0;
-        const mat = isWhite ? whiteMat : blackMat;
-
-        // 반듯한 사각형 버텍스를 startTangent와 startRight 축으로 직접 계산 (회전 왜곡 없음)
-        const leftDist = - checkerTotalW / 2 + c * blockW;
-        const rightDist = leftDist + blockW;
-        const backDist = (r - rows / 2) * blockL;
-        const frontDist = backDist + blockL;
-
-        const p1 = new THREE.Vector3().copy(startPt).addScaledVector(startRight, leftDist).addScaledVector(startTangent, backDist);
-        const p2 = new THREE.Vector3().copy(startPt).addScaledVector(startRight, rightDist).addScaledVector(startTangent, backDist);
-        const p3 = new THREE.Vector3().copy(startPt).addScaledVector(startRight, leftDist).addScaledVector(startTangent, frontDist);
-        const p4 = new THREE.Vector3().copy(startPt).addScaledVector(startRight, rightDist).addScaledVector(startTangent, frontDist);
-
-        const quadGeom = new THREE.BufferGeometry();
-        quadGeom.setAttribute('position', new THREE.Float32BufferAttribute([
-          p1.x, 0.08, p1.z,
-          p2.x, 0.08, p2.z,
-          p3.x, 0.08, p3.z,
-          p4.x, 0.08, p4.z
-        ], 3));
-        quadGeom.setIndex([0, 1, 2, 1, 3, 2]);
-        quadGeom.computeVertexNormals();
-        const blockMesh = new THREE.Mesh(quadGeom, mat);
-        this.group.add(blockMesh);
-      }
-    }
-
-    // 2) 4개 슬롯 코너 브래킷 「 」 마킹
-    // 슬롯 1 (Pole: -2.2m, 결승선 5m 뒤), 슬롯 2 (+2.2m, 12m 뒤), 슬롯 3 (-2.2m, 19m 뒤), 슬롯 4 (+2.2m, 26m 뒤)
-    const slotConfigs = [
-      { distBehind: 5.0, lane: -2.2, isPole: true },
-      { distBehind: 12.0, lane: 2.2, isPole: false },
-      { distBehind: 19.0, lane: -2.2, isPole: false },
-      { distBehind: 26.0, lane: 2.2, isPole: false },
-    ];
-
-    slotConfigs.forEach((slot, idx) => {
-      const t = (1.0 - (slot.distBehind / trackLength)) % 1.0;
-      const pt = this.trackCurve.getPointAt(t);
-      const tangent = this.trackCurve.getTangentAt(t).normalize();
-      const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-
-      const center = new THREE.Vector3().copy(pt).addScaledVector(right, slot.lane);
-      // 모든 슬롯 코너 브래킷 마킹을 공식 모터스포츠 규격의 선명한 화이트로 통일
-      const mat = whiteMat;
-
-      // 차량 크기에 맞춘 코너 브래킷 규격
-      const halfW = 1.35; // 폭 반경
-      const halfL = 2.4;  // 길이 반경
-      const bracketArm = 0.7; // 브래킷 가지 길이
-      const bThick = 0.12;   // 선 두께
-
-      // 4개 코너 브래킷: [전방좌측 「], [전방우측 」], [후방좌측 ㄴ], [후방우측 ┙]
-      const corners = [
-        { sideX: -1, sideZ: 1 },  // 전방 좌측 「
-        { sideX: 1, sideZ: 1 },   // 전방 우측 」
-        { sideX: -1, sideZ: -1 }, // 후방 좌측 ㄴ
-        { sideX: 1, sideZ: -1 },  // 후방 우측 ┙
-      ];
-
-      corners.forEach(c => {
-        // 코너 원점
-        const cornerOrigin = new THREE.Vector3()
-          .copy(center)
-          .addScaledVector(right, c.sideX * halfW)
-          .addScaledVector(tangent, c.sideZ * halfL);
-
-        // 1. 가로 바
-        const hStart = new THREE.Vector3().copy(cornerOrigin);
-        const hEnd = new THREE.Vector3().copy(cornerOrigin).addScaledVector(right, -c.sideX * bracketArm);
-        this.addMarkingStrip(hStart, hEnd, tangent, bThick, mat);
-
-        // 2. 세로 바
-        const vStart = new THREE.Vector3().copy(cornerOrigin);
-        const vEnd = new THREE.Vector3().copy(cornerOrigin).addScaledVector(tangent, -c.sideZ * bracketArm);
-        this.addMarkingStrip(vStart, vEnd, right, bThick, mat);
-      });
-    });
-  }
-
-  private addMarkingStrip(start: THREE.Vector3, end: THREE.Vector3, normalVec: THREE.Vector3, thick: number, mat: THREE.Material): void {
-    const halfT = thick / 2;
-    const p1 = new THREE.Vector3().copy(start).addScaledVector(normalVec, -halfT);
-    const p2 = new THREE.Vector3().copy(start).addScaledVector(normalVec, halfT);
-    const p3 = new THREE.Vector3().copy(end).addScaledVector(normalVec, -halfT);
-    const p4 = new THREE.Vector3().copy(end).addScaledVector(normalVec, halfT);
-
-    const geom = new THREE.BufferGeometry();
-    geom.setAttribute('position', new THREE.Float32BufferAttribute([
-      p1.x, 0.08, p1.z,
-      p2.x, 0.08, p2.z,
-      p3.x, 0.08, p3.z,
-      p4.x, 0.08, p4.z
-    ], 3));
-    geom.setIndex([0, 1, 2, 1, 3, 2]);
-    geom.computeVertexNormals();
-
-    const strip = new THREE.Mesh(geom, mat);
-    this.group.add(strip);
+    this.group.add(TrackDecorations.buildStartingGrids(this.trackCurve, this.trackWidth));
   }
 
   /**

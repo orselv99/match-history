@@ -1,9 +1,11 @@
 import { Game, GameUIState, GameMode } from './core/Game.ts';
 import { MatchSummaryMetadata } from './replay/ReplayTypes.ts';
 import { ReplayCodec } from './replay/ReplayCodec.ts';
-import { LoadingScreen } from './game/LoadingScreen.ts';
+import { LoadingScreen } from './ui/LoadingScreen.ts';
 import { TRACK_DEFINITIONS } from './data/circuitTracks.ts';
 import { VEHICLE_MODELS } from './data/vehicles.ts';
+import { INGAME_BGM_TRACKS, BgmTrack } from './data/audio.ts';
+import { keyBindingManager } from './core/KeyBindingManager.ts';
 
 // UI Controllers
 import { GameSetupWizard, RaceSetupConfig } from './ui/GameSetupWizard.ts';
@@ -30,22 +32,13 @@ window.addEventListener('DOMContentLoaded', () => {
   const settingsModal = new SettingsModal(game.audio);
   const replayBar = new ReplayBarController(game.replayPlayer);
 
-  // 모드 헤더 태그 및 버튼 DOM
-  const modeTag = document.getElementById('mode-tag')!;
-  const modeText = document.getElementById('mode-text')!;
+  // 모드 헤더 태그 DOM (있을 경우만 동기화)
+  const modeTag = document.getElementById('mode-tag');
+  const modeText = document.getElementById('mode-text');
   const titleSceneOverlay = document.getElementById('title-scene-overlay')!;
-  const btnModeTitle = document.getElementById('btn-mode-title')!;
-  const btnModeDrive = document.getElementById('btn-mode-drive')!;
-  const btnModeDemo = document.getElementById('btn-mode-demo')!;
-  const btnModeReplay = document.getElementById('btn-mode-replay')!;
 
   const setModeUI = (mode: GameMode) => {
     game.setMode(mode);
-
-    btnModeTitle?.classList.toggle('active', mode === 'TITLE');
-    btnModeDrive?.classList.toggle('active', mode === 'DRIVING');
-    btnModeDemo?.classList.toggle('active', mode === 'DEMO');
-    btnModeReplay?.classList.toggle('active', mode === 'REPLAY');
 
     if (mode === 'TITLE') {
       document.body.classList.add('in-title-mode');
@@ -165,44 +158,42 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // 7. 로비 & 헤더 버튼 바인딩
+  // 7. 로비 & HUD 버튼 바인딩
   document.getElementById('title-btn-start')?.addEventListener('click', () => wizard.open());
   document.getElementById('title-btn-history')?.addEventListener('click', () => matchHistoryModal.open());
   document.getElementById('title-btn-settings')?.addEventListener('click', () => settingsModal.open());
-  document.getElementById('btn-top-history')?.addEventListener('click', () => matchHistoryModal.open());
-  document.getElementById('btn-settings')?.addEventListener('click', () => settingsModal.open());
+  document.getElementById('btn-hud-pause')?.addEventListener('click', openPauseDialog);
 
-  btnModeTitle?.addEventListener('click', () => setModeUI('TITLE'));
-  btnModeDrive?.addEventListener('click', () => setModeUI('DRIVING'));
-  btnModeDemo?.addEventListener('click', () => setModeUI('DEMO'));
-  btnModeReplay?.addEventListener('click', () => setModeUI('REPLAY'));
-  document.getElementById('btn-reset')?.addEventListener('click', () => game.resetCarToStart());
-
-  // BGM 변경 시 배지 및 UI 동기화 리스너
+  // BGM 변경 시 상단 중앙 마키 티커 및 로비 UI 동기화
   const lobbyBgmTitle = document.getElementById('lobby-bgm-title');
-  const hudBgmTitle = document.getElementById('hud-bgm-title');
-  game.audio.onBgmChange = (track, scene) => {
-    if (lobbyBgmTitle && scene === 'lobby') lobbyBgmTitle.textContent = track.title;
-    if (hudBgmTitle && scene === 'ingame') hudBgmTitle.textContent = track.title;
+  const hudBgmText = document.getElementById('hud-bgm-text');
+  const hudBgmTextDup = document.getElementById('hud-bgm-text-dup');
+
+  const updateHudBgmTicker = (track: BgmTrack) => {
+    const formatted = `🎵 OST // <span class="ost-title">${track.title}</span> <span class="ost-sep">—</span> <span class="ost-artist">${track.artist || 'APEX SOUNDWORKS'}</span> <span class="ost-sep">///</span> <span class="ost-genre">${track.genre || 'ORIGINAL SOUNDTRACK'}</span> <span class="ost-sep">///</span>`;
+    if (hudBgmText) hudBgmText.innerHTML = formatted;
+    if (hudBgmTextDup) hudBgmTextDup.innerHTML = formatted;
   };
+
+  game.audio.onBgmChange = (track, scene) => {
+    if (lobbyBgmTitle && scene === 'lobby') lobbyBgmTitle.textContent = `${track.title} — ${track.artist}`;
+    if (scene === 'ingame') {
+      updateHudBgmTicker(track);
+    }
+  };
+
+  // 초기 BGM 마키 텍스트 설정
+  updateHudBgmTicker(INGAME_BGM_TRACKS[0]);
+
   document.getElementById('btn-next-lobby-bgm')?.addEventListener('click', (e) => {
     e.stopPropagation();
     game.audio.init();
     game.audio.playNextLobbyBgm();
   });
-  document.getElementById('btn-next-hud-bgm')?.addEventListener('click', (e) => {
+  document.getElementById('hud-bgm-marquee')?.addEventListener('click', (e) => {
     e.stopPropagation();
     game.audio.init();
     game.audio.playNextInGameBgm();
-  });
-
-  // 전체화면 토글
-  document.getElementById('btn-fullscreen')?.addEventListener('click', () => {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
-    } else {
-      document.exitFullscreen().catch(() => {});
-    }
   });
 
   // 8. 리모트 리플레이 브릿지 (Deep link & postMessage)
@@ -237,21 +228,26 @@ window.addEventListener('DOMContentLoaded', () => {
   // 9. 키보드 단축키 핸들러
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (pauseModal.isOpen()) {
-        pauseModal.close();
-        game.resume();
-      } else if (finishModal.isOpen()) {
-        finishModal.close();
-        setModeUI('TITLE');
-      } else if (ModalManager.closeTopModal()) {
-        // 활성화된 모달(위저드, 설정, 전적 등)을 중앙 매니저가 스택 순으로 안전하게 닫음
+      const closed = ModalManager.closeTopModal();
+      if (closed) {
+        if (closed === pauseModal) {
+          game.resume();
+        } else if (closed === finishModal) {
+          setModeUI('TITLE');
+        }
       } else if (game.mode === 'DRIVING' || game.mode === 'DEMO' || game.mode === 'REPLAY') {
         openPauseDialog();
       }
     } else if (e.key === 'r' || e.key === 'R') {
-      if (pauseModal.isOpen()) {
-        pauseModal.close();
-        game.restartRace();
+      if (!(e.target instanceof HTMLInputElement)) {
+        if (pauseModal.isOpen()) pauseModal.close();
+        if (game.mode === 'DRIVING' || game.mode === 'DEMO') {
+          game.restartRace();
+        }
+      }
+    } else if (keyBindingManager.isActionKey('headlights', e.code) || e.key === 'h' || e.key === 'H') {
+      if (!(e.target instanceof HTMLInputElement)) {
+        game.toggleHeadlights();
       }
     } else if (e.key === 'o' || e.key === 'O') {
       if (settingsModal.isOpen()) settingsModal.close();

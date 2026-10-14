@@ -1,10 +1,11 @@
-import { IModal } from './BaseModal.ts';
+import type { IModal } from './BaseModal.ts';
 
 /**
- * 활성 모달 스택 및 ESC 키 닫기 이벤트 중앙 제어 관리자
+ * 활성 모달 계층 스택 및 ESC 키 닫기 이벤트 중앙 제어 관리자
  */
 export class ModalManager {
   private static registeredModals: IModal<any>[] = [];
+  private static activeStack: IModal<any>[] = [];
 
   public static register<M extends IModal<any>>(modal: M): M {
     if (!this.registeredModals.includes(modal)) {
@@ -13,27 +14,53 @@ export class ModalManager {
     return modal;
   }
 
+  public static push(modal: IModal<any>): void {
+    const idx = this.activeStack.indexOf(modal);
+    if (idx !== -1) {
+      this.activeStack.splice(idx, 1);
+    }
+    this.activeStack.push(modal);
+    this.updateZIndices();
+  }
+
+  public static remove(modal: IModal<any>): void {
+    const idx = this.activeStack.indexOf(modal);
+    if (idx !== -1) {
+      this.activeStack.splice(idx, 1);
+    }
+    modal.resetZIndex?.();
+    this.updateZIndices();
+  }
+
+  private static updateZIndices(): void {
+    this.activeStack.forEach((m, i) => {
+      // Base z-index 50, 상위 중첩 모달일수록 +10씩 높은 z-index 부여하여 완벽한 시각적/인터랙션 계층 보장
+      m.setZIndex?.(50 + (i + 1) * 10);
+    });
+  }
+
   /**
    * 열려있는 최상단 모달을 닫음 (ESC 키 처리 시 유용)
-   * @returns 모달을 닫았으면 true, 열려있는 모달이 없었으면 false
+   * @returns 닫힌 모달 인스턴스 (열려있는 모달이 없었으면 null)
    */
-  public static closeTopModal(): boolean {
-    // 역순(나중에 등록되거나 활성화된 모달부터) 검사
-    for (let i = this.registeredModals.length - 1; i >= 0; i--) {
-      const modal = this.registeredModals[i];
-      if (modal.isOpen()) {
-        modal.close();
-        return true;
-      }
+  public static closeTopModal(): IModal<any> | null {
+    if (this.activeStack.length > 0) {
+      const top = this.activeStack[this.activeStack.length - 1];
+      top.close();
+      return top;
     }
-    return false;
+    return null;
+  }
+
+  public static hasActiveModal(): boolean {
+    return this.activeStack.length > 0;
+  }
+
+  public static getTopModal(): IModal<any> | null {
+    return this.activeStack.length > 0 ? this.activeStack[this.activeStack.length - 1] : null;
   }
 
   public static getActiveModal(): IModal<any> | null {
-    for (let i = this.registeredModals.length - 1; i >= 0; i--) {
-      const modal = this.registeredModals[i];
-      if (modal.isOpen()) return modal;
-    }
-    return null;
+    return this.getTopModal();
   }
 }

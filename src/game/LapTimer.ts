@@ -12,7 +12,7 @@ export interface LapResult {
  */
 export class LapTimer {
   public currentLap: number = 1;
-  public totalLaps: number = 2; // 기본 2랩 완주
+  public totalLaps: number = 3; // 기본 3랩 완주
   public isStarted: boolean = false;
   public isFinished: boolean = false;
 
@@ -27,7 +27,7 @@ export class LapTimer {
   private lastCheckpointTimestamp: number = 0;
   private currentSectorIndex: number = 0;
 
-  constructor(totalLaps: number = 2) {
+  constructor(totalLaps: number = 3) {
     this.totalLaps = totalLaps;
   }
 
@@ -35,15 +35,18 @@ export class LapTimer {
     if (this.isFinished) return;
 
     if (!this.isStarted) {
-      // 차량이 움직이기 시작하면 타이머 가동
       return;
     }
 
     this.currentLapTimeMs += deltaMs;
     this.totalTimeMs += deltaMs;
 
+    if (!checkpoints || checkpoints.length === 0) return;
+
     // 현재 대기 중인 체크포인트 감지
     const targetCp = checkpoints[this.nextCheckpointIndex];
+    if (!targetCp || !targetCp.position) return;
+
     const distSq = (carPos.x - targetCp.position.x) ** 2 + (carPos.z - targetCp.position.z) ** 2;
 
     if (distSq < targetCp.radius ** 2) {

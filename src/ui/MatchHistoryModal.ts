@@ -64,6 +64,6 @@ export class MatchHistoryModal extends BaseModal {
   }
 
   public open(): void {
-    this.modal?.classList.add('open');
+    this.showModal();
   }
 }

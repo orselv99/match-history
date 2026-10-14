@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Vehicle } from './Vehicle';
+import { Vehicle } from '../game/Vehicle.ts';
 
 /**
  * 게임 설정 마법사 Step 2용 독립 Three.js 턴테이블 3D 뷰어

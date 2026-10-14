@@ -52,7 +52,7 @@
 
   <!-- 0. 로비 씬 오버레이 (Title Scene & Main Menu) -->
   <div id="title-scene-overlay" class="title-scene-overlay active">
-    <!-- 로비 화면 배경 스크린샷 플레이스홀더 (나중에 인게임 캡처 에셋 삽입 예정) -->
+    <!-- 로비 화면 배경 스크린샷 플레이스홀더 (임시 배경화면) -->
     <div class="title-bg-placeholder">
       <div class="loading-bg-grid"></div>
       <div class="screenshot-placeholder-badge">
@@ -125,93 +125,81 @@
   <!-- 레이싱 대시보드 HUD 오버레이 -->
   <div id="ui-overlay">
     <!-- 1. 상단 글로벌 바 (Hairline Grid) -->
+    <!-- 1. 최상단 BGM 마키 티커 (상단 중앙, 무배경, 무테두리, 좌->우 연속 흐름) -->
     <header class="top-bar">
-      <div class="brand-badge">
-        <span class="brand-title">RACING GAME</span>
-        <div id="mode-tag" class="mode-tag">
-          <span class="pulse-dot"></span>
-          <span id="mode-text">LIVE_DRIVING</span>
+      <div id="hud-bgm-marquee" class="hud-bgm-marquee interactive" title="현재 재생 음악 (클릭 시 다음 곡으로 스킵)">
+        <div class="marquee-track">
+          <span id="hud-bgm-text" class="marquee-item"></span>
+          <span id="hud-bgm-text-dup" class="marquee-item"></span>
         </div>
       </div>
-
-      <!-- 인게임 BGM 재생 상태 및 다음 곡 스킵 위젯 -->
-      <div id="hud-bgm-widget" class="hud-bgm-badge" title="현재 재생 음악 (클릭 시 다음 곡으로 스킵)">
-        <span class="bgm-icon">🎵</span>
-        <span class="bgm-label">OST //</span>
-        <span id="hud-bgm-title" class="bgm-title-text">Apex Velocity</span>
-        <button id="btn-next-hud-bgm" class="bgm-skip-btn" title="다음 곡 재생 (Next Track)">⏭</button>
-      </div>
-
-      <nav class="top-actions interactive">
-        <button id="btn-mode-title" class="glass-btn active" title="로비 메뉴로 나가기 (ESC)">
-          <span>MENU // 로비</span>
-        </button>
-        <button id="btn-mode-drive" class="glass-btn" title="직접 운전 모드">
-          <span>DRIVE // 주행</span>
-        </button>
-        <button id="btn-mode-demo" class="glass-btn" title="컴퓨터 4대 자동주행 데모">
-          <span>DEMO // AI 4대</span>
-        </button>
-        <button id="btn-mode-replay" class="glass-btn" title="3D 리플레이 보기">
-          <span>REPLAY // 3D</span>
-        </button>
-        <button id="btn-top-history" class="glass-btn" title="전적 검색 & 글로벌 리더보드 (3단계)">
-          <span>ARCHIVE // 전적</span>
-        </button>
-        <button id="btn-settings" class="glass-btn" title="환경 설정 (O)">
-          <span>SETTINGS // 설정</span>
-        </button>
-        <button id="btn-fullscreen" class="glass-btn" title="전체화면 토글 (F11)">
-          <span>⛶ FULLSCREEN</span>
-        </button>
-        <button id="btn-reset" class="glass-btn" title="초기화 (R)">
-          <span>RESET [R]</span>
-        </button>
-      </nav>
     </header>
 
-    <!-- 2. HUD 상단 정보 (랩타임 & 미니맵) -->
-    <section class="hud-grid">
-      <!-- 랩 타이머 & 섹터 카드 -->
-      <div class="lap-card">
-        <div class="lap-header">
-          <span id="lap-circuit-title" class="lap-title-text">CIRCUIT_MONACO</span>
-          <span id="lap-counter" class="lap-count">LAP 01 / 02</span>
-        </div>
-        <div class="lap-body">
-          <div class="time-row">
-            <span class="time-label">TIME // CURRENT</span>
-            <span id="current-lap-time" class="time-value">00:00.000</span>
-          </div>
-          <div class="time-row">
-            <span class="time-label">TIME // BEST</span>
-            <span id="best-lap-time" class="time-value best">--:--.---</span>
-          </div>
-          <div class="sectors-row">
-            <div id="sector-1" class="sector-chip">S1: --.-s</div>
-            <div id="sector-2" class="sector-chip">S2: --.-s</div>
-            <div id="sector-3" class="sector-chip">S3: --.-s</div>
-          </div>
-        </div>
-      </div>
+    <!-- 2. 우측 상단 실시간 미니맵 -->
+    <div id="minimap-container" class="hud-top-right minimap-wrapper">
+      <canvas id="minimap-canvas" width="160" height="160"></canvas>
+    </div>
 
-      <!-- 실시간 미니맵 -->
-      <div class="minimap-wrapper">
-        <canvas id="minimap-canvas" width="160" height="160"></canvas>
+    <!-- 3. 좌/우 사이드 백미러 (후방에 다른 차량이 있을 때 자동 활성화) -->
+    <div id="left-mirror-frame" class="side-mirror-frame left-mirror">
+      <div class="mirror-header">
+        <span class="mirror-tag">◀ REAR_L</span>
+        <span id="left-mirror-dist" class="mirror-dist">--.-m</span>
       </div>
-    </section>
+      <div class="mirror-view-area"></div>
+      <div class="mirror-footer">
+        <span class="mirror-blindspot" id="left-blindspot-indicator">BLIND SPOT</span>
+      </div>
+    </div>
 
-    <!-- 3. 중앙 카운트다운 (게임 스타일 순수 숫자만 표시) -->
+    <div id="right-mirror-frame" class="side-mirror-frame right-mirror">
+      <div class="mirror-header">
+        <span id="right-mirror-dist" class="mirror-dist">--.-m</span>
+        <span class="mirror-tag">REAR_R ▶</span>
+      </div>
+      <div class="mirror-view-area"></div>
+      <div class="mirror-footer">
+        <span class="mirror-blindspot" id="right-blindspot-indicator">BLIND SPOT</span>
+      </div>
+    </div>
+
+    <!-- 4. 중앙 카운트다운 (게임 스타일 순수 숫자만 표시) -->
     <div id="countdown-overlay" class="countdown-overlay">
       <div id="countdown-number" class="countdown-game-number">3</div>
     </div>
 
-    <!-- 4. HUD 하단 (조작 가이드, 리플레이 컨트롤러, 디지털 계기판) -->
+    <!-- 5. HUD 하단 (좌측 스택: 서킷정보 + 키안내 동일 너비 통일, 중앙 리플레이, 우측 계기판) -->
     <footer class="bottom-hud">
-      <!-- 조작 가이드 -->
-      <div class="control-guide">
-        <div><span class="key-badge">W</span> <span class="key-badge">↑</span> THROTTLE &nbsp;|&nbsp; <span class="key-badge">S</span> <span class="key-badge">↓</span> BRAKE/REV</div>
-        <div style="margin-top: 4px;"><span class="key-badge">A</span> <span class="key-badge">D</span> STEER &nbsp;|&nbsp; <span class="key-badge">SPACE</span> DRIFT &nbsp;|&nbsp; <span class="key-badge">R</span> RESET</div>
+      <!-- 좌측 하단 통합 스택: 게임서킷정보 바로 아래 키안내 배치 (너비 통일) -->
+      <div class="bottom-left-stack">
+        <!-- 랩 타이머 & 서킷 정보 카드 -->
+        <div class="lap-card">
+          <div class="lap-header">
+            <span id="lap-circuit-title" class="lap-title-text">CIRCUIT_MONACO</span>
+            <span id="lap-counter" class="lap-count">LAP 01 / 02</span>
+          </div>
+          <div class="lap-body">
+            <div class="time-row">
+              <span class="time-label">TIME // CURRENT</span>
+              <span id="current-lap-time" class="time-value">00:00.000</span>
+            </div>
+            <div class="time-row">
+              <span class="time-label">TIME // BEST</span>
+              <span id="best-lap-time" class="time-value best">--:--.---</span>
+            </div>
+            <div class="sectors-row">
+              <div id="sector-1" class="sector-chip">S1: --.-s</div>
+              <div id="sector-2" class="sector-chip">S2: --.-s</div>
+              <div id="sector-3" class="sector-chip">S3: --.-s</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 조작 가이드 (서킷정보와 동일한 너비로 하단 정렬, 컴팩트 2줄) -->
+        <div class="control-guide">
+          <div><span class="key-badge">W</span> THROTTLE &nbsp;|&nbsp; <span class="key-badge">S</span> BRAKE/REV</div>
+          <div style="margin-top: 4px;"><span class="key-badge">A</span> <span class="key-badge">D</span> STEER &nbsp;|&nbsp; <span class="key-badge">SPACE</span> DRIFT &nbsp;|&nbsp; <span class="key-badge">ESC</span> MENU</div>
+        </div>
       </div>
 
       <!-- 리플레이 전용 컨트롤러 타임라인 바 -->
@@ -408,6 +396,61 @@
                 <span class="switch-slider"></span>
               </label>
             </div>
+          </div>
+        </div>
+
+        <!-- 섹션 3: 키보드 조작 설정 (KEY BINDINGS) -->
+        <div class="settings-group" style="margin-top: 20px;">
+          <div class="settings-group-title">CONTROLS // 키보드 조작 설정</div>
+
+          <!-- 프리셋 선택 버튼 그룹 -->
+          <div class="setting-row">
+            <div class="setting-label-col">
+              <span class="setting-name">CONTROL PRESET</span>
+              <span class="setting-desc">기본 프리셋 또는 완전 사용자 지정</span>
+            </div>
+            <div class="setting-control-col">
+              <div class="preset-btn-group">
+                <button type="button" id="btn-preset-wasd" class="preset-choice-btn active">WASD + R_SHIFT</button>
+                <button type="button" id="btn-preset-arrows" class="preset-choice-btn">화살표 + L_SHIFT</button>
+                <span id="badge-preset-custom" class="custom-badge" style="display: none;">CUSTOM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 각 동작별 커스텀 키 바인딩 목록 (클릭하여 새 키 지정) -->
+          <div class="keybind-grid" id="keybind-grid">
+            <div class="keybind-item">
+              <span class="keybind-action-label">가속 (THROTTLE)</span>
+              <button type="button" class="keybind-btn" data-action="throttle">W</button>
+            </div>
+            <div class="keybind-item">
+              <span class="keybind-action-label">감속/후진 (BRAKE/REV)</span>
+              <button type="button" class="keybind-btn" data-action="brake">S, R_SHIFT</button>
+            </div>
+            <div class="keybind-item">
+              <span class="keybind-action-label">좌회전 (STEER LEFT)</span>
+              <button type="button" class="keybind-btn" data-action="steerLeft">A</button>
+            </div>
+            <div class="keybind-item">
+              <span class="keybind-action-label">우회전 (STEER RIGHT)</span>
+              <button type="button" class="keybind-btn" data-action="steerRight">D</button>
+            </div>
+            <div class="keybind-item">
+              <span class="keybind-action-label">드리프트 (DRIFT)</span>
+              <button type="button" class="keybind-btn" data-action="handbrake">SPACE, R_SHIFT</button>
+            </div>
+            <div class="keybind-item">
+              <span class="keybind-action-label">서킷 복귀 (RESET)</span>
+              <button type="button" class="keybind-btn" data-action="reset">R</button>
+            </div>
+            <div class="keybind-item">
+              <span class="keybind-action-label">헤드라이트 (LIGHTS)</span>
+              <button type="button" class="keybind-btn" data-action="headlights">H</button>
+            </div>
+          </div>
+          <div class="keybind-help-note">
+            <span>※ 키 버튼을 클릭한 후 원하는 키를 누르면 즉시 변경됩니다. (ESC: 취소)</span>
           </div>
         </div>
       </div>

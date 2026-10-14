@@ -1,6 +1,10 @@
 /* =====================================================================
    인게임 일시정지 모달 (Pause Menu Overlay) - Swiss Technical Minimalist
    ===================================================================== */
+#pause-modal {
+  z-index: 50;
+}
+
 .pause-modal-card {
   max-width: 520px;
   width: 90%;

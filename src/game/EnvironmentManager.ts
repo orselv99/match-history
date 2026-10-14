@@ -15,12 +15,12 @@ export class EnvironmentManager {
   private ambientLight!: THREE.AmbientLight;
   private hemiLight!: THREE.HemisphereLight;
 
-  // 비 날씨 파티클 시스템
-  private rainParticles!: THREE.Points;
+  // 비 날씨 파티클 시스템 (초고속 3D 빗줄기 LineSegments)
+  private rainParticles!: THREE.LineSegments;
   private rainGeom!: THREE.BufferGeometry;
   private rainPositions!: Float32Array;
   private isRaining: boolean = false;
-  private readonly RAIN_COUNT = 2400;
+  private readonly RAIN_COUNT = 2200;
 
   public currentTimeOfDay: TimeOfDay = 'noon';
   public currentWeatherId: WeatherType = 'clear';
@@ -55,42 +55,38 @@ export class EnvironmentManager {
 
   private initRainSystem(): void {
     this.rainGeom = new THREE.BufferGeometry();
-    this.rainPositions = new Float32Array(this.RAIN_COUNT * 3);
+    // 빗방울 1개당 2개 정점 (시작점, 끝점 * 3 = 6 floats)
+    this.rainPositions = new Float32Array(this.RAIN_COUNT * 6);
 
     for (let i = 0; i < this.RAIN_COUNT; i++) {
-      this.rainPositions[i * 3] = (Math.random() - 0.5) * 120;
-      this.rainPositions[i * 3 + 1] = Math.random() * 45;
-      this.rainPositions[i * 3 + 2] = (Math.random() - 0.5) * 120;
+      const idx = i * 6;
+      const x = (Math.random() - 0.5) * 80;
+      const y = Math.random() * 32;
+      const z = (Math.random() - 0.5) * 80;
+      const len = 1.0 + Math.random() * 0.8;
+
+      this.rainPositions[idx] = x;
+      this.rainPositions[idx + 1] = y;
+      this.rainPositions[idx + 2] = z;
+
+      this.rainPositions[idx + 3] = x - 0.12;
+      this.rainPositions[idx + 4] = y - len;
+      this.rainPositions[idx + 5] = z;
     }
 
     this.rainGeom.setAttribute('position', new THREE.BufferAttribute(this.rainPositions, 3));
 
-    // 절차적 세로 빗방울 텍스처
-    const canvas = document.createElement('canvas');
-    canvas.width = 16;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    if (ctx) {
-      const grad = ctx.createLinearGradient(8, 0, 8, 64);
-      grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-      grad.addColorStop(0.5, 'rgba(190, 225, 255, 0.7)');
-      grad.addColorStop(1, 'rgba(230, 245, 255, 0.95)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(6, 0, 4, 64);
-    }
-    const rainTex = new THREE.CanvasTexture(canvas);
-
-    const rainMat = new THREE.PointsMaterial({
-      color: 0x93c5fd,
-      size: 1.4,
-      map: rainTex,
+    const rainMat = new THREE.LineBasicMaterial({
+      color: 0xc7d2fe, // 얇고 투명한 세련된 아이스 블루 빗줄기
       transparent: true,
-      opacity: 0.75,
+      opacity: 0.45,
       depthWrite: false,
       blending: THREE.NormalBlending,
     });
 
-    this.rainParticles = new THREE.Points(this.rainGeom, rainMat);
+    this.rainParticles = new THREE.LineSegments(this.rainGeom, rainMat);
+    // 차량이 어디로 이동하든 뷰 절두체(Frustum) 컬링으로 빗줄기가 증발하지 않도록 설정
+    this.rainParticles.frustumCulled = false;
     this.rainParticles.visible = false;
     this.scene.add(this.rainParticles);
   }
@@ -99,18 +95,35 @@ export class EnvironmentManager {
     if (!this.isRaining || !this.rainParticles || !this.rainParticles.visible) return;
 
     const pos = this.rainPositions;
-    const fallSpeed = 52.0 * delta;
-    const windSpeed = 6.0 * delta;
+    const fallSpeed = 66.0 * delta;
+    const windSpeed = 7.0 * delta;
 
     for (let i = 0; i < this.RAIN_COUNT; i++) {
-      const idx = i * 3;
+      const idx = i * 6;
+
       pos[idx] += windSpeed;
       pos[idx + 1] -= fallSpeed;
+      pos[idx + 3] += windSpeed;
+      pos[idx + 4] -= fallSpeed;
 
-      if (pos[idx + 1] < 0.05) {
-        pos[idx] = focusPos.x + (Math.random() - 0.5) * 110;
-        pos[idx + 1] = focusPos.y + 25 + Math.random() * 20;
-        pos[idx + 2] = focusPos.z + (Math.random() - 0.5) * 110;
+      const dx = pos[idx] - focusPos.x;
+      const dy = pos[idx + 1] - focusPos.y;
+      const dz = pos[idx + 2] - focusPos.z;
+
+      // 지면에 닿거나 차량 중심에서 50m 이상 멀어지면 차량 상공으로 즉시 연속 리스폰
+      if (pos[idx + 4] < 0.05 || dy < -3 || Math.abs(dx) > 50 || Math.abs(dz) > 50) {
+        const x = focusPos.x + (Math.random() - 0.5) * 80;
+        const y = focusPos.y + 15 + Math.random() * 16;
+        const z = focusPos.z + (Math.random() - 0.5) * 80;
+        const len = 1.0 + Math.random() * 0.8;
+
+        pos[idx] = x;
+        pos[idx + 1] = y;
+        pos[idx + 2] = z;
+
+        pos[idx + 3] = x - 0.12;
+        pos[idx + 4] = y - len;
+        pos[idx + 5] = z;
       }
     }
 
@@ -224,10 +237,11 @@ export class EnvironmentManager {
       }
     }
 
-    // 3. 야간 또는 악천후(비/안개) 시 차량 헤드라이트 & 테일라이트 점등
+    // 3. 야간 또는 악천후(비/안개) 시 차량 헤드라이트 & 테일라이트 자동 점등 (기본 ON 상태 유지)
     const needHeadlights = timeOfDay === 'night' || weather === 'rain' || weather === 'wind_fog';
-    if (playerVehicle) playerVehicle.setHeadlights(needHeadlights);
-    if (aiManager) aiManager.setHeadlights(needHeadlights);
+    const enableLights = needHeadlights || (playerVehicle?.headlightsEnabled ?? true);
+    if (playerVehicle) playerVehicle.setHeadlights(enableLights);
+    if (aiManager) aiManager.setHeadlights(enableLights);
 
     this.scene.background = new THREE.Color(bgColor);
     if (this.scene.fog instanceof THREE.FogExp2) {

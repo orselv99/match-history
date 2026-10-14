@@ -1,3 +1,5 @@
+import { ModalManager } from './ModalManager.ts';
+
 /**
  * 모든 인게임 및 로비 모달 창의 공통 수명주기 인터페이스
  */
@@ -5,10 +7,12 @@ export interface IModal<T = void> {
   open(data?: T): void;
   close(): void;
   isOpen(): boolean;
+  setZIndex?(z: number): void;
+  resetZIndex?(): void;
 }
 
 /**
- * 모달 공통 베이스 클래스 (DOM 바인딩 및 열기/닫기 상태 표준화)
+ * 모달 공통 베이스 클래스 (DOM 바인딩, 동적 z-index 스택 및 열기/닫기 상태 표준화)
  */
 export abstract class BaseModal<T = void> implements IModal<T> {
   protected modal: HTMLElement | null;
@@ -19,12 +23,39 @@ export abstract class BaseModal<T = void> implements IModal<T> {
 
   public abstract open(data?: T): void;
 
+  protected showModal(): void {
+    if (this.modal) {
+      this.modal.classList.add('open');
+      ModalManager.push(this);
+    }
+  }
+
+  protected hideModal(): void {
+    if (this.modal) {
+      this.modal.classList.remove('open');
+      this.modal.style.zIndex = '';
+      ModalManager.remove(this);
+    }
+  }
+
   public close(): void {
-    this.modal?.classList.remove('open');
+    this.hideModal();
   }
 
   public isOpen(): boolean {
     return this.modal?.classList.contains('open') ?? false;
+  }
+
+  public setZIndex(z: number): void {
+    if (this.modal) {
+      this.modal.style.zIndex = z.toString();
+    }
+  }
+
+  public resetZIndex(): void {
+    if (this.modal) {
+      this.modal.style.zIndex = '';
+    }
   }
 
   // 데이터 기반 모달을 위한 시맨틱 에일리어스

@@ -15,6 +15,7 @@ import {
   CachedReplayRecord,
   StorageStats,
   upgradeDatabaseSchema,
+  normalizeAudioUrl,
 } from './schema.ts';
 
 // 외부 호환성을 위해 타입 re-export
@@ -109,10 +110,11 @@ export class AppDatabase {
   public async hasAudio(url: string): Promise<boolean> {
     try {
       const db = await this.getDB();
+      const cleanUrl = normalizeAudioUrl(url);
       return new Promise<boolean>((resolve) => {
         const tx = db.transaction(STORES.AUDIO, 'readonly');
         const store = tx.objectStore(STORES.AUDIO);
-        const req = store.getKey(url);
+        const req = store.getKey(cleanUrl);
         req.onsuccess = () => resolve(req.result !== undefined);
         req.onerror = () => resolve(false);
       });
@@ -127,10 +129,11 @@ export class AppDatabase {
   public async getAudio(url: string): Promise<CachedAudioRecord | null> {
     try {
       const db = await this.getDB();
+      const cleanUrl = normalizeAudioUrl(url);
       return new Promise<CachedAudioRecord | null>((resolve) => {
         const tx = db.transaction(STORES.AUDIO, 'readonly');
         const store = tx.objectStore(STORES.AUDIO);
-        const req = store.get(url);
+        const req = store.get(cleanUrl);
         req.onsuccess = () => resolve((req.result as CachedAudioRecord) || null);
         req.onerror = () => resolve(null);
       });
@@ -151,8 +154,9 @@ export class AppDatabase {
   ): Promise<void> {
     try {
       const db = await this.getDB();
+      const cleanUrl = normalizeAudioUrl(url);
       const record: CachedAudioRecord = {
-        url,
+        url: cleanUrl,
         trackId: trackId || 'unknown_track',
         category,
         title: title || trackId,
@@ -196,15 +200,16 @@ export class AppDatabase {
    * 로컬 오디오 Blob의 ObjectURL 반환 (메모리 재사용 및 0ms 즉각 재생)
    */
   public async getAudioBlobUrl(url: string): Promise<string | null> {
-    if (this.blobUrlMap.has(url)) {
-      return this.blobUrlMap.get(url)!;
+    const cleanUrl = normalizeAudioUrl(url);
+    if (this.blobUrlMap.has(cleanUrl)) {
+      return this.blobUrlMap.get(cleanUrl)!;
     }
 
-    const record = await this.getAudio(url);
+    const record = await this.getAudio(cleanUrl);
     if (!record || !record.blob) return null;
 
     const objectUrl = URL.createObjectURL(record.blob);
-    this.blobUrlMap.set(url, objectUrl);
+    this.blobUrlMap.set(cleanUrl, objectUrl);
     return objectUrl;
   }
 
@@ -402,6 +407,66 @@ export class AppDatabase {
       quotaBytes,
       usageBytes,
     };
+  }
+
+  public async debugDump(): Promise<any> {
+    const db = await this.getDB();
+    const result: any = { store: [], by_cachedAt: [], by_trackId: [], by_category: [] };
+    const tx = db.transaction(STORES.AUDIO, 'readonly');
+    const store = tx.objectStore(STORES.AUDIO);
+
+    await new Promise<void>((resolve) => {
+      const req = store.openCursor();
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          result.store.push({ key: cursor.key, primaryKey: cursor.primaryKey, value: { ...cursor.value, blob: '[Blob]' } });
+          cursor.continue();
+        } else resolve();
+      };
+      req.onerror = () => resolve();
+    });
+
+    const indexCachedAt = store.index('by_cachedAt');
+    await new Promise<void>((resolve) => {
+      const req = indexCachedAt.openCursor();
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          result.by_cachedAt.push({ key: cursor.key, primaryKey: cursor.primaryKey, title: cursor.value?.title });
+          cursor.continue();
+        } else resolve();
+      };
+      req.onerror = () => resolve();
+    });
+
+    const indexTrackId = store.index('by_trackId');
+    await new Promise<void>((resolve) => {
+      const req = indexTrackId.openCursor();
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          result.by_trackId.push({ key: cursor.key, primaryKey: cursor.primaryKey, title: cursor.value?.title });
+          cursor.continue();
+        } else resolve();
+      };
+      req.onerror = () => resolve();
+    });
+
+    const indexCategory = store.index('by_category');
+    await new Promise<void>((resolve) => {
+      const req = indexCategory.openCursor();
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (cursor) {
+          result.by_category.push({ key: cursor.key, primaryKey: cursor.primaryKey, title: cursor.value?.title });
+          cursor.continue();
+        } else resolve();
+      };
+      req.onerror = () => resolve();
+    });
+
+    return result;
   }
 }
 

@@ -16,6 +16,26 @@ export const STORES = {
 export type AudioCategory = 'lobby' | 'ingame';
 
 /**
+ * 에셋 URL 경로를 정규화하여 중복 키나 상대경로 불일치 방지
+ * 예: './audio/bgm/...' -> '/audio/bgm/...'
+ */
+export function normalizeAudioUrl(url: string): string {
+  if (!url) return '';
+  try {
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return new URL(url).pathname;
+    }
+  } catch {}
+  if (url.startsWith('./')) {
+    return '/' + url.slice(2);
+  }
+  if (!url.startsWith('/')) {
+    return '/' + url;
+  }
+  return url;
+}
+
+/**
  * IndexedDB에 영구 보관되는 오디오 에셋 레코드
  */
 export interface CachedAudioRecord {

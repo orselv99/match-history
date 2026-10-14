@@ -1,40 +1,24 @@
 /**
  * Apex Racing 브라우저 영구 데이터베이스 매니저 (IndexedDB)
+ * - schema.ts에 정의된 데이터베이스 스키마 및 마이그레이션 규칙 기반 동작
  * - 1. 오디오 에셋 캐시 ('audio_cache'): BGM 스트림 바이너리 영구 보관 (CDN 트래픽 $0 및 오프라인 즉시 재생)
  * - 2. 매치 리플레이 캐시 ('replay_cache'): R2에서 수신한 경기 리플레이 압축 바이너리 영구 보관
  * - 브라우저 Storage Persistence API 연동으로 디스크 정리 시 영구 보존
  */
 
-export interface CachedAudioRecord {
-  url: string;
-  blob: Blob;
-  sizeBytes: number;
-  cachedAt: number;
-  trackId?: string;
-}
+import {
+  DB_NAME,
+  DB_VERSION,
+  STORES,
+  AudioCategory,
+  CachedAudioRecord,
+  CachedReplayRecord,
+  StorageStats,
+  upgradeDatabaseSchema,
+} from './schema.ts';
 
-export interface CachedReplayRecord {
-  matchCode: string;
-  binary: ArrayBuffer;
-  metadata: any;
-  createdAt: string;
-  savedAt: number;
-}
-
-export interface StorageStats {
-  audioCount: number;
-  audioBytes: number;
-  replayCount: number;
-  replayBytes: number;
-  isPersistent: boolean;
-  quotaBytes?: number;
-  usageBytes?: number;
-}
-
-const DB_NAME = 'ApexRacingDB';
-const DB_VERSION = 1;
-const STORE_AUDIO = 'audio_cache';
-const STORE_REPLAY = 'replay_cache';
+// 외부 호환성을 위해 타입 re-export
+export type { AudioCategory, CachedAudioRecord, CachedReplayRecord, StorageStats };
 
 export class AppDatabase {
   private static instance: AppDatabase | null = null;
@@ -52,7 +36,7 @@ export class AppDatabase {
   }
 
   /**
-   * IndexedDB 연결 초기화 및 스키마 마이그레이션
+   * IndexedDB 연결 초기화 및 schema.ts 마이그레이션 실행
    */
   public async getDB(): Promise<IDBDatabase> {
     if (this.db) return this.db;
@@ -68,20 +52,7 @@ export class AppDatabase {
 
       request.onupgradeneeded = (event) => {
         const db = request.result;
-
-        // 1. 오디오 에셋 저장소 (URL 기준 Key)
-        if (!db.objectStoreNames.contains(STORE_AUDIO)) {
-          const audioStore = db.createObjectStore(STORE_AUDIO, { keyPath: 'url' });
-          audioStore.createIndex('by_cachedAt', 'cachedAt', { unique: false });
-          audioStore.createIndex('by_trackId', 'trackId', { unique: false });
-        }
-
-        // 2. 리플레이 바이너리 저장소 (matchCode 기준 Key)
-        if (!db.objectStoreNames.contains(STORE_REPLAY)) {
-          const replayStore = db.createObjectStore(STORE_REPLAY, { keyPath: 'matchCode' });
-          replayStore.createIndex('by_createdAt', 'createdAt', { unique: false });
-          replayStore.createIndex('by_savedAt', 'savedAt', { unique: false });
-        }
+        upgradeDatabaseSchema(db, event.oldVersion, event.newVersion, request.transaction);
       };
 
       request.onsuccess = () => {
@@ -139,8 +110,8 @@ export class AppDatabase {
     try {
       const db = await this.getDB();
       return new Promise<boolean>((resolve) => {
-        const tx = db.transaction(STORE_AUDIO, 'readonly');
-        const store = tx.objectStore(STORE_AUDIO);
+        const tx = db.transaction(STORES.AUDIO, 'readonly');
+        const store = tx.objectStore(STORES.AUDIO);
         const req = store.getKey(url);
         req.onsuccess = () => resolve(req.result !== undefined);
         req.onerror = () => resolve(false);
@@ -151,14 +122,14 @@ export class AppDatabase {
   }
 
   /**
-   * 로컬 DB에서 오디오 Blob 조회
+   * 로컬 DB에서 오디오 Blob 및 메타데이터 조회
    */
   public async getAudio(url: string): Promise<CachedAudioRecord | null> {
     try {
       const db = await this.getDB();
       return new Promise<CachedAudioRecord | null>((resolve) => {
-        const tx = db.transaction(STORE_AUDIO, 'readonly');
-        const store = tx.objectStore(STORE_AUDIO);
+        const tx = db.transaction(STORES.AUDIO, 'readonly');
+        const store = tx.objectStore(STORES.AUDIO);
         const req = store.get(url);
         req.onsuccess = () => resolve((req.result as CachedAudioRecord) || null);
         req.onerror = () => resolve(null);
@@ -169,22 +140,30 @@ export class AppDatabase {
   }
 
   /**
-   * 오디오 Blob을 로컬 DB에 영구 저장
+   * 오디오 Blob을 카테고리(lobby/ingame) 및 trackId, title과 함께 로컬 DB에 영구 저장
    */
-  public async saveAudio(url: string, blob: Blob, trackId?: string): Promise<void> {
+  public async saveAudio(
+    url: string,
+    blob: Blob,
+    trackId: string,
+    category: AudioCategory = 'lobby',
+    title: string = ''
+  ): Promise<void> {
     try {
       const db = await this.getDB();
       const record: CachedAudioRecord = {
         url,
+        trackId: trackId || 'unknown_track',
+        category,
+        title: title || trackId,
         blob,
         sizeBytes: blob.size,
         cachedAt: Date.now(),
-        trackId,
       };
 
       return new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(STORE_AUDIO, 'readwrite');
-        const store = tx.objectStore(STORE_AUDIO);
+        const tx = db.transaction(STORES.AUDIO, 'readwrite');
+        const store = tx.objectStore(STORES.AUDIO);
         const req = store.put(record);
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
@@ -195,7 +174,26 @@ export class AppDatabase {
   }
 
   /**
-   * 로컬 오디오 Blob의 ObjectURL 반환 (메모리 재사용 및 즉각 재생)
+   * 카테고리별(lobby 또는 ingame) 저장된 오디오 목록 조회
+   */
+  public async getAudioByCategory(category: AudioCategory): Promise<CachedAudioRecord[]> {
+    try {
+      const db = await this.getDB();
+      return new Promise<CachedAudioRecord[]>((resolve) => {
+        const tx = db.transaction(STORES.AUDIO, 'readonly');
+        const store = tx.objectStore(STORES.AUDIO);
+        const index = store.index('by_category');
+        const req = index.getAll(category);
+        req.onsuccess = () => resolve((req.result as CachedAudioRecord[]) || []);
+        req.onerror = () => resolve([]);
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * 로컬 오디오 Blob의 ObjectURL 반환 (메모리 재사용 및 0ms 즉각 재생)
    */
   public async getAudioBlobUrl(url: string): Promise<string | null> {
     if (this.blobUrlMap.has(url)) {
@@ -225,8 +223,8 @@ export class AppDatabase {
 
       const db = await this.getDB();
       return new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(STORE_AUDIO, 'readwrite');
-        const store = tx.objectStore(STORE_AUDIO);
+        const tx = db.transaction(STORES.AUDIO, 'readwrite');
+        const store = tx.objectStore(STORES.AUDIO);
         const req = store.clear();
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
@@ -237,7 +235,7 @@ export class AppDatabase {
   }
 
   /* =====================================================================
-     2. 매치 리플레이(Replay) 바이너리 캐시 API (향후 연동 준비 완료)
+     2. 매치 리플레이(Replay) 바이너리 캐시 API (차후 리플레이 기능 완벽 준비)
      ===================================================================== */
 
   /**
@@ -247,8 +245,8 @@ export class AppDatabase {
     try {
       const db = await this.getDB();
       return new Promise<boolean>((resolve) => {
-        const tx = db.transaction(STORE_REPLAY, 'readonly');
-        const store = tx.objectStore(STORE_REPLAY);
+        const tx = db.transaction(STORES.REPLAY, 'readonly');
+        const store = tx.objectStore(STORES.REPLAY);
         const req = store.getKey(matchCode);
         req.onsuccess = () => resolve(req.result !== undefined);
         req.onerror = () => resolve(false);
@@ -265,8 +263,8 @@ export class AppDatabase {
     try {
       const db = await this.getDB();
       return new Promise<CachedReplayRecord | null>((resolve) => {
-        const tx = db.transaction(STORE_REPLAY, 'readonly');
-        const store = tx.objectStore(STORE_REPLAY);
+        const tx = db.transaction(STORES.REPLAY, 'readonly');
+        const store = tx.objectStore(STORES.REPLAY);
         const req = store.get(matchCode);
         req.onsuccess = () => resolve((req.result as CachedReplayRecord) || null);
         req.onerror = () => resolve(null);
@@ -291,8 +289,8 @@ export class AppDatabase {
       };
 
       return new Promise<void>((resolve, reject) => {
-        const tx = db.transaction(STORE_REPLAY, 'readwrite');
-        const store = tx.objectStore(STORE_REPLAY);
+        const tx = db.transaction(STORES.REPLAY, 'readwrite');
+        const store = tx.objectStore(STORES.REPLAY);
         const req = store.put(record);
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
@@ -309,8 +307,8 @@ export class AppDatabase {
     try {
       const db = await this.getDB();
       return new Promise<CachedReplayRecord[]>((resolve) => {
-        const tx = db.transaction(STORE_REPLAY, 'readonly');
-        const store = tx.objectStore(STORE_REPLAY);
+        const tx = db.transaction(STORES.REPLAY, 'readonly');
+        const store = tx.objectStore(STORES.REPLAY);
         const req = store.getAll();
         req.onsuccess = () => resolve((req.result as CachedReplayRecord[]) || []);
         req.onerror = () => resolve([]);
@@ -327,16 +325,18 @@ export class AppDatabase {
   public async getStats(): Promise<StorageStats> {
     let audioCount = 0;
     let audioBytes = 0;
+    let lobbyAudioCount = 0;
+    let inGameAudioCount = 0;
     let replayCount = 0;
     let replayBytes = 0;
 
     try {
       const db = await this.getDB();
 
-      // 오디오 통계 계산
+      // 오디오 통계 계산 (카테고리별 분기 집계)
       await new Promise<void>((resolve) => {
-        const tx = db.transaction(STORE_AUDIO, 'readonly');
-        const store = tx.objectStore(STORE_AUDIO);
+        const tx = db.transaction(STORES.AUDIO, 'readonly');
+        const store = tx.objectStore(STORES.AUDIO);
         const req = store.openCursor();
         req.onsuccess = () => {
           const cursor = req.result;
@@ -344,6 +344,11 @@ export class AppDatabase {
             audioCount++;
             const rec = cursor.value as CachedAudioRecord;
             audioBytes += rec.sizeBytes || 0;
+            if (rec.category === 'lobby') {
+              lobbyAudioCount++;
+            } else if (rec.category === 'ingame') {
+              inGameAudioCount++;
+            }
             cursor.continue();
           } else {
             resolve();
@@ -354,8 +359,8 @@ export class AppDatabase {
 
       // 리플레이 통계 계산
       await new Promise<void>((resolve) => {
-        const tx = db.transaction(STORE_REPLAY, 'readonly');
-        const store = tx.objectStore(STORE_REPLAY);
+        const tx = db.transaction(STORES.REPLAY, 'readonly');
+        const store = tx.objectStore(STORES.REPLAY);
         const req = store.openCursor();
         req.onsuccess = () => {
           const cursor = req.result;
@@ -389,6 +394,8 @@ export class AppDatabase {
     return {
       audioCount,
       audioBytes,
+      lobbyAudioCount,
+      inGameAudioCount,
       replayCount,
       replayBytes,
       isPersistent,

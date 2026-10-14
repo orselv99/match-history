@@ -830,7 +830,7 @@ window.addEventListener('DOMContentLoaded', () => {
       const storageStatsEl = document.getElementById('setting-storage-stats');
       if (storageStatsEl) {
         const mb = (stats.audioBytes / (1024 * 1024)).toFixed(1);
-        storageStatsEl.textContent = `${mb}MB (${stats.audioCount}곡)`;
+        storageStatsEl.textContent = `${mb}MB (로비 ${stats.lobbyAudioCount}곡 / 인게임 ${stats.inGameAudioCount}곡)`;
       }
     });
   };

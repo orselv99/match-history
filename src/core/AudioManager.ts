@@ -365,7 +365,7 @@ export class AudioManager {
     if (!localBlobUrl) {
       fetch(url)
         .then((r) => r.blob())
-        .then((blob) => appDB.saveAudio(url, blob, track.id))
+        .then((blob) => appDB.saveAudio(url, blob, track.id, scene, track.title))
         .catch(() => {});
     }
   }

@@ -1,5 +1,7 @@
 import { LOADING_TIPS } from '../data/gameConstants.ts';
 import { appDB } from '../storage/AppDatabase.ts';
+import { LOBBY_BGM_TRACKS, INGAME_BGM_TRACKS } from '../data/audio.ts';
+import { AudioCategory } from '../storage/schema.ts';
 
 export class LoadingScreen {
   private overlay: HTMLElement | null;
@@ -143,23 +145,31 @@ export class LoadingScreen {
    * - 1. Cache Hit (로컬 DB 존재): 번쩍이는 플리커링 없이 220ms 쾌속 부드러운 전환
    * - 2. Cache Miss (최초 접속): CDN 스트림 바이트를 수신하여 측정 후 IndexedDB에 영구 저장 (차후 Egress $0)
    */
+  /**
+   * 실제 오디오 에셋을 IndexedDB 캐시 조회 및 스트림 fetch로 다운로드
+   * - 1. Cache Hit (로컬 DB 존재): 번쩍이는 플리커링 없이 180ms 쾌속 부드러운 전환
+   * - 2. Cache Miss (최초 접속): CDN 스트림 바이트를 수신하여 측정 후 IndexedDB에 영구 저장 (차후 Egress $0)
+   */
   public async loadAudioWithProgress(
     url: string,
     startPct: number,
     endPct: number,
     taskPrefix: string,
-    minDurationMs: number = 420
+    trackId: string,
+    category: AudioCategory = 'lobby',
+    trackTitle: string = '',
+    minDurationMs: number = 360
   ): Promise<void> {
     // 1. IndexedDB에 이미 존재하는지 비동기 확인
     const isCached = await appDB.hasAudio(url);
 
     if (isCached) {
       // 🌟 [CACHE HIT // INSTANT LOCAL LOAD]
-      // 깜빡 튀어 사라지는 현상을 방지하는 유려한 220ms 패스트트랙 애니메이션
+      // 깜빡 튀어 사라지는 현상을 방지하는 유려한 180ms 패스트트랙 애니메이션
       const cached = await appDB.getAudio(url);
       const sizeMb = cached ? (cached.sizeBytes / (1024 * 1024)).toFixed(1) : '2.1';
       const hitDesc = `⚡ LOCAL DB HIT // ${taskPrefix} (${sizeMb}MB 즉시 추출)`;
-      await this.animateFastTrack(startPct, endPct, hitDesc, 220);
+      await this.animateFastTrack(startPct, endPct, hitDesc, 180);
       return;
     }
 
@@ -193,9 +203,9 @@ export class LoadingScreen {
           realProgress = Math.min(1.0, loadedBytes / totalBytes);
         }
 
-        // 수신 완료 ➔ IndexedDB에 영구 저장 (차후 조회는 로컬 0ms / 트래픽 0원!)
+        // 수신 완료 ➔ IndexedDB에 영구 저장 (카테고리, trackId, title 모두 보관)
         const audioBlob = new Blob(chunks as any[], { type: 'audio/ogg' });
-        await appDB.saveAudio(url, audioBlob);
+        await appDB.saveAudio(url, audioBlob, trackId, category, trackTitle);
 
         realProgress = 1.0;
         isDone = true;
@@ -248,45 +258,82 @@ export class LoadingScreen {
 
   /**
    * 1. 게임 최초 초기화 시 실행되는 로딩 시퀀스 (Dual-purpose: Initial Boot)
+   * - 로비 BGM 2종(Silk Drive, Velvet Drive) 모두 초기화 시 다운로드 & IndexedDB 보관!
    */
   public async runInitialLoad(): Promise<void> {
     this.show('INITIALIZING MOTORSPORT ENGINE');
 
-    await this.animateTo(18, 'Three.js WebGL 렌더 파이프라인 및 캔버스 준비 중...', 240);
-    await this.animateTo(40, 'Catmull-Rom 폐루프 3D 서킷 메시 및 연석 컴파일 중...', 260);
-    await this.animateTo(62, '차량 물리 동역학 시뮬레이터 및 스키드마크 버퍼 구성 중...', 260);
+    await this.animateTo(16, 'Three.js WebGL 렌더 파이프라인 및 캔버스 준비 중...', 200);
+    await this.animateTo(32, 'Catmull-Rom 폐루프 3D 서킷 메시 및 연석 컴파일 중...', 220);
+    await this.animateTo(48, '차량 물리 동역학 시뮬레이터 및 스키드마크 버퍼 구성 중...', 220);
 
-    // 실제 로비 BGM 오디오 에셋(silk-drive.ogg, 약 2.1MB) 실제 스트림 다운로드 & 캐시 예열
     const base = (import.meta as any).env?.BASE_URL || './';
     const cleanBase = base.endsWith('/') ? base : `${base}/`;
-    const lobbyBgmUrl = `${cleanBase}audio/bgm/lobby/silk-drive.ogg`;
-    await this.loadAudioWithProgress(lobbyBgmUrl, 62, 92, '로비 OST 스트림 프리로드 중... [Silk Drive]', 450);
 
-    await this.animateTo(100, '시스템 초기화 완료! 타이틀 메뉴로 진입합니다.', 180);
+    // 🎵 로비 BGM 1/2: Silk Drive (약 2.1MB)
+    const track1 = LOBBY_BGM_TRACKS[0];
+    const url1 = `${cleanBase}audio/bgm/lobby/${track1.fileName}`;
+    await this.loadAudioWithProgress(
+      url1,
+      48,
+      72,
+      `로비 OST 1/2 [${track1.title}]`,
+      track1.id,
+      'lobby',
+      track1.title,
+      320
+    );
 
-    await new Promise((r) => setTimeout(r, 180));
+    // 🎵 로비 BGM 2/2: Velvet Drive (약 2.2MB)
+    const track2 = LOBBY_BGM_TRACKS[1];
+    const url2 = `${cleanBase}audio/bgm/lobby/${track2.fileName}`;
+    await this.loadAudioWithProgress(
+      url2,
+      72,
+      94,
+      `로비 OST 2/2 [${track2.title}]`,
+      track2.id,
+      'lobby',
+      track2.title,
+      320
+    );
+
+    await this.animateTo(100, '시스템 초기화 완료! 타이틀 메뉴로 진입합니다.', 160);
+
+    await new Promise((r) => setTimeout(r, 160));
     this.hide();
   }
 
   /**
    * 2. 인게임 진입(레이스 시작) 전 실행되는 로딩 시퀀스 (Dual-purpose: Pre-Race Setup)
    */
-  public async runPreRaceLoad(trackTitle: string, vehicleTitle: string): Promise<void> {
+  public async runPreRaceLoad(trackTitle: string, vehicleTitle: string, inGameTrackId?: string): Promise<void> {
     this.show(`PREPARING RACE // ${trackTitle.toUpperCase()}`);
 
-    await this.animateTo(22, `서킷 지오메트리 & 섹터 체크포인트 로드 중... [${trackTitle}]`, 240);
-    await this.animateTo(46, `머신 에어로다이내믹스 & 섀시 튜닝 적용 중... [${vehicleTitle}]`, 260);
-    await this.animateTo(68, '환경 조명, 비/안개 날씨 파티클 및 노면 반사 컴파일 중...', 260);
+    await this.animateTo(22, `서킷 지오메트리 & 섹터 체크포인트 로드 중... [${trackTitle}]`, 220);
+    await this.animateTo(46, `머신 에어로다이내믹스 & 섀시 튜닝 적용 중... [${vehicleTitle}]`, 240);
+    await this.animateTo(66, '환경 조명, 비/안개 날씨 파티클 및 노면 반사 컴파일 중...', 240);
 
-    // 실제 인게임 BGM (apex-velocity.ogg, 약 2.3MB) 실제 스트림 다운로드 & 캐시 예열
+    // 실제 인게임 BGM (선택된 트랙 또는 기본 Apex Velocity) 스트림 다운로드 & 캐시 예열
     const base = (import.meta as any).env?.BASE_URL || './';
     const cleanBase = base.endsWith('/') ? base : `${base}/`;
-    const inGameBgmUrl = `${cleanBase}audio/bgm/ingame/apex-velocity.ogg`;
-    await this.loadAudioWithProgress(inGameBgmUrl, 68, 94, '인게임 레이스 OST 버퍼링 중... [Apex Velocity]', 450);
+    const selectedTrack = INGAME_BGM_TRACKS.find((t) => t.id === inGameTrackId) || INGAME_BGM_TRACKS[0];
+    const inGameBgmUrl = `${cleanBase}audio/bgm/ingame/${selectedTrack.fileName}`;
 
-    await this.animateTo(100, '그리드 정렬 완료! 레이스 세션으로 이동합니다.', 180);
+    await this.loadAudioWithProgress(
+      inGameBgmUrl,
+      66,
+      94,
+      `인게임 레이스 OST [${selectedTrack.title}]`,
+      selectedTrack.id,
+      'ingame',
+      selectedTrack.title,
+      380
+    );
 
-    await new Promise((r) => setTimeout(r, 180));
+    await this.animateTo(100, '그리드 정렬 완료! 레이스 세션으로 이동합니다.', 160);
+
+    await new Promise((r) => setTimeout(r, 160));
     this.hide();
   }
 }

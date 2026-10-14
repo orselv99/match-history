@@ -387,6 +387,7 @@ export class Game {
 
     // 차량 간 충돌 감지 및 물리적 반발력 해결 (탄성 반발, 토크, 스파크, 충돌음)
     this.collisionManager.update(delta, activeCars, this.playerVehicle);
+    this.aiManager.syncFromPhysics();
 
     // 드리프트 스키드마크(검은 고무 자국) 및 타이어 연기 업데이트
     this.skidMarkManager.update(delta, activeCars);
@@ -448,6 +449,7 @@ export class Game {
 
     // AI 차량 간 충돌 감지 및 물리 반응
     this.collisionManager.update(delta, activeCars);
+    this.aiManager.syncFromPhysics();
 
     // 드리프트 스키드마크 및 연기 업데이트
     this.skidMarkManager.update(delta, activeCars);

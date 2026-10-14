@@ -47,7 +47,73 @@ function getCorsHeaders(request: Request): HeadersInit {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Track-Id, X-Match-Code',
     'Access-Control-Max-Age': '86400',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
   };
+}
+
+/**
+ * 웹 취약점 자동화 스캐너 및 악성 봇 탐지 블랙리스트 패턴
+ */
+const SUSPICIOUS_PATH_PATTERNS = [
+  /\.(env|git|svn|htaccess|htpasswd|ini|conf|bak|sql|old|backup)$/i,
+  /^\/(wp-|wordpress|admin|phpmyadmin|pma|setup|cgi-bin|etc|xmlrpc|actuator|\.aws|\.well-known)/i,
+  /\.(php|jsp|asp|aspx|action|do|cgi)$/i,
+  /\/(eval-stdin|console|shell|cmd|root|config\.json|boaform)/i,
+];
+
+const MALICIOUS_USER_AGENTS = [
+  'sqlmap', 'nikto', 'nmap', 'masscan', 'zgrab', 'gobuster', 'dirbuster',
+  'nuclei', 'wprecon', 'acunetix', 'nessus', 'censys', 'shodan', 'openvas'
+];
+
+/**
+ * 스마트 봇 및 보안 검증 함수 (비인가 해외 봇 차단 및 정상 유저 보호)
+ */
+function checkBotSecurity(request: Request, url: URL): { blocked: boolean; reason?: string } {
+  const userAgent = (request.headers.get('User-Agent') || '').toLowerCase();
+  const path = url.pathname.toLowerCase();
+
+  // 1. 악성 스캐너 툴 User-Agent 차단
+  if (MALICIOUS_USER_AGENTS.some(agent => userAgent.includes(agent))) {
+    return { blocked: true, reason: 'Suspicious scanner User-Agent blocked' };
+  }
+
+  // 2. 웹 취약점 무작위 탐색 경로 차단 (.env, /wp-*, php 등)
+  if (SUSPICIOUS_PATH_PATTERNS.some(pattern => pattern.test(path))) {
+    return { blocked: true, reason: 'Unauthorized security probe pattern blocked' };
+  }
+
+  // 3. 해외(대한민국 외) 접근 스마트 필터링:
+  // - 한국(KR) 접속이거나 로컬 개발(country 없음)은 모두 정상 통과
+  // - 해외 접속의 경우:
+  //   - 유효한 게임 서비스 경로(/, /docs, /openapi.json, /health, /api/*)가 아닌 무작위 경로는 즉시 403 차단
+  //   - /api/* 에 대해 데이터 쓰기(POST/PUT) 시도시 출처(Origin/Referer) 검증 (위조 봇 차단)
+  const country = (request as any).cf?.country;
+  if (country && country !== 'KR') {
+    const isStandardPath =
+      path === '/' ||
+      path === '/docs' ||
+      path === '/openapi.json' ||
+      path === '/health' ||
+      path.startsWith('/api/');
+
+    if (!isStandardPath) {
+      return { blocked: true, reason: 'Overseas request to unmapped path rejected' };
+    }
+
+    if (request.method === 'POST' || request.method === 'PUT') {
+      const origin = request.headers.get('Origin') || '';
+      const referer = request.headers.get('Referer') || '';
+      const isAuthorizedOrigin = ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.github.io') || referer.includes('.github.io');
+      if (!isAuthorizedOrigin) {
+        return { blocked: true, reason: 'Overseas mutation request requires authorized game origin' };
+      }
+    }
+  }
+
+  return { blocked: false };
 }
 
 
@@ -175,6 +241,19 @@ export default {
     // 1. 프리플라이트 OPTIONS
     if (method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    // 2. 보안 & 스마트 봇 필터링 (취약점 스캐너 및 해외 비인가 위조 탐색 차단)
+    const securityCheck = checkBotSecurity(request, url);
+    if (securityCheck.blocked) {
+      return new Response(
+        JSON.stringify({
+          error: 'Forbidden',
+          message: securityCheck.reason,
+          timestamp: new Date().toISOString(),
+        }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // 2. Swagger UI 웹 뷰어: GET / 또는 GET /docs

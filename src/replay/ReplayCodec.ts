@@ -200,8 +200,28 @@ export class ReplayCodec {
     reductionVsJsonPercent: number;
     reductionVsBinaryPercent: number;
   }> {
-    const jsonStr = JSON.stringify(ticks);
-    const rawJsonBytes = new TextEncoder().encode(jsonStr).byteLength;
+    if (!ticks || ticks.length === 0) {
+      return {
+        rawJsonBytes: 0,
+        binaryBytes: 0,
+        compressedBytes: 0,
+        reductionVsJsonPercent: 0,
+        reductionVsBinaryPercent: 0
+      };
+    }
+
+    // JSON 크기 계산: 대량 틱의 경우 샘플링 기반 초고속 계산 (메인 스레드 GC 정지 및 렉 완전 방지)
+    let rawJsonBytes = 0;
+    if (ticks.length > 80) {
+      const sample = ticks.slice(0, 80);
+      const sampleStr = JSON.stringify(sample);
+      const sampleBytes = new TextEncoder().encode(sampleStr).byteLength;
+      // 전체 배열 래핑 브래킷 및 콤마 감안
+      rawJsonBytes = Math.round((sampleBytes / 80) * ticks.length);
+    } else {
+      const jsonStr = JSON.stringify(ticks);
+      rawJsonBytes = new TextEncoder().encode(jsonStr).byteLength;
+    }
 
     const binaryBuffer = this.encode(ticks);
     const binaryBytes = binaryBuffer.byteLength;

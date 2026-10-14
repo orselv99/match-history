@@ -113,3 +113,79 @@ export const TRACK_DEFINITIONS: Record<string, TrackMetadata> = {
     ],
   },
 };
+
+export interface CircuitSvgData {
+  pathD: string;
+  startX: number;
+  startY: number;
+  textX: number;
+  textY: number;
+}
+
+/**
+ * CatmullRom 3D 제어점 스플라인 곡선으로부터 위저드 쇼케이스용 2D SVG 패스 및 스타트 핀 좌표를 정밀 산출
+ */
+export function getCircuitSvgData(trackId: string, width = 400, height = 240, padding = 34): CircuitSvgData {
+  const def = TRACK_DEFINITIONS[trackId] || TRACK_DEFINITIONS.circuit_monaco;
+  const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
+  const points = curve.getPoints(140);
+
+  let minX = Infinity, maxX = -Infinity;
+  let minZ = Infinity, maxZ = -Infinity;
+  for (const p of points) {
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.z < minZ) minZ = p.z;
+    if (p.z > maxZ) maxZ = p.z;
+  }
+
+  const rangeX = maxX - minX || 1;
+  const rangeZ = maxZ - minZ || 1;
+  const availW = width - padding * 2;
+  const availH = height - padding * 2;
+  const scale = Math.min(availW / rangeX, availH / rangeZ);
+
+  const midX = (minX + maxX) / 2;
+  const midZ = (minZ + maxZ) / 2;
+  const cx = width / 2;
+  const cy = height / 2;
+
+  const toSvgX = (x: number) => (x - midX) * scale + cx;
+  const toSvgY = (z: number) => (z - midZ) * scale + cy;
+
+  const dParts: string[] = [];
+  points.forEach((p, idx) => {
+    const sx = toSvgX(p.x).toFixed(1);
+    const sy = toSvgY(p.z).toFixed(1);
+    if (idx === 0) {
+      dParts.push(`M ${sx},${sy}`);
+    } else {
+      dParts.push(`L ${sx},${sy}`);
+    }
+  });
+  dParts.push('Z');
+
+  const startPt = points[0];
+  const startX = Number(toSvgX(startPt.x).toFixed(1));
+  const startY = Number(toSvgY(startPt.z).toFixed(1));
+
+  let textX = startX + 12;
+  let textY = startY + 4;
+  if (textX + 75 > width - 10) {
+    textX = startX - 85;
+  }
+  if (textY < 22) {
+    textY = startY + 16;
+  }
+  if (textY > height - 16) {
+    textY = startY - 10;
+  }
+
+  return {
+    pathD: dParts.join(' '),
+    startX,
+    startY,
+    textX,
+    textY,
+  };
+}

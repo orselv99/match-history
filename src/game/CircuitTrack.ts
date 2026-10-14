@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TRACK_DEFINITIONS, TrackMetadata } from '../data/tracks.ts';
+import { TRACK_DEFINITIONS, TrackMetadata } from '../data/circuitTracks.ts';
 
 export interface CheckpointTrigger {
   id: number;
@@ -322,7 +322,8 @@ export class CircuitTrack {
       const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
       const center = new THREE.Vector3().copy(pt).addScaledVector(right, slot.lane);
-      const mat = slot.isPole ? specMat : whiteMat;
+      // 모든 슬롯 코너 브래킷 마킹을 공식 모터스포츠 규격의 선명한 화이트로 통일
+      const mat = whiteMat;
 
       // 차량 크기에 맞춘 코너 브래킷 규격
       const halfW = 1.35; // 폭 반경
@@ -520,24 +521,30 @@ export class CircuitTrack {
     rightPillar.position.copy(new THREE.Vector3().addScaledVector(right, halfW));
     rightPillar.position.y = 3;
 
-    // 상단 빔: 피니시는 로즈(0xc45a72), 일반 섹터는 선명한 파스텔 하늘색(0x7dd3fc) 적용!
-    const beamGeom = new THREE.BoxGeometry(this.trackWidth + 4, 0.8, 0.6);
+    // 상단 빔 (듀얼 빔 구성: y=4.9, y=5.8): 피니시는 로즈(0xc45a72), 일반 섹터는 선명한 파스텔 하늘색(0x7dd3fc) 적용!
+    const beamGeom = new THREE.BoxGeometry(this.trackWidth + 4, 0.35, 0.75);
     const beamColor = isFinish ? 0xc45a72 : 0x7dd3fc;
     const beamEmissive = isFinish ? 0xc45a72 : 0x38bdf8;
 
     const beamMat = new THREE.MeshStandardMaterial({
       color: beamColor,
       emissive: beamEmissive,
-      emissiveIntensity: 0.95,
+      emissiveIntensity: 1.4, // Bloom 효과 극대화
       roughness: 0.3,
     });
-    const beam = new THREE.Mesh(beamGeom, beamMat);
-    beam.position.y = 5.8;
-    beam.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), right);
+
+    const beam1 = new THREE.Mesh(beamGeom, beamMat);
+    beam1.position.y = 4.9;
+    beam1.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), right);
+
+    const beam2 = new THREE.Mesh(beamGeom, beamMat);
+    beam2.position.y = 5.8;
+    beam2.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), right);
 
     archGroup.add(leftPillar);
     archGroup.add(rightPillar);
-    archGroup.add(beam);
+    archGroup.add(beam1);
+    archGroup.add(beam2);
 
     this.group.add(archGroup);
   }

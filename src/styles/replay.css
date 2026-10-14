@@ -98,3 +98,79 @@
   font-weight: 600;
   color: var(--text-primary);
 }
+
+/* =====================================================================
+   리플레이 타임라인 컨트롤러 바 (Replay Controller Timeline Bar)
+   - 기본 상태: display: none !important (주행 중에는 완전히 숨김)
+   - 리플레이 모드 (.visible): display: flex
+   ===================================================================== */
+.replay-controller {
+  display: none !important;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface-card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-strong);
+  padding: 8px 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  flex: 1;
+  max-width: 540px;
+  margin: 0 16px;
+}
+
+.replay-controller.visible {
+  display: flex !important;
+}
+
+.seek-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-subtle);
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.seek-slider:hover {
+  border-color: var(--accent-spec);
+}
+
+.seek-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  background: var(--accent-spec);
+  border: 2px solid #ffffff;
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-spec);
+  transition: transform 0.1s ease;
+}
+
+.seek-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.seek-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--accent-spec);
+  border: 2px solid #ffffff;
+  cursor: pointer;
+  box-shadow: 0 0 8px var(--accent-spec);
+}
+
+.replay-time-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  min-width: 130px;
+  text-align: center;
+}

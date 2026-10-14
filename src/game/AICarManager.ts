@@ -34,9 +34,17 @@ export class AICarManager {
   constructor(track: CircuitTrack) {
     this.track = track;
 
-    AI_CAR_CONFIGS.forEach((cfg) => {
-      const vehicle = new Vehicle(false);
-      this.customizeCarColor(vehicle, cfg.color);
+    const defaultModels: Array<'gt_turbo' | 'formula_aero' | 'cyber_speedster'> = [
+      'gt_turbo',
+      'formula_aero',
+      'cyber_speedster',
+      'gt_turbo'
+    ];
+
+    AI_CAR_CONFIGS.forEach((cfg, idx) => {
+      const model = defaultModels[idx % defaultModels.length];
+      const vehicle = new Vehicle(false, 0x06b6d4, model);
+      vehicle.setColor(cfg.color);
 
       this.agents.push({
         id: cfg.id,
@@ -60,18 +68,21 @@ export class AICarManager {
     this.group.visible = false;
   }
 
-  private customizeCarColor(vehicle: Vehicle, hexColor: number): void {
-    vehicle.mesh.traverse((child) => {
-      if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
-        if (child.material.color.getHex() === 0xef4444) {
-          child.material = new THREE.MeshStandardMaterial({
-            color: hexColor,
-            roughness: 0.3,
-            metalness: 0.6,
-          });
-        }
-      }
-    });
+  /**
+   * 특정 슬롯의 차량 모델 및 컬러, 드라이버 이름 동적 설정 (선택된 차량/옵션 자동주행 DEMO 모드 반영)
+   */
+  public setSlotConfig(
+    slotIndex: number,
+    modelId: 'gt_turbo' | 'formula_aero' | 'cyber_speedster',
+    colorHex: number,
+    name?: string
+  ): void {
+    if (slotIndex < 0 || slotIndex >= this.agents.length) return;
+    const agent = this.agents[slotIndex];
+    agent.vehicle.setModel(modelId);
+    agent.vehicle.setColor(colorHex);
+    agent.color = colorHex;
+    if (name) agent.name = name;
   }
 
   /**

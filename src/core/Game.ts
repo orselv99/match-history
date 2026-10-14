@@ -282,6 +282,12 @@ export class Game {
   private animate(): void {
     requestAnimationFrame(this.animate);
 
+    // 로비(TITLE) 화면에서는 2D 오버레이가 전체 화면을 가리고 있으므로
+    // 불필요한 GPU 렌더링 및 물리 시뮬레이션을 일체 중단하여 GPU 사용률을 0%로 절전합니다.
+    if (this.mode === 'TITLE') {
+      return;
+    }
+
     if (this.isPaused) {
       this.renderer.render(this.scene, this.camera);
       return;
@@ -304,9 +310,7 @@ export class Game {
       this.updateCountdown(delta);
     }
 
-    if (this.mode === 'TITLE') {
-      this.updateTitle(delta);
-    } else if (this.mode === 'DRIVING') {
+    if (this.mode === 'DRIVING') {
       this.updateDriving(delta, deltaMs);
     } else if (this.mode === 'REPLAY') {
       this.updateReplay(delta, deltaMs);

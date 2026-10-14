@@ -4,13 +4,17 @@ import { appDB } from '../storage/AppDatabase.ts';
 import { keyBindingManager, KeyAction } from '../core/KeyBindingManager.ts';
 
 /**
- * 오디오 및 게임플레이 환경 설정 모달 전담 컨트롤러
- * - 사운드 볼륨 & 오프라인 캐시 관리
- * - 조작 키 바인딩 (WASD / 방향키 프리셋 & 완전 커스텀 키 설정)
+ * 환경 설정 모달 전담 컨트롤러
+ * - 3대 탭 시스템: 01 일반(시스템/스토리지), 02 사운드(볼륨/음소거), 03 게임플레이(조작/시점/키바인딩)
+ * - 단일 키 1:1 매핑 규격 (WASD, 화살표 프리셋 & 완전 커스텀 키 설정)
  */
 export class SettingsModal extends BaseModal {
   private btnClose: HTMLElement | null;
   private btnSave: HTMLElement | null;
+
+  // 탭 네비게이션
+  private tabButtons: NodeListOf<HTMLButtonElement>;
+  private tabPanels: NodeListOf<HTMLElement>;
 
   // 오디오 컨트롤
   private volMaster: HTMLInputElement | null;
@@ -29,7 +33,7 @@ export class SettingsModal extends BaseModal {
   private storageStatsEl: HTMLElement | null;
   private btnClearCache: HTMLElement | null;
 
-  // 키 바인딩 컨트롤
+  // 키 바인딩 컨트롤 (단일 키 매핑)
   private btnPresetWasd: HTMLButtonElement | null;
   private btnPresetArrows: HTMLButtonElement | null;
   private badgePresetCustom: HTMLElement | null;
@@ -46,6 +50,9 @@ export class SettingsModal extends BaseModal {
 
     this.btnClose = document.getElementById('settings-btn-close');
     this.btnSave = document.getElementById('settings-btn-save');
+
+    this.tabButtons = document.querySelectorAll('.settings-tab-btn');
+    this.tabPanels = document.querySelectorAll('.settings-tab-panel');
 
     this.volMaster = document.getElementById('vol-master') as HTMLInputElement | null;
     this.volMasterVal = document.getElementById('vol-master-val');
@@ -78,6 +85,14 @@ export class SettingsModal extends BaseModal {
     };
     this.btnClose?.addEventListener('click', close);
     this.btnSave?.addEventListener('click', close);
+
+    // 탭 전환 이벤트
+    this.tabButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-tab');
+        if (tab) this.switchTab(tab);
+      });
+    });
 
     this.volMaster?.addEventListener('input', () => {
       const v = Number(this.volMaster?.value || 80);
@@ -130,13 +145,22 @@ export class SettingsModal extends BaseModal {
       this.syncUI();
     });
 
-    // 개별 키 커스텀 바인딩 클릭 이벤트
+    // 개별 키 커스텀 바인딩 클릭 이벤트 (단일 키 매핑)
     this.keybindButtons.forEach((btn) => {
       btn.addEventListener('click', () => {
         const action = btn.getAttribute('data-action') as KeyAction;
         if (!action) return;
         this.startListening(action, btn);
       });
+    });
+  }
+
+  public switchTab(tabId: string): void {
+    this.tabButtons.forEach((b) => {
+      b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
+    });
+    this.tabPanels.forEach((p) => {
+      p.classList.toggle('active', p.id === `settings-panel-${tabId}`);
     });
   }
 
@@ -157,7 +181,7 @@ export class SettingsModal extends BaseModal {
         return;
       }
 
-      // 새 키 코드로 커스텀 바인딩 설정
+      // 새 단일 키 코드로 커스텀 바인딩 설정
       keyBindingManager.setCustomActionKey(action, e.code);
       this.stopListening();
       this.syncUI();
@@ -212,7 +236,7 @@ export class SettingsModal extends BaseModal {
       }
     }).catch(() => {});
 
-    // 키 바인딩 UI 동기화
+    // 키 바인딩 UI 동기화 (단일 키 이름 포맷 표시)
     const preset = keyBindingManager.getPreset();
     if (this.btnPresetWasd) {
       this.btnPresetWasd.classList.toggle('active', preset === 'wasd');
@@ -227,7 +251,7 @@ export class SettingsModal extends BaseModal {
     this.keybindButtons.forEach((btn) => {
       const action = btn.getAttribute('data-action') as KeyAction;
       if (action && this.listeningAction !== action) {
-        btn.textContent = keyBindingManager.formatActionKeys(action);
+        btn.textContent = keyBindingManager.formatActionKey(action);
       }
     });
   }

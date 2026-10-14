@@ -12,48 +12,51 @@ export type KeyAction =
 
 export type KeyPresetId = 'wasd' | 'arrows' | 'custom';
 
+/**
+ * 액션별 1:1 단일 키 바인딩 맵 (조합키 배제, 단일 키 규격)
+ */
 export interface KeyBindingMap {
-  throttle: string[];
-  brake: string[];
-  steerLeft: string[];
-  steerRight: string[];
-  handbrake: string[];
-  reset: string[];
-  headlights: string[];
+  throttle: string;
+  brake: string;
+  steerLeft: string;
+  steerRight: string;
+  handbrake: string;
+  reset: string;
+  headlights: string;
 }
 
-const STORAGE_KEY = 'apex_keybindings_v2';
+const STORAGE_KEY = 'apex_keybindings_v3';
 
 /**
- * 기본 프리셋 정의
- * - wasd: WASD + 우측쉬프트(ShiftRight) 브레이크 & 드리프트
- * - arrows: 화살표 + 좌측쉬프트(ShiftLeft) 브레이크 & 드리프트
- * - 공통: Space 드리프트, R 리셋, H 헤드라이트
+ * 기본 프리셋 정의 (단일 키 매핑)
+ * - wasd: W 가속, 우측 쉬프트(ShiftRight) 감속/후진, A/D 조향, SPACE 드리프트
+ * - arrows: 화살표↑ 가속, 좌측 쉬프트(ShiftLeft) 감속/후진, 화살표←/→ 조향, SPACE 드리프트
+ * - 공통: R 서킷 복귀, H 헤드라이트 토글
  */
 const PRESETS: Record<'wasd' | 'arrows', KeyBindingMap> = {
   wasd: {
-    throttle: ['KeyW'],
-    brake: ['KeyS', 'ShiftRight'],
-    steerLeft: ['KeyA'],
-    steerRight: ['KeyD'],
-    handbrake: ['Space', 'ShiftRight'],
-    reset: ['KeyR'],
-    headlights: ['KeyH'],
+    throttle: 'KeyW',
+    brake: 'ShiftRight',
+    steerLeft: 'KeyA',
+    steerRight: 'KeyD',
+    handbrake: 'Space',
+    reset: 'KeyR',
+    headlights: 'KeyH',
   },
   arrows: {
-    throttle: ['ArrowUp'],
-    brake: ['ArrowDown', 'ShiftLeft'],
-    steerLeft: ['ArrowLeft'],
-    steerRight: ['ArrowRight'],
-    handbrake: ['Space', 'ShiftLeft'],
-    reset: ['KeyR'],
-    headlights: ['KeyH'],
+    throttle: 'ArrowUp',
+    brake: 'ShiftLeft',
+    steerLeft: 'ArrowLeft',
+    steerRight: 'ArrowRight',
+    handbrake: 'Space',
+    reset: 'KeyR',
+    headlights: 'KeyH',
   },
 };
 
 /**
  * 키 조작 바인딩 매니저 (KeyBindingManager)
- * - WASD, 화살표 프리셋 및 완전 커스텀 키 지원
+ * - 단일 키 1:1 매핑 규격 (WASD, 화살표 프리셋 및 완전 커스텀 키 지원)
  * - localStorage 자동 영구 저장 및 복원
  */
 export class KeyBindingManager {
@@ -63,7 +66,7 @@ export class KeyBindingManager {
   public onChangeCallbacks: Array<(bindings: KeyBindingMap, preset: KeyPresetId) => void> = [];
 
   constructor() {
-    this.bindings = JSON.parse(JSON.stringify(PRESETS.wasd));
+    this.bindings = { ...PRESETS.wasd };
     this.loadFromStorage();
   }
 
@@ -75,36 +78,31 @@ export class KeyBindingManager {
     return this.bindings;
   }
 
-  public getActionKeys(action: KeyAction): string[] {
-    return this.bindings[action] || [];
+  public getActionKey(action: KeyAction): string {
+    return this.bindings[action] || '';
   }
 
   public setPreset(preset: 'wasd' | 'arrows'): void {
     this.currentPreset = preset;
-    this.bindings = JSON.parse(JSON.stringify(PRESETS[preset]));
+    this.bindings = { ...PRESETS[preset] };
     this.saveToStorage();
     this.notifyChange();
   }
 
   public setCustomActionKey(action: KeyAction, keyCode: string): void {
     this.currentPreset = 'custom';
-    this.bindings[action] = [keyCode];
+    this.bindings[action] = keyCode;
     this.saveToStorage();
     this.notifyChange();
   }
 
   public isActionActive(action: KeyAction, keyState: Record<string, boolean>): boolean {
-    const keys = this.bindings[action];
-    if (!keys) return false;
-    for (let i = 0; i < keys.length; i++) {
-      if (keyState[keys[i]]) return true;
-    }
-    return false;
+    const code = this.bindings[action];
+    return !!(code && keyState[code]);
   }
 
   public isActionKey(action: KeyAction, keyCode: string): boolean {
-    const keys = this.bindings[action];
-    return !!(keys && keys.includes(keyCode));
+    return this.bindings[action] === keyCode;
   }
 
   public formatKeyName(code: string): string {
@@ -130,9 +128,9 @@ export class KeyBindingManager {
     }
   }
 
-  public formatActionKeys(action: KeyAction): string {
-    const keys = this.bindings[action] || [];
-    return keys.map((k) => this.formatKeyName(k)).join(', ');
+  public formatActionKey(action: KeyAction): string {
+    const code = this.bindings[action];
+    return this.formatKeyName(code);
   }
 
   public loadFromStorage(): void {

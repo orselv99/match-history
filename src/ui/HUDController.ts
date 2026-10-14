@@ -1,4 +1,5 @@
 import { GameUIState } from '../core/Game.ts';
+import { keyBindingManager } from '../core/KeyBindingManager.ts';
 
 /**
  * 인게임 헤드업 디스플레이(HUD) 갱신 및 애니메이션 전담 컨트롤러
@@ -36,6 +37,26 @@ export class HUDController {
 
     this.countdownOverlay = document.getElementById('countdown-overlay');
     this.countdownNumber = document.getElementById('countdown-number');
+
+    // 조작 가이드 키 뱃지 동적 초기화 및 키 변경 감지 리스너 바인딩
+    this.updateControlGuide();
+    keyBindingManager.onChangeCallbacks.push(() => {
+      this.updateControlGuide();
+    });
+  }
+
+  public updateControlGuide(): void {
+    const throttleEl = document.getElementById('guide-key-throttle');
+    const brakeEl = document.getElementById('guide-key-brake');
+    const steerLEl = document.getElementById('guide-key-steer-l');
+    const steerREl = document.getElementById('guide-key-steer-r');
+    const driftEl = document.getElementById('guide-key-drift');
+
+    if (throttleEl) throttleEl.textContent = keyBindingManager.formatActionKey('throttle');
+    if (brakeEl) brakeEl.textContent = keyBindingManager.formatActionKey('brake');
+    if (steerLEl) steerLEl.textContent = keyBindingManager.formatActionKey('steerLeft');
+    if (steerREl) steerREl.textContent = keyBindingManager.formatActionKey('steerRight');
+    if (driftEl) driftEl.textContent = keyBindingManager.formatActionKey('handbrake');
   }
 
   public setCircuitTitle(title: string): void {

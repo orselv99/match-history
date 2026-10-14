@@ -195,10 +195,10 @@
           </div>
         </div>
 
-        <!-- 조작 가이드 (서킷정보와 동일한 너비로 하단 정렬, 컴팩트 2줄) -->
-        <div class="control-guide">
-          <div><span class="key-badge">W</span> THROTTLE &nbsp;|&nbsp; <span class="key-badge">S</span> BRAKE/REV</div>
-          <div style="margin-top: 4px;"><span class="key-badge">A</span> <span class="key-badge">D</span> STEER &nbsp;|&nbsp; <span class="key-badge">SPACE</span> DRIFT &nbsp;|&nbsp; <span class="key-badge">ESC</span> MENU</div>
+        <!-- 조작 가이드 (서킷정보와 동일한 너비로 하단 정렬, 컴팩트 2줄, 맵핑된 키 동적 연동) -->
+        <div class="control-guide" id="control-guide">
+          <div><span id="guide-key-throttle" class="key-badge">W</span> THROTTLE &nbsp;|&nbsp; <span id="guide-key-brake" class="key-badge">R_SHIFT</span> BRAKE</div>
+          <div style="margin-top: 4px;"><span id="guide-key-steer-l" class="key-badge">A</span> <span id="guide-key-steer-r" class="key-badge">D</span> STEER &nbsp;|&nbsp; <span id="guide-key-drift" class="key-badge">SPACE</span> DRIFT &nbsp;|&nbsp; <span class="key-badge">ESC</span> MENU</div>
         </div>
       </div>
 
@@ -306,151 +306,188 @@
         <button id="settings-btn-close" class="modal-close-btn" title="닫기 [ESC]">✕</button>
       </header>
 
+      <!-- 환경설정 3대 탭 내비게이션 바 -->
+      <nav class="settings-tabs-nav">
+        <button type="button" class="settings-tab-btn active" data-tab="general">
+          <span class="tab-icon">⚙</span>
+          <span>01 GENERAL // 일반</span>
+        </button>
+        <button type="button" class="settings-tab-btn" data-tab="audio">
+          <span class="tab-icon">🎵</span>
+          <span>02 AUDIO // 사운드</span>
+        </button>
+        <button type="button" class="settings-tab-btn" data-tab="gameplay">
+          <span class="tab-icon">🎮</span>
+          <span>03 GAMEPLAY // 게임플레이</span>
+        </button>
+      </nav>
+
       <div class="modal-content-body settings-content-body">
-        <!-- 섹션 1: 오디오 볼륨 -->
-        <div class="settings-group">
-          <div class="settings-group-title">AUDIO // 사운드 제어</div>
-          
-          <div class="setting-row">
-            <div class="setting-label-col">
-              <span class="setting-name">MASTER VOLUME</span>
-              <span class="setting-desc">전체 출력 음량</span>
-            </div>
-            <div class="setting-control-col">
-              <input type="range" id="vol-master" class="settings-slider" min="0" max="100" value="80" />
-              <span id="vol-master-val" class="setting-val-display">80%</span>
-            </div>
-          </div>
+        <!-- 탭 1: 일반 (GENERAL) - 언어 선택 & 캐시 초기화 등 -->
+        <div id="settings-panel-general" class="settings-tab-panel active">
+          <div class="settings-group">
+            <div class="settings-group-title">GENERAL SYSTEM // 시스템 & 스토리지</div>
 
-          <div class="setting-row">
-            <div class="setting-label-col">
-              <span class="setting-name">BGM // 배경음악</span>
-              <span class="setting-desc" id="setting-bgm-desc">로비 2곡 & 인게임 6곡 다이내믹 OST</span>
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">LANGUAGE // 언어 선택</span>
+                <span class="setting-desc">시뮬레이션 UI 및 인게임 텍스트 언어</span>
+              </div>
+              <div class="setting-control-col">
+                <select id="setting-language" class="settings-select" disabled>
+                  <option value="ko" selected>한국어 (KOREAN)</option>
+                  <option value="en">English (준비 중 / Coming soon)</option>
+                </select>
+              </div>
             </div>
-            <div class="setting-control-col">
-              <input type="range" id="vol-bgm" class="settings-slider" min="0" max="100" value="40" />
-              <span id="vol-bgm-val" class="setting-val-display">40%</span>
-            </div>
-          </div>
 
-          <div class="setting-row">
-            <div class="setting-label-col">
-              <span class="setting-name">SFX // 효과음</span>
-              <span class="setting-desc">엔진 RPM, 타이어 스키드, 비프</span>
-            </div>
-            <div class="setting-control-col">
-              <input type="range" id="vol-sfx" class="settings-slider" min="0" max="100" value="80" />
-              <span id="vol-sfx-val" class="setting-val-display">80%</span>
-              <button id="btn-test-sfx" class="glass-btn" style="padding: 2px 8px; font-size: 10px; margin-left: 6px;">TEST</button>
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-label-col">
-              <span class="setting-name">MUTE ALL</span>
-              <span class="setting-desc">모든 오디오 출력 음소거</span>
-            </div>
-            <div class="setting-control-col">
-              <label class="switch-container">
-                <input type="checkbox" id="chk-mute" />
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-label-col">
-              <span class="setting-name">LOCAL DB // 오프라인 영구 캐시</span>
-              <span class="setting-desc" id="setting-storage-desc">IndexedDB 영구 보관 (BGM 및 리플레이)</span>
-            </div>
-            <div class="setting-control-col">
-              <span id="setting-storage-stats" class="setting-val-display" style="font-size: 11px; margin-right: 8px;">0MB (0곡)</span>
-              <button id="btn-clear-cache" class="glass-btn" style="padding: 2px 8px; font-size: 10px;" title="로컬 IndexedDB 캐시 비우기">캐시 비우기</button>
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">LOCAL DB // 오프라인 영구 캐시</span>
+                <span class="setting-desc" id="setting-storage-desc">IndexedDB 영구 보관 (BGM 및 리플레이)</span>
+              </div>
+              <div class="setting-control-col">
+                <span id="setting-storage-stats" class="setting-val-display" style="font-size: 11px; margin-right: 8px;">0MB (0곡)</span>
+                <button id="btn-clear-cache" class="glass-btn" style="padding: 2px 8px; font-size: 10px;" title="로컬 IndexedDB 캐시 비우기">캐시 비우기</button>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 섹션 2: 게임플레이 & 그래픽 (+ @) -->
-        <div class="settings-group" style="margin-top: 20px;">
-          <div class="settings-group-title">GAMEPLAY // 조작 & 시점 (+ @)</div>
+        <!-- 탭 2: 사운드 (AUDIO) - 볼륨 & 음소거 -->
+        <div id="settings-panel-audio" class="settings-tab-panel">
+          <div class="settings-group">
+            <div class="settings-group-title">AUDIO // 사운드 제어</div>
+            
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">MASTER VOLUME</span>
+                <span class="setting-desc">전체 출력 음량</span>
+              </div>
+              <div class="setting-control-col">
+                <input type="range" id="vol-master" class="settings-slider" min="0" max="100" value="80" />
+                <span id="vol-master-val" class="setting-val-display">80%</span>
+              </div>
+            </div>
 
-          <div class="setting-row">
-            <div class="setting-label-col">
-              <span class="setting-name">STEER SENSITIVITY</span>
-              <span class="setting-desc">조향 입력 반응 감도</span>
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">BGM // 배경음악</span>
+                <span class="setting-desc" id="setting-bgm-desc">로비 2곡 & 인게임 6곡 다이내믹 OST</span>
+              </div>
+              <div class="setting-control-col">
+                <input type="range" id="vol-bgm" class="settings-slider" min="0" max="100" value="40" />
+                <span id="vol-bgm-val" class="setting-val-display">40%</span>
+              </div>
             </div>
-            <div class="setting-control-col">
-              <input type="range" id="setting-steer" class="settings-slider" min="50" max="150" value="100" />
-              <span id="setting-steer-val" class="setting-val-display">1.0x</span>
-            </div>
-          </div>
 
-          <div class="setting-row">
-            <div class="setting-label-col">
-              <span class="setting-name">DYNAMIC CAMERA TILT</span>
-              <span class="setting-desc">코너링 시 체이스 카메라 롤 회전</span>
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">SFX // 효과음</span>
+                <span class="setting-desc">엔진 RPM, 타이어 스키드, 비프</span>
+              </div>
+              <div class="setting-control-col">
+                <input type="range" id="vol-sfx" class="settings-slider" min="0" max="100" value="80" />
+                <span id="vol-sfx-val" class="setting-val-display">80%</span>
+                <button id="btn-test-sfx" class="glass-btn" style="padding: 2px 8px; font-size: 10px; margin-left: 6px;">TEST</button>
+              </div>
             </div>
-            <div class="setting-control-col">
-              <label class="switch-container">
-                <input type="checkbox" id="chk-cam-tilt" checked />
-                <span class="switch-slider"></span>
-              </label>
+
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">MUTE ALL</span>
+                <span class="setting-desc">모든 오디오 출력 음소거</span>
+              </div>
+              <div class="setting-control-col">
+                <label class="switch-container">
+                  <input type="checkbox" id="chk-mute" />
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- 섹션 3: 키보드 조작 설정 (KEY BINDINGS) -->
-        <div class="settings-group" style="margin-top: 20px;">
-          <div class="settings-group-title">CONTROLS // 키보드 조작 설정</div>
+        <!-- 탭 3: 게임플레이 (GAMEPLAY) - 조향감도, 틸트, 키보드 조작 설정 -->
+        <div id="settings-panel-gameplay" class="settings-tab-panel">
+          <div class="settings-group">
+            <div class="settings-group-title">PHYSICS & CAMERA // 조작 감도 & 시점</div>
 
-          <!-- 프리셋 선택 버튼 그룹 -->
-          <div class="setting-row">
-            <div class="setting-label-col">
-              <span class="setting-name">CONTROL PRESET</span>
-              <span class="setting-desc">기본 프리셋 또는 완전 사용자 지정</span>
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">STEER SENSITIVITY</span>
+                <span class="setting-desc">조향 입력 반응 감도</span>
+              </div>
+              <div class="setting-control-col">
+                <input type="range" id="setting-steer" class="settings-slider" min="50" max="150" value="100" />
+                <span id="setting-steer-val" class="setting-val-display">1.0x</span>
+              </div>
             </div>
-            <div class="setting-control-col">
-              <div class="preset-btn-group">
-                <button type="button" id="btn-preset-wasd" class="preset-choice-btn active">WASD + R_SHIFT</button>
-                <button type="button" id="btn-preset-arrows" class="preset-choice-btn">화살표 + L_SHIFT</button>
-                <span id="badge-preset-custom" class="custom-badge" style="display: none;">CUSTOM</span>
+
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">DYNAMIC CAMERA TILT</span>
+                <span class="setting-desc">코너링 시 체이스 카메라 롤 회전</span>
+              </div>
+              <div class="setting-control-col">
+                <label class="switch-container">
+                  <input type="checkbox" id="chk-cam-tilt" checked />
+                  <span class="switch-slider"></span>
+                </label>
               </div>
             </div>
           </div>
 
-          <!-- 각 동작별 커스텀 키 바인딩 목록 (클릭하여 새 키 지정) -->
-          <div class="keybind-grid" id="keybind-grid">
-            <div class="keybind-item">
-              <span class="keybind-action-label">가속 (THROTTLE)</span>
-              <button type="button" class="keybind-btn" data-action="throttle">W</button>
+          <div class="settings-group" style="margin-top: 16px;">
+            <div class="settings-group-title">CONTROLS // 키보드 조작 설정 (단일 키 매핑)</div>
+
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">CONTROL PRESET</span>
+                <span class="setting-desc">기본 프리셋 또는 완전 사용자 지정</span>
+              </div>
+              <div class="setting-control-col">
+                <div class="preset-btn-group">
+                  <button type="button" id="btn-preset-wasd" class="preset-choice-btn active">WASD + R_SHIFT</button>
+                  <button type="button" id="btn-preset-arrows" class="preset-choice-btn">화살표 + L_SHIFT</button>
+                  <span id="badge-preset-custom" class="custom-badge" style="display: none;">CUSTOM</span>
+                </div>
+              </div>
             </div>
-            <div class="keybind-item">
-              <span class="keybind-action-label">감속/후진 (BRAKE/REV)</span>
-              <button type="button" class="keybind-btn" data-action="brake">S, R_SHIFT</button>
+
+            <div class="keybind-grid" id="keybind-grid">
+              <div class="keybind-item">
+                <span class="keybind-action-label">가속 (THROTTLE)</span>
+                <button type="button" class="keybind-btn" data-action="throttle">W</button>
+              </div>
+              <div class="keybind-item">
+                <span class="keybind-action-label">감속/후진 (BRAKE)</span>
+                <button type="button" class="keybind-btn" data-action="brake">R_SHIFT</button>
+              </div>
+              <div class="keybind-item">
+                <span class="keybind-action-label">좌회전 (STEER LEFT)</span>
+                <button type="button" class="keybind-btn" data-action="steerLeft">A</button>
+              </div>
+              <div class="keybind-item">
+                <span class="keybind-action-label">우회전 (STEER RIGHT)</span>
+                <button type="button" class="keybind-btn" data-action="steerRight">D</button>
+              </div>
+              <div class="keybind-item">
+                <span class="keybind-action-label">드리프트 (DRIFT)</span>
+                <button type="button" class="keybind-btn" data-action="handbrake">SPACE</button>
+              </div>
+              <div class="keybind-item">
+                <span class="keybind-action-label">서킷 복귀 (RESET)</span>
+                <button type="button" class="keybind-btn" data-action="reset">R</button>
+              </div>
+              <div class="keybind-item">
+                <span class="keybind-action-label">헤드라이트 (LIGHTS)</span>
+                <button type="button" class="keybind-btn" data-action="headlights">H</button>
+              </div>
             </div>
-            <div class="keybind-item">
-              <span class="keybind-action-label">좌회전 (STEER LEFT)</span>
-              <button type="button" class="keybind-btn" data-action="steerLeft">A</button>
+            <div class="keybind-help-note">
+              <span>※ 키 버튼을 클릭한 후 원하는 키를 누르면 즉시 변경됩니다. (ESC: 취소)</span>
             </div>
-            <div class="keybind-item">
-              <span class="keybind-action-label">우회전 (STEER RIGHT)</span>
-              <button type="button" class="keybind-btn" data-action="steerRight">D</button>
-            </div>
-            <div class="keybind-item">
-              <span class="keybind-action-label">드리프트 (DRIFT)</span>
-              <button type="button" class="keybind-btn" data-action="handbrake">SPACE, R_SHIFT</button>
-            </div>
-            <div class="keybind-item">
-              <span class="keybind-action-label">서킷 복귀 (RESET)</span>
-              <button type="button" class="keybind-btn" data-action="reset">R</button>
-            </div>
-            <div class="keybind-item">
-              <span class="keybind-action-label">헤드라이트 (LIGHTS)</span>
-              <button type="button" class="keybind-btn" data-action="headlights">H</button>
-            </div>
-          </div>
-          <div class="keybind-help-note">
-            <span>※ 키 버튼을 클릭한 후 원하는 키를 누르면 즉시 변경됩니다. (ESC: 취소)</span>
           </div>
         </div>
       </div>

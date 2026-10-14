@@ -262,3 +262,69 @@ input:checked + .switch-slider:before {
   color: var(--text-muted);
 }
 
+/* =====================================================================
+   환경 설정 탭 (Tabs Navigation & Panels) 스타일링
+   ===================================================================== */
+.settings-tabs-nav {
+  display: flex;
+  background: var(--surface-subtle);
+  border-bottom: 1px solid var(--border-strong);
+  padding: 0 16px;
+  gap: 4px;
+}
+
+.settings-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.settings-tab-btn.active {
+  color: var(--accent-spec);
+  border-bottom-color: var(--accent-spec);
+  background: rgba(6, 182, 212, 0.08);
+}
+
+.settings-tab-panel {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.settings-tab-panel.active {
+  display: flex;
+}
+
+.settings-select {
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 12px;
+  outline: none;
+  cursor: pointer;
+}
+
+.settings-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+

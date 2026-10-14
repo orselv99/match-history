@@ -168,9 +168,9 @@
       <div id="countdown-number" class="countdown-game-number">3</div>
     </div>
 
-    <!-- 5. HUD 하단 (좌측 스택: 서킷정보 + 키안내 동일 너비 통일, 중앙 리플레이, 우측 계기판) -->
+    <!-- 5. HUD 하단 (좌측 스택: 서킷정보, 중앙 리플레이, 우측 스택: 계기판 + 키안내) -->
     <footer class="bottom-hud">
-      <!-- 좌측 하단 통합 스택: 게임서킷정보 바로 아래 키안내 배치 (너비 통일) -->
+      <!-- 좌측 하단 스택: 게임서킷정보 카드 -->
       <div class="bottom-left-stack">
         <!-- 랩 타이머 & 서킷 정보 카드 -->
         <div class="lap-card">
@@ -194,12 +194,6 @@
             </div>
           </div>
         </div>
-
-        <!-- 조작 가이드 (서킷정보와 동일한 너비로 하단 정렬, 컴팩트 2줄, 맵핑된 키 동적 연동) -->
-        <div class="control-guide" id="control-guide">
-          <div><span id="guide-key-throttle" class="key-badge">W</span> THROTTLE &nbsp;|&nbsp; <span id="guide-key-brake" class="key-badge">R_SHIFT</span> BRAKE</div>
-          <div style="margin-top: 4px;"><span id="guide-key-steer-l" class="key-badge">A</span> <span id="guide-key-steer-r" class="key-badge">D</span> STEER &nbsp;|&nbsp; <span id="guide-key-drift" class="key-badge">SPACE</span> DRIFT &nbsp;|&nbsp; <span class="key-badge">ESC</span> MENU</div>
-        </div>
       </div>
 
       <!-- 리플레이 전용 컨트롤러 타임라인 바 -->
@@ -214,21 +208,30 @@
         </div>
       </div>
 
-      <!-- 디지털 계기판 클러스터 -->
-      <div class="speedometer-card">
-        <div class="cluster-header">
-          <span class="cluster-label">SPEED</span>
-          <span id="drift-badge" class="drift-badge">DRIFT_OFF</span>
-        </div>
-        <div class="cluster-body">
-          <div id="gear-indicator" class="gear-display">N</div>
-          <div class="speed-main">
-            <span id="speed-indicator" class="speed-number">0</span>
-            <span class="speed-unit">KM/H</span>
+      <!-- 우측 하단 통합 스택: 속도계 + 하단 인풋가이드 (너비 300px, 좌측 서킷정보와 높이 일치) -->
+      <div class="bottom-right-stack">
+        <!-- 디지털 계기판 클러스터 -->
+        <div class="speedometer-card">
+          <div class="cluster-header">
+            <span class="cluster-label">SPEED</span>
+            <span id="drift-badge" class="drift-badge">DRIFT_OFF</span>
+          </div>
+          <div class="cluster-body">
+            <div id="gear-indicator" class="gear-display">N</div>
+            <div class="speed-main">
+              <span id="speed-indicator" class="speed-number">0</span>
+              <span class="speed-unit">KM/H</span>
+            </div>
+          </div>
+          <div class="rpm-bar-container">
+            <div id="rpm-bar" class="rpm-bar-fill"></div>
           </div>
         </div>
-        <div class="rpm-bar-container">
-          <div id="rpm-bar" class="rpm-bar-fill"></div>
+
+        <!-- 조작 가이드 (속도계 바로 아래 위치, 맵핑된 키 동적 연동) -->
+        <div class="control-guide" id="control-guide">
+          <div><span id="guide-key-throttle" class="key-badge">W</span> THROTTLE &nbsp;|&nbsp; <span id="guide-key-brake" class="key-badge">R_SHIFT</span> BRAKE</div>
+          <div style="margin-top: 4px;"><span id="guide-key-steer-l" class="key-badge">A</span> <span id="guide-key-steer-r" class="key-badge">D</span> STEER &nbsp;|&nbsp; <span id="guide-key-drift" class="key-badge">SPACE</span> DRIFT &nbsp;|&nbsp; <span class="key-badge">ESC</span> MENU</div>
         </div>
       </div>
     </footer>

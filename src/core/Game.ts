@@ -790,8 +790,9 @@ export class Game {
     const heading = targetVehicle.heading + targetVehicle.slipAngle;
     const fwdX = Math.sin(heading);
     const fwdZ = Math.cos(heading);
-    const rightX = Math.cos(heading);
-    const rightZ = -Math.sin(heading);
+    // 차량의 우측 방향 벡터: Forward (sin h, 0, cos h) x Up (0, 1, 0) = (-cos h, 0, sin h)
+    const rightX = -Math.cos(heading);
+    const rightZ = Math.sin(heading);
 
     const targetPos = targetVehicle.position;
 
@@ -811,18 +812,20 @@ export class Game {
     for (const opp of opponents) {
       const dx = opp.position.x - targetPos.x;
       const dz = opp.position.z - targetPos.z;
-      const fwdProj = dx * fwdX + dz * fwdZ;   // 양수면 전방, 음수면 후방
-      const latProj = dx * rightX + dz * rightZ; // 양수면 우측, 음수면 좌측
+      const fwdProj = dx * fwdX + dz * fwdZ;     // 양수면 전방, 음수면 후방
+      const latProj = dx * rightX + dz * rightZ; // 양수면 우측(+), 음수면 좌측(-)
       const totalDist = Math.hypot(dx, dz);
 
       // 후방 55m 이내 및 트랙 도로 폭 반경(좌우 12m 이내)에 위치한 후방 차량만 백미러 유효 감지
       if (fwdProj < 1.0 && fwdProj > -55.0 && Math.abs(latProj) < 12.0 && totalDist <= 55.0) {
         hasCarBehind = true;
 
-        if (latProj <= 1.0) {
+        // 좌측 미러: 차량의 좌측(latProj <= 0.8) 또는 정후방 차량 감지
+        if (latProj <= 0.8) {
           if (totalDist < nearestLeftDist) nearestLeftDist = totalDist;
         }
-        if (latProj >= -1.0) {
+        // 우측 미러: 차량의 우측(latProj >= -0.8) 또는 정후방 차량 감지
+        if (latProj >= -0.8) {
           if (totalDist < nearestRightDist) nearestRightDist = totalDist;
         }
       }
@@ -871,7 +874,7 @@ export class Game {
     const mirrorFore = 0.25;
     const mirrorSpan = 0.98;
 
-    // 좌측 미러 카메라: 좌측 뒤편을 향하며 바깥쪽으로 약 12도 펼쳐 사각지대 커버
+    // 좌측 미러 카메라: 차량 좌측에 위치(-right), 좌측 뒤편을 향하며 바깥쪽으로 약 10도 펼침
     const leftCamPos = new THREE.Vector3(
       targetPos.x - rightX * mirrorSpan + fwdX * mirrorFore,
       mirrorHeight,
@@ -885,7 +888,7 @@ export class Game {
     this.leftMirrorCamera.position.copy(leftCamPos);
     this.leftMirrorCamera.lookAt(leftLookTarget);
 
-    // 우측 미러 카메라: 우측 뒤편을 향하며 바깥쪽으로 약 12도 펼침
+    // 우측 미러 카메라: 차량 우측에 위치(+right), 우측 뒤편을 향하며 바깥쪽으로 약 10도 펼침
     const rightCamPos = new THREE.Vector3(
       targetPos.x + rightX * mirrorSpan + fwdX * mirrorFore,
       mirrorHeight,

@@ -57,7 +57,7 @@ match-history/
 │   │   ├── pause.css               # 인게임 일시정지 (Pause) 메뉴
 │   │   ├── replay.css              # 완주 통계 모달 및 벤치마크 테이블
 │   │   ├── settings.css            # 환경설정 (오디오/조작) 모달
-│   │   ├── title.css               # 타이틀 씬 및 메인 메뉴 스크림
+│   │   ├── lobby.css               # 로비 씬 및 메인 메뉴 스크림
 │   │   ├── variables.css           # 디자인 토큰, 테마 변수, 커스텀 스크롤바
 │   │   └── wizard.css              # 4단계 게임 설정 위저드 모달
 │   ├── main.ts                     # 애플리케이션 진입점 및 UI 이벤트 오케스트레이션

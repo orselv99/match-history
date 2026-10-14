@@ -59,6 +59,40 @@
   background: var(--surface-card);
 }
 
+/* 인게임 HUD 상단 BGM 배지 */
+.hud-bgm-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
+  padding: 6px 12px;
+  box-sizing: border-box;
+}
+
+.hud-bgm-badge .bgm-icon {
+  font-size: 11px;
+}
+
+.hud-bgm-badge .bgm-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent-spec);
+}
+
+.hud-bgm-badge .bgm-title-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  max-width: 140px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 2. 대시보드 그리드 (상단 좌/우 Hairline Panels) */
 .hud-grid {
   display: flex;

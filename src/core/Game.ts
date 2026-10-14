@@ -163,25 +163,25 @@ export class Game {
     // 초기 환경 설정 (맑은 정오)
     this.setEnvironment('noon', 'clear');
 
-    // 초기 모드 설정 (타이틀 씬 대기)
+    // 초기 모드 설정 (로비 씬 대기)
     this.setMode('TITLE');
 
     // 키보드/클릭 이벤트 시 오디오 활성화 및 레이스 시작
     window.addEventListener('click', (e) => {
+      this.audio.init();
       if (this.isPaused) return;
       const target = e.target as HTMLElement;
       if (target?.closest('.modal-overlay') || target?.closest('.title-scene-overlay') || target?.closest('.interactive')) {
         return;
       }
-      this.audio.init();
       if (this.mode === 'DRIVING' && this.raceState === 'READY') {
         this.startCountdown();
       }
     });
 
     window.addEventListener('keydown', (e) => {
-      if (this.isPaused) return;
       this.audio.init();
+      if (this.isPaused) return;
       if (this.mode === 'DRIVING' && this.raceState === 'READY' && e.code !== 'KeyR' && e.code !== 'KeyO' && e.code !== 'Escape') {
         this.startCountdown();
       }
@@ -696,7 +696,11 @@ export class Game {
 
   private async handleFinish(targetVehicle: Vehicle, userId: string, nickname: string): Promise<void> {
     this.recorder.stop();
+    this.audio.duckBgm(true, 0.2);
     this.audio.playFinishFanfare();
+    setTimeout(() => {
+      this.audio.duckBgm(false);
+    }, 2200);
 
     const ticks = this.recorder.getTicks();
     const benchmark = await ReplayCodec.benchmark(ticks);
@@ -743,14 +747,17 @@ export class Game {
     if (this.mode !== 'DRIVING' && this.mode !== 'DEMO' && this.mode !== 'REPLAY') return;
     this.isPaused = true;
     this.audio.pauseEngine();
+    this.audio.pauseBgm();
   }
 
   public resume(): void {
     this.isPaused = false;
+    this.audio.resumeBgm();
   }
 
   public restartRace(): void {
     this.isPaused = false;
+    this.audio.resumeBgm();
     if (this.mode === 'DEMO') {
       this.setMode('DEMO');
     } else {
@@ -768,6 +775,7 @@ export class Game {
     this.mode = mode;
 
     if (mode === 'TITLE') {
+      this.audio.playLobbyBgm();
       this.playerVehicle.mesh.visible = true;
       this.resetCarToStart();
       this.replayPlayer.pause();
@@ -777,11 +785,13 @@ export class Game {
       this.lastBeepNumber = -1;
       this.titleCameraAngle = 0;
     } else if (mode === 'REPLAY') {
+      this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = false;
       this.aiManager.deactivate();
       this.replayPlayer.play();
       this.raceState = 'RUNNING';
     } else if (mode === 'DEMO') {
+      this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = false;
       this.replayPlayer.pause();
       this.aiManager.activate(false); // 4대 차량 전체 그리드 정렬
@@ -794,6 +804,7 @@ export class Game {
       // 데모 선택 시 자동으로 카운트다운 시작
       this.startCountdown();
     } else { // DRIVING
+      this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = true;
       this.replayPlayer.pause();
       this.aiManager.activate(true); // 라이벌 AI 3대 (슬롯 1, 2, 3) 활성화

@@ -184,3 +184,65 @@ body.in-title-mode .bottom-hud {
   pointer-events: none;
   transition: opacity 0.25s ease;
 }
+
+/* 로비 BGM 트랙 표시 배지 */
+.title-bgm-badge {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(18, 22, 31, 0.75);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  width: fit-content;
+}
+
+.title-bgm-badge .bgm-icon {
+  font-size: 13px;
+  animation: bgmPulse 2s infinite ease-in-out;
+}
+
+.title-bgm-badge .bgm-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent-spec);
+}
+
+.title-bgm-badge .bgm-title-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bgm-skip-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 10px;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.bgm-skip-btn:hover {
+  background: rgba(6, 182, 212, 0.2);
+  border-color: var(--accent-spec);
+  color: #fff;
+  transform: scale(1.08);
+}
+
+@keyframes bgmPulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.15); opacity: 1; }
+}

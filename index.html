@@ -50,9 +50,9 @@
     </div>
   </div>
 
-  <!-- 0. 타이틀 씬 오버레이 (Title Scene & Main Menu) -->
+  <!-- 0. 로비 씬 오버레이 (Title Scene & Main Menu) -->
   <div id="title-scene-overlay" class="title-scene-overlay active">
-    <!-- 타이틀 화면 배경 스크린샷 플레이스홀더 (나중에 인게임 캡처 에셋 삽입 예정) -->
+    <!-- 로비 화면 배경 스크린샷 플레이스홀더 (나중에 인게임 캡처 에셋 삽입 예정) -->
     <div class="title-bg-placeholder">
       <div class="loading-bg-grid"></div>
       <div class="screenshot-placeholder-badge">
@@ -75,6 +75,14 @@
           <span class="title-pill">BUILD 1.2.0</span>
           <span class="title-pill">EDGE // CF R2 + D1</span>
           <span class="title-pill">TICK // 30Hz INT16</span>
+        </div>
+
+        <!-- 로비 BGM 오디오 상태 및 트랙 표시 배지 -->
+        <div class="title-bgm-badge" id="lobby-bgm-badge" title="클릭하여 다음 곡으로 변경 가능">
+          <span class="bgm-icon">🎵</span>
+          <span class="bgm-label">LOBBY OST //</span>
+          <span id="lobby-bgm-title" class="bgm-title-text">Silk Drive</span>
+          <button id="btn-next-lobby-bgm" class="bgm-skip-btn" title="다음 곡 재생 (Next Track)">⏭</button>
         </div>
       </header>
 
@@ -109,7 +117,7 @@
       </nav>
 
       <footer class="title-footer-note">
-        <span>[CLICK] 메뉴 선택 &nbsp;|&nbsp; [O] 환경설정 &nbsp;|&nbsp; [ESC] 타이틀 복귀</span>
+        <span>[CLICK] 메뉴 선택 &nbsp;|&nbsp; [O] 환경설정 &nbsp;|&nbsp; [ESC] 로비 복귀</span>
       </footer>
     </div>
   </div>
@@ -126,9 +134,17 @@
         </div>
       </div>
 
+      <!-- 인게임 BGM 재생 상태 및 다음 곡 스킵 위젯 -->
+      <div id="hud-bgm-widget" class="hud-bgm-badge" title="현재 재생 음악 (클릭 시 다음 곡으로 스킵)">
+        <span class="bgm-icon">🎵</span>
+        <span class="bgm-label">OST //</span>
+        <span id="hud-bgm-title" class="bgm-title-text">Apex Velocity</span>
+        <button id="btn-next-hud-bgm" class="bgm-skip-btn" title="다음 곡 재생 (Next Track)">⏭</button>
+      </div>
+
       <nav class="top-actions interactive">
-        <button id="btn-mode-title" class="glass-btn active" title="타이틀 메뉴로 나가기 (ESC)">
-          <span>MENU // 타이틀</span>
+        <button id="btn-mode-title" class="glass-btn active" title="로비 메뉴로 나가기 (ESC)">
+          <span>MENU // 로비</span>
         </button>
         <button id="btn-mode-drive" class="glass-btn" title="직접 운전 모드">
           <span>DRIVE // 주행</span>
@@ -321,7 +337,7 @@
           <div class="setting-row">
             <div class="setting-label-col">
               <span class="setting-name">BGM // 배경음악</span>
-              <span class="setting-desc">절차적 사이버 신스 앰비언스</span>
+              <span class="setting-desc" id="setting-bgm-desc">로비 2곡 & 인게임 6곡 다이내믹 OST</span>
             </div>
             <div class="setting-control-col">
               <input type="range" id="vol-bgm" class="settings-slider" min="0" max="100" value="40" />
@@ -816,7 +832,7 @@
             <span class="pause-btn-num">04</span>
             <div class="pause-btn-text">
               <span class="pause-btn-title">EXIT TO TITLE // 메인 메뉴로 나가기</span>
-              <span class="pause-btn-desc">현재 레이스를 종료하고 타이틀 메뉴로 돌아갑니다</span>
+              <span class="pause-btn-desc">현재 레이스를 종료하고 로비 메뉴로 돌아갑니다</span>
             </div>
             <span class="pause-btn-chevron">✕</span>
           </button>

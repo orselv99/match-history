@@ -5,17 +5,17 @@ export interface BgmTrack {
 }
 
 /**
- * 타이틀 및 메인 메뉴 화면 배경음악 트랙 (2곡)
- * 실제 파일 위치: public/audio/bgm/
+ * 로비 배경음악 트랙 (2곡)
+ * 실제 파일 위치: public/audio/bgm/lobby/
  */
-export const TITLE_BGM_TRACKS: readonly BgmTrack[] = [
+export const LOBBY_BGM_TRACKS: readonly BgmTrack[] = [
   { id: 'silk_drive', title: 'Silk Drive', fileName: 'silk-drive.ogg' },
   { id: 'velvet_drive', title: 'Velvet Drive', fileName: 'velvet-drive.ogg' },
 ] as const;
 
 /**
  * 인게임 레이스 주행 배경음악 트랙 (6곡)
- * 실제 파일 위치: public/audio/bgm/
+ * 실제 파일 위치: public/audio/bgm/ingame/
  */
 export const INGAME_BGM_TRACKS: readonly BgmTrack[] = [
   { id: 'apex_velocity', title: 'Apex Velocity', fileName: 'apex-velocity.ogg' },

@@ -109,7 +109,7 @@ export class LoadingScreen {
     await this.animateTo(18, 'Three.js WebGL 렌더 파이프라인 및 캔버스 준비 중...', 280);
     await this.animateTo(42, 'Catmull-Rom 폐루프 3D 서킷 메시 및 연석 컴파일 중...', 320);
     await this.animateTo(68, '차량 물리 동역학 시뮬레이터 및 스키드마크 버퍼 구성 중...', 340);
-    await this.animateTo(88, 'Web Audio API 프로시저럴 사운드 신디사이저 연결 중...', 260);
+    await this.animateTo(88, 'Web Audio & 스트리밍 OST 오디오 파이프라인 구성 중...', 260);
     await this.animateTo(100, '시스템 초기화 완료! 타이틀 메뉴로 진입합니다.', 220);
 
     await new Promise((r) => setTimeout(r, 220));
@@ -125,7 +125,7 @@ export class LoadingScreen {
     await this.animateTo(22, `서킷 지오메트리 & 섹터 체크포인트 로드 중... [${trackTitle}]`, 280);
     await this.animateTo(48, `머신 에어로다이내믹스 & 섀시 튜닝 적용 중... [${vehicleTitle}]`, 320);
     await this.animateTo(74, '환경 조명, 비/안개 날씨 파티클 및 노면 반사 컴파일 중...', 320);
-    await this.animateTo(92, '스타팅 그리드 슬롯 정렬 및 라이벌 AI 레이서 배치 중...', 260);
+    await this.animateTo(92, '스타팅 그리드 정렬 & 인게임 다이내믹 OST 스트림 준비 중...', 260);
     await this.animateTo(100, '그리드 정렬 완료! 레이스 세션으로 이동합니다.', 220);
 
     await new Promise((r) => setTimeout(r, 220));

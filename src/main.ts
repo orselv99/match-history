@@ -21,7 +21,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const loadingScreen = new LoadingScreen();
 
   // DOM 요소 참조
-  // 타이틀 씬 DOM
+  // 로비 씬 DOM
   const titleSceneOverlay = document.getElementById('title-scene-overlay')!;
   const titleBtnStart = document.getElementById('title-btn-start')!;
   const titleBtnHistory = document.getElementById('title-btn-history')!;
@@ -580,7 +580,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 타이틀 씬 시작 버튼 클릭 -> 위저드 모달 1단계 오픈
+  // 로비 씬 시작 버튼 클릭 -> 위저드 모달 1단계 오픈
   titleBtnStart.addEventListener('click', () => {
     game.audio.init();
     gameSetupModal.classList.add('open');
@@ -815,8 +815,44 @@ window.addEventListener('DOMContentLoaded', () => {
     volSfxVal.textContent = `${volSfx.value}%`;
 
     chkMute.checked = s.isMuted;
+
+    // 현재 재생 중인 트랙 정보 동기화
+    const currentTrack = game.audio.getCurrentBgm();
+    const settingBgmDesc = document.getElementById('setting-bgm-desc');
+    if (settingBgmDesc && currentTrack) {
+      const sceneLabel = game.audio.getCurrentScene() === 'lobby' ? '로비' : '인게임';
+      settingBgmDesc.textContent = `재생 중: ${currentTrack.title} (${sceneLabel} OST)`;
+    }
   };
   syncAudioSettingsUI();
+
+  // BGM 변경 시 배지 및 UI 동기화 리스너
+  const lobbyBgmTitle = document.getElementById('lobby-bgm-title');
+  const hudBgmTitle = document.getElementById('hud-bgm-title');
+  const btnNextLobbyBgm = document.getElementById('btn-next-lobby-bgm');
+  const btnNextHudBgm = document.getElementById('btn-next-hud-bgm');
+
+  game.audio.onBgmChange = (track, scene) => {
+    if (lobbyBgmTitle && scene === 'lobby') {
+      lobbyBgmTitle.textContent = track.title;
+    }
+    if (hudBgmTitle && scene === 'ingame') {
+      hudBgmTitle.textContent = track.title;
+    }
+    syncAudioSettingsUI();
+  };
+
+  btnNextLobbyBgm?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    game.audio.init();
+    game.audio.playNextLobbyBgm();
+  });
+
+  btnNextHudBgm?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    game.audio.init();
+    game.audio.playNextInGameBgm();
+  });
 
   // 설정 열기/닫기
   btnSettings.addEventListener('click', () => {
@@ -940,7 +976,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 최초 시뮬레이션 엔진 로딩 씬 가동 -> 100% 완료 후 타이틀 씬 활성화
+  // 최초 시뮬레이션 엔진 로딩 씬 가동 -> 100% 완료 후 로비 씬 활성화
   loadingScreen.runInitialLoad().then(() => {
     setModeUI('TITLE');
   });

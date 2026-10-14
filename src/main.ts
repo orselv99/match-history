@@ -7,6 +7,7 @@ import { TRACK_DEFINITIONS } from './data/tracks.ts';
 import { VEHICLE_MODELS } from './data/vehicles.ts';
 import { RANDOM_DRIVER_NAMES, TIME_OF_DAY_LABELS, WEATHER_LABELS } from './data/gameConstants.ts';
 import { LoadingScreen } from './game/LoadingScreen.ts';
+import { appDB } from './storage/AppDatabase.ts';
 
 window.addEventListener('DOMContentLoaded', () => {
   const container = document.getElementById('game-container') as HTMLElement;
@@ -823,8 +824,27 @@ window.addEventListener('DOMContentLoaded', () => {
       const sceneLabel = game.audio.getCurrentScene() === 'lobby' ? '로비' : '인게임';
       settingBgmDesc.textContent = `재생 중: ${currentTrack.title} (${sceneLabel} OST)`;
     }
+
+    // 로컬 IndexedDB 캐시 용량 동기화
+    appDB.getStats().then((stats) => {
+      const storageStatsEl = document.getElementById('setting-storage-stats');
+      if (storageStatsEl) {
+        const mb = (stats.audioBytes / (1024 * 1024)).toFixed(1);
+        storageStatsEl.textContent = `${mb}MB (${stats.audioCount}곡)`;
+      }
+    });
   };
   syncAudioSettingsUI();
+
+  // 브라우저 영구 스토리지 권한 사전 요청 (OS 청소 방지)
+  appDB.requestPersistence().catch(() => {});
+
+  // 캐시 비우기 버튼
+  const btnClearCache = document.getElementById('btn-clear-cache');
+  btnClearCache?.addEventListener('click', async () => {
+    await appDB.clearAudioCache();
+    syncAudioSettingsUI();
+  });
 
   // BGM 변경 시 배지 및 UI 동기화 리스너
   const lobbyBgmTitle = document.getElementById('lobby-bgm-title');

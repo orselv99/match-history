@@ -7,6 +7,7 @@
  * - 체크포인트 및 완주 비프 차임
  */
 import { LOBBY_BGM_TRACKS, INGAME_BGM_TRACKS, BgmTrack } from '../data/audio.ts';
+import { appDB } from '../storage/AppDatabase.ts';
 
 export interface AudioSettings {
   masterVolume: number; // 0.0 ~ 1.0
@@ -328,9 +329,9 @@ export class AudioManager {
   }
 
   /**
-   * BGM 파일 스트리밍 재생 실행
+   * BGM 파일 스트리밍 재생 실행 (IndexedDB 로컬 캐시 우선 활용)
    */
-  private playBgmFileDirect(url: string, track: BgmTrack, scene: 'lobby' | 'ingame'): void {
+  private async playBgmFileDirect(url: string, track: BgmTrack, scene: 'lobby' | 'ingame'): Promise<void> {
     if (!this.bgmAudio) return;
 
     if (this.ctx && this.ctx.state === 'suspended') {
@@ -339,7 +340,12 @@ export class AudioManager {
 
     this.currentBgmTrack = track;
     this.currentScene = scene;
-    this.bgmAudio.src = url;
+
+    // 1. IndexedDB에 영구 캐시된 오디오 Blob이 있는지 확인 (Zero-network / Instant play)
+    const localBlobUrl = await appDB.getAudioBlobUrl(url);
+    const audioSrc = localBlobUrl || url;
+
+    this.bgmAudio.src = audioSrc;
     this.bgmAudio.currentTime = 0;
 
     const playPromise = this.bgmAudio.play();
@@ -353,6 +359,14 @@ export class AudioManager {
 
     if (this.onBgmChange) {
       this.onBgmChange(track, scene);
+    }
+
+    // 로컬 DB에 없는 경우 백그라운드에서 캐시 저장 (차후 재생 시 로컬 추출)
+    if (!localBlobUrl) {
+      fetch(url)
+        .then((r) => r.blob())
+        .then((blob) => appDB.saveAudio(url, blob, track.id))
+        .catch(() => {});
     }
   }
 

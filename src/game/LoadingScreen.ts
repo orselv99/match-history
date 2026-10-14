@@ -1,4 +1,5 @@
 import { LOADING_TIPS } from '../data/gameConstants.ts';
+import { appDB } from '../storage/AppDatabase.ts';
 
 export class LoadingScreen {
   private overlay: HTMLElement | null;
@@ -94,6 +95,43 @@ export class LoadingScreen {
     });
   }
 
+  /**
+   * 로컬 DB Cache Hit 시 번쩍이는 플리커링(Flicker)을 원천 차단하고
+   * 유려하게 200~240ms 동안 매끄러운 쾌속 Ease-out 애니메이션으로 통과
+   */
+  public animateFastTrack(startPct: number, endPct: number, taskDesc: string, durationMs: number = 220): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.taskEl) {
+        this.taskEl.textContent = taskDesc;
+      }
+      const startTime = performance.now();
+      const diff = endPct - startPct;
+
+      const step = (now: number) => {
+        const elapsed = now - startTime;
+        const p = Math.min(1.0, elapsed / durationMs);
+        // 부드러운 Cubic Ease-out
+        const ease = 1 - Math.pow(1 - p, 3);
+        this.currentPercent = startPct + diff * ease;
+
+        const rounded = Math.round(this.currentPercent);
+        if (this.fillEl) this.fillEl.style.width = `${this.currentPercent.toFixed(1)}%`;
+        if (this.percentEl) this.percentEl.textContent = `${rounded}%`;
+
+        if (p < 1.0) {
+          requestAnimationFrame(step);
+        } else {
+          this.currentPercent = endPct;
+          if (this.fillEl) this.fillEl.style.width = `${endPct}%`;
+          if (this.percentEl) this.percentEl.textContent = `${Math.round(endPct)}%`;
+          resolve();
+        }
+      };
+
+      requestAnimationFrame(step);
+    });
+  }
+
   public pickNextTip(): void {
     if (!this.tipEl || LOADING_TIPS.length === 0) return;
     this.currentTipIndex = Math.floor(Math.random() * LOADING_TIPS.length);
@@ -101,9 +139,9 @@ export class LoadingScreen {
   }
 
   /**
-   * 실제 오디오 에셋을 스트림 fetch로 다운로드하며 실시간 바이트 진행률 측정
-   * - 다운로드된 에셋은 브라우저 캐시에 적재되어 씬 진입 시 지연 시간 0ms 달성
-   * - RAF Lerp 보간으로 초고속/캐시 환경에서도 깜빡임 없이 유려하게 진행률 표시
+   * 실제 오디오 에셋을 IndexedDB 캐시 조회 및 스트림 fetch로 다운로드
+   * - 1. Cache Hit (로컬 DB 존재): 번쩍이는 플리커링 없이 220ms 쾌속 부드러운 전환
+   * - 2. Cache Miss (최초 접속): CDN 스트림 바이트를 수신하여 측정 후 IndexedDB에 영구 저장 (차후 Egress $0)
    */
   public async loadAudioWithProgress(
     url: string,
@@ -112,7 +150,22 @@ export class LoadingScreen {
     taskPrefix: string,
     minDurationMs: number = 420
   ): Promise<void> {
+    // 1. IndexedDB에 이미 존재하는지 비동기 확인
+    const isCached = await appDB.hasAudio(url);
+
+    if (isCached) {
+      // 🌟 [CACHE HIT // INSTANT LOCAL LOAD]
+      // 깜빡 튀어 사라지는 현상을 방지하는 유려한 220ms 패스트트랙 애니메이션
+      const cached = await appDB.getAudio(url);
+      const sizeMb = cached ? (cached.sizeBytes / (1024 * 1024)).toFixed(1) : '2.1';
+      const hitDesc = `⚡ LOCAL DB HIT // ${taskPrefix} (${sizeMb}MB 즉시 추출)`;
+      await this.animateFastTrack(startPct, endPct, hitDesc, 220);
+      return;
+    }
+
+    // 🌟 [CACHE MISS // 최초 1회 CDN 스트림 다운로드 & IndexedDB 영구 저장]
     const startTime = performance.now();
+    const chunks: Uint8Array[] = [];
     let realProgress = 0;
     let isDone = false;
     let loadedBytes = 0;
@@ -135,9 +188,15 @@ export class LoadingScreen {
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          chunks.push(value);
           loadedBytes += value.length;
           realProgress = Math.min(1.0, loadedBytes / totalBytes);
         }
+
+        // 수신 완료 ➔ IndexedDB에 영구 저장 (차후 조회는 로컬 0ms / 트래픽 0원!)
+        const audioBlob = new Blob(chunks as any[], { type: 'audio/ogg' });
+        await appDB.saveAudio(url, audioBlob);
+
         realProgress = 1.0;
         isDone = true;
       })
@@ -168,8 +227,8 @@ export class LoadingScreen {
         }
         if (this.taskEl) {
           const mbDesc = loadedBytes > 0
-            ? ` (${(loadedBytes / (1024 * 1024)).toFixed(1)}MB / ${(totalBytes / (1024 * 1024)).toFixed(1)}MB)`
-            : '';
+            ? ` [CDN ➔ 로컬 DB 저장 중...] (${(loadedBytes / (1024 * 1024)).toFixed(1)}MB / ${(totalBytes / (1024 * 1024)).toFixed(1)}MB)`
+            : ' [CDN 스트림 연결 중...]';
           this.taskEl.textContent = `${taskPrefix}${mbDesc}`;
         }
 

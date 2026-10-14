@@ -94,11 +94,15 @@ export function buildCyberSpeedsterGeometry(params: VehicleMeshParams): VehicleW
   horizonLight.position.set(0, 0.38, 2.30);
   rootGroup.add(horizonLight);
 
-  // 6. 리어 블레이드 네온 브레이크 라이트
-  const cyberTailGeom = new THREE.BoxGeometry(1.98, 0.08, 0.08);
-  const cyberTail = new THREE.Mesh(cyberTailGeom, brakeLightMat);
-  cyberTail.position.set(0, 0.62, -2.26);
-  rootGroup.add(cyberTail);
+  // 6. 듀얼 사이버 블레이드 리어램프 (좌/우 양측 2개)
+  const cyberTailGeom = new THREE.BoxGeometry(0.52, 0.10, 0.08);
+  const leftTailLight = new THREE.Mesh(cyberTailGeom, brakeLightMat);
+  leftTailLight.position.set(-0.72, 0.62, -2.26);
+
+  const rightTailLight = new THREE.Mesh(cyberTailGeom, brakeLightMat);
+  rightTailLight.position.set(0.72, 0.62, -2.26);
+
+  rootGroup.add(leftTailLight, rightTailLight);
 
   // 7. 인클로즈드 휠 아치 & 사이버 터빈 휠
   const createWheelArch = (xSign: number, zCenter: number): THREE.Mesh => {

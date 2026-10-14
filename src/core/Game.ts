@@ -809,24 +809,32 @@ export class Game {
       opponents.push(this.playerVehicle);
     }
 
+    const myRearFore = 2.25;
+    const oppFrontFore = 2.25;
+
     for (const opp of opponents) {
       const dx = opp.position.x - targetPos.x;
       const dz = opp.position.z - targetPos.z;
       const fwdProj = dx * fwdX + dz * fwdZ;     // 양수면 전방, 음수면 후방
       const latProj = dx * rightX + dz * rightZ; // 양수면 우측(+), 음수면 좌측(-)
-      const totalDist = Math.hypot(dx, dz);
 
-      // 후방 55m 이내 및 트랙 도로 폭 반경(좌우 12m 이내)에 위치한 후방 차량만 백미러 유효 감지
-      if (fwdProj < 1.0 && fwdProj > -55.0 && Math.abs(latProj) < 12.0 && totalDist <= 55.0) {
+      // 후방 60m 이내 및 트랙 도로 폭 반경(좌우 12m 이내)에 위치한 후방 차량만 백미러 유효 감지
+      if (fwdProj < 1.0 && fwdProj > -60.0 && Math.abs(latProj) < 12.0) {
         hasCarBehind = true;
+
+        // 내 차량 후방(범퍼)부터 뒷차량 전방(범퍼)까지의 실제 유효 거리 계산 (접촉 시 0.0m)
+        // fwdProj는 음수이므로 -fwdProj는 차량 중심 간 종방향 거리
+        const longitudinalDist = Math.max(0, -fwdProj - (myRearFore + oppFrontFore));
+        const lateralDist = Math.max(0, Math.abs(latProj) - 1.8);
+        const bumperDist = Math.hypot(longitudinalDist, lateralDist);
 
         // 좌측 미러: 차량의 좌측(latProj <= 0.8) 또는 정후방 차량 감지
         if (latProj <= 0.8) {
-          if (totalDist < nearestLeftDist) nearestLeftDist = totalDist;
+          if (bumperDist < nearestLeftDist) nearestLeftDist = bumperDist;
         }
         // 우측 미러: 차량의 우측(latProj >= -0.8) 또는 정후방 차량 감지
         if (latProj >= -0.8) {
-          if (totalDist < nearestRightDist) nearestRightDist = totalDist;
+          if (bumperDist < nearestRightDist) nearestRightDist = bumperDist;
         }
       }
     }
@@ -843,10 +851,10 @@ export class Game {
     leftFrame.classList.add('active');
     rightFrame.classList.add('active');
 
-    // 좌측 미러 거리 및 위험 경고 (< 14m)
+    // 좌측 미러 거리 및 후방 범퍼 10m 이내 위험 경고
     if (nearestLeftDist < Infinity) {
       if (leftDistEl) leftDistEl.textContent = `${nearestLeftDist.toFixed(1)}m`;
-      if (nearestLeftDist < 14.0) {
+      if (nearestLeftDist < 10.0) {
         leftFrame.classList.add('danger');
       } else {
         leftFrame.classList.remove('danger');
@@ -856,10 +864,10 @@ export class Game {
       leftFrame.classList.remove('danger');
     }
 
-    // 우측 미러 거리 및 위험 경고 (< 14m)
+    // 우측 미러 거리 및 후방 범퍼 10m 이내 위험 경고
     if (nearestRightDist < Infinity) {
       if (rightDistEl) rightDistEl.textContent = `${nearestRightDist.toFixed(1)}m`;
-      if (nearestRightDist < 14.0) {
+      if (nearestRightDist < 10.0) {
         rightFrame.classList.add('danger');
       } else {
         rightFrame.classList.remove('danger');

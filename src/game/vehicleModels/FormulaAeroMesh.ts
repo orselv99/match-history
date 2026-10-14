@@ -132,11 +132,15 @@ export function buildFormulaAeroGeometry(params: VehicleMeshParams): VehicleWhee
   const rwRightPlate = new THREE.Mesh(rwPlateGeom, bodyMat);
   rwRightPlate.position.set(0.88, 0.94, -2.02);
 
-  const rainLightGeom = new THREE.BoxGeometry(0.18, 0.14, 0.08);
-  const fiaRainLight = new THREE.Mesh(rainLightGeom, brakeLightMat);
-  fiaRainLight.position.set(0, 0.32, -2.18);
+  // 6. 듀얼 리어 램프 (좌/우 양측 2개 리어 라이트)
+  const tailLightGeom = new THREE.BoxGeometry(0.24, 0.12, 0.08);
+  const leftTailLight = new THREE.Mesh(tailLightGeom, brakeLightMat);
+  leftTailLight.position.set(-0.55, 0.52, -2.15);
 
-  rootGroup.add(rwMain, rwUpper, rwLeftPlate, rwRightPlate, fiaRainLight);
+  const rightTailLight = new THREE.Mesh(tailLightGeom, brakeLightMat);
+  rightTailLight.position.set(0.55, 0.52, -2.15);
+
+  rootGroup.add(rwMain, rwUpper, rwLeftPlate, rwRightPlate, leftTailLight, rightTailLight);
 
   // 7. 노출형 서스펜션 위시본 암
   const armGeom = new THREE.CylinderGeometry(0.016, 0.016, 0.65, 8);

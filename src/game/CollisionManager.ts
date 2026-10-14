@@ -90,33 +90,27 @@ export class CollisionManager {
   }
 
   private checkAndResolveCollision(v1: Vehicle, v2: Vehicle, playerVehicle?: Vehicle): void {
-    // 거리 1차 컬링 (차체 대각선 5.5m 이내일 때 정밀 검사)
+    // 1차 거리 컬링 (차체 대각선 6.0m 이내일 때 정밀 검사)
     const distSq = v1.position.distanceToSquared(v2.position);
-    if (distSq > 30.25) return;
+    if (distSq > 36.0) return;
 
-    // 각 차량을 2개의 디스크(전륜측 디스크, 후륜측 디스크)로 근사
-    // 디스크 반경: 1.05m (합산 충돌 직경: 2.1m)
+    // 각 차량을 3개의 중첩 디스크(전방, 중앙 도어, 후방)로 근사
+    // 디스크 반경: 1.05m, 오프셋 간격: 1.28m -> 전후/측면 도어 빈틈없이 100% 완전 포괄
     const diskRadius = 1.05;
-    const diskOffset = 1.15; // 전후방 중심축 오프셋
+    const diskOffsets = [1.28, 0.0, -1.28];
 
     const getDisks = (v: Vehicle) => {
       const heading = v.heading + v.slipAngle;
       const fwd = new THREE.Vector3(Math.sin(heading), 0, Math.cos(heading));
-      return {
-        front: new THREE.Vector3().copy(v.position).addScaledVector(fwd, diskOffset),
-        rear: new THREE.Vector3().copy(v.position).addScaledVector(fwd, -diskOffset),
-      };
+      return diskOffsets.map((offset, idx) => ({
+        pos: new THREE.Vector3().copy(v.position).addScaledVector(fwd, offset),
+        isFront: idx === 0,
+        isRear: idx === 2,
+      }));
     };
 
-    const d1 = getDisks(v1);
-    const d2 = getDisks(v2);
-
-    const pairs = [
-      { a: d1.front, b: d2.front, aIsFront: true, bIsFront: true },
-      { a: d1.front, b: d2.rear, aIsFront: true, bIsFront: false },
-      { a: d1.rear, b: d2.front, aIsFront: false, bIsFront: true },
-      { a: d1.rear, b: d2.rear, aIsFront: false, bIsFront: false },
-    ];
+    const d1List = getDisks(v1);
+    const d2List = getDisks(v2);
 
     let deepestCollision: {
       depth: number;
@@ -126,22 +120,26 @@ export class CollisionManager {
       bIsFront: boolean;
     } | null = null;
 
-    for (const p of pairs) {
-      const diff = new THREE.Vector3().subVectors(p.a, p.b);
-      diff.y = 0; // 평면 2D 거리
-      const d = diff.length();
-      const minD = diskRadius * 2.0;
+    const minD = diskRadius * 2.0; // 2.10m
 
-      if (d < minD && d > 0.001) {
-        const depth = minD - d;
-        if (!deepestCollision || depth > deepestCollision.depth) {
-          deepestCollision = {
-            depth,
-            normal: diff.normalize(),
-            contact: new THREE.Vector3().addVectors(p.a, p.b).multiplyScalar(0.5),
-            aIsFront: p.aIsFront,
-            bIsFront: p.bIsFront,
-          };
+    for (const d1 of d1List) {
+      for (const d2 of d2List) {
+        const diff = new THREE.Vector3().subVectors(d1.pos, d2.pos);
+        diff.y = 0; // 평면 2D 거리
+        const d = diff.length();
+
+        if (d < minD) {
+          const depth = minD - Math.max(d, 0.001);
+          const normal = d > 0.001 ? diff.normalize() : new THREE.Vector3(0, 0, 1);
+          if (!deepestCollision || depth > deepestCollision.depth) {
+            deepestCollision = {
+              depth,
+              normal,
+              contact: new THREE.Vector3().addVectors(d1.pos, d2.pos).multiplyScalar(0.5),
+              aIsFront: d1.isFront,
+              bIsFront: d2.isFront,
+            };
+          }
         }
       }
     }
@@ -150,8 +148,8 @@ export class CollisionManager {
 
     const { depth, normal, contact, aIsFront, bIsFront } = deepestCollision;
 
-    // 1. 관통 분리(Position Separation Push) - 겹침 해소
-    const separation = normal.clone().multiplyScalar(depth * 0.52);
+    // 1. 관통 분리(Position Separation Push) - 겹침 즉각적이고 확실한 해소
+    const separation = normal.clone().multiplyScalar(Math.max(depth * 0.55, 0.04));
     v1.position.add(separation);
     v2.position.sub(separation);
     v1.mesh.position.copy(v1.position);
@@ -159,50 +157,57 @@ export class CollisionManager {
 
     // 2. 속도 및 탄성 임펄스(Elastic Restitution Impulse)
     const heading1 = v1.heading + v1.slipAngle;
-    const vel1 = new THREE.Vector3(Math.sin(heading1) * v1.speed, 0, Math.cos(heading1) * v1.speed);
+    const fwd1 = new THREE.Vector3(Math.sin(heading1), 0, Math.cos(heading1));
+    const vel1 = fwd1.clone().multiplyScalar(v1.speed);
 
     const heading2 = v2.heading + v2.slipAngle;
-    const vel2 = new THREE.Vector3(Math.sin(heading2) * v2.speed, 0, Math.cos(heading2) * v2.speed);
+    const fwd2 = new THREE.Vector3(Math.sin(heading2), 0, Math.cos(heading2));
+    const vel2 = fwd2.clone().multiplyScalar(v2.speed);
 
     const relVel = new THREE.Vector3().subVectors(vel1, vel2);
     const velAlongNormal = relVel.dot(normal);
 
-    // 차량 속도 반발 계수 (탄성 충돌 0.65)
+    // 차량 탄성 반발 계수 (탄성 충돌 0.65)
     const restitution = 0.65;
-    const impactSpeed = Math.abs(velAlongNormal);
+    const impactSpeed = Math.max(Math.abs(velAlongNormal), depth * 12.0, 4.0);
 
-    if (velAlongNormal < 0) {
-      // 서로 다가오는 충돌일 때
-      const impulseMagnitude = -(1 + restitution) * velAlongNormal * 0.5;
-      const impulse = normal.clone().multiplyScalar(impulseMagnitude);
+    // 서로 접근 중이거나, 깊게 침투된 겹침 상태인 경우 물리적 임펄스 및 토크 적용
+    if (velAlongNormal < -0.05 || depth > 0.04) {
+      const impulseMag = Math.max(
+        -(1 + restitution) * velAlongNormal * 0.5,
+        depth * 6.0
+      );
+      const impulse = normal.clone().multiplyScalar(impulseMag);
 
       // 속도 변화량 반영
-      v1.speed += impulse.dot(new THREE.Vector3(Math.sin(heading1), 0, Math.cos(heading1))) * 0.9;
-      v2.speed -= impulse.dot(new THREE.Vector3(Math.sin(heading2), 0, Math.cos(heading2))) * 0.9;
+      v1.speed += impulse.dot(fwd1) * 0.9;
+      v2.speed -= impulse.dot(fwd2) * 0.9;
 
       // 3. 충돌 토크 모멘텀 (Yaw 회전각 튕김 및 스핀)
-      const torqueStrength = Math.min(0.22, impactSpeed * 0.015);
-      v1.heading += (aIsFront ? torqueStrength : -torqueStrength);
-      v2.heading -= (bIsFront ? torqueStrength : -torqueStrength);
+      const torqueStrength = Math.min(0.24, impactSpeed * 0.018);
+      v1.heading += (aIsFront ? torqueStrength : -torqueStrength * 0.7);
+      v2.heading -= (bIsFront ? torqueStrength : -torqueStrength * 0.7);
+    }
 
-      // 4. 충돌 이벤트 및 스파크 방출
-      const pairKey = `${v1.currentModelId}_${v2.currentModelId}`;
-      const isCooldown = this.collisionCooldowns.has(pairKey);
+    // 4. 충돌 이벤트 및 스파크 방출 (차량 고유 ID 기반 개별 쿨다운)
+    const idA = Math.min(v1.id, v2.id);
+    const idB = Math.max(v1.id, v2.id);
+    const pairKey = `${idA}_${idB}`;
+    const isCooldown = this.collisionCooldowns.has(pairKey);
 
-      if (!isCooldown) {
-        this.collisionCooldowns.set(pairKey, 0.12); // 120ms 쿨다운
-        this.emitSparks(contact, impactSpeed);
+    if (!isCooldown) {
+      this.collisionCooldowns.set(pairKey, 0.10); // 100ms 쿨다운
+      this.emitSparks(contact, impactSpeed);
 
-        const isPlayerInvolved = v1 === playerVehicle || v2 === playerVehicle;
-        if (this.onCollision) {
-          this.onCollision({
-            vehicleA: v1,
-            vehicleB: v2,
-            contactPoint: contact,
-            impactSpeed: Math.max(8.0, impactSpeed),
-            isPlayerInvolved,
-          });
-        }
+      const isPlayerInvolved = v1 === playerVehicle || v2 === playerVehicle;
+      if (this.onCollision) {
+        this.onCollision({
+          vehicleA: v1,
+          vehicleB: v2,
+          contactPoint: contact,
+          impactSpeed: Math.max(8.0, impactSpeed),
+          isPlayerInvolved,
+        });
       }
     }
   }

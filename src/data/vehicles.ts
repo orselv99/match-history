@@ -18,7 +18,10 @@ export interface VehicleModelMetadata {
     left: [number, number, number];
     right: [number, number, number];
   };
-  tailLightPos: [number, number, number];
+  tailLightPos: {
+    left: [number, number, number];
+    right: [number, number, number];
+  };
 }
 
 export const VEHICLE_MODELS: Record<string, VehicleModelMetadata> = {
@@ -42,7 +45,10 @@ export const VEHICLE_MODELS: Record<string, VehicleModelMetadata> = {
       left: [-0.72, 0.52, 2.15],
       right: [0.72, 0.52, 2.15],
     },
-    tailLightPos: [0, 0.65, -2.35],
+    tailLightPos: {
+      left: [-0.68, 0.65, -2.25],
+      right: [0.68, 0.65, -2.25],
+    },
   },
   formula_aero: {
     id: 'formula_aero',
@@ -64,7 +70,10 @@ export const VEHICLE_MODELS: Record<string, VehicleModelMetadata> = {
       left: [-0.68, 0.26, 2.32],
       right: [0.68, 0.26, 2.32],
     },
-    tailLightPos: [0, 0.36, -2.25],
+    tailLightPos: {
+      left: [-0.55, 0.52, -2.15],
+      right: [0.55, 0.52, -2.15],
+    },
   },
   cyber_speedster: {
     id: 'cyber_speedster',
@@ -86,7 +95,10 @@ export const VEHICLE_MODELS: Record<string, VehicleModelMetadata> = {
       left: [-0.75, 0.44, 2.26],
       right: [0.75, 0.44, 2.26],
     },
-    tailLightPos: [0, 0.65, -2.35],
+    tailLightPos: {
+      left: [-0.72, 0.62, -2.28],
+      right: [0.72, 0.62, -2.28],
+    },
   },
 };
 

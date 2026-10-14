@@ -28,6 +28,9 @@ export interface VehiclePhysicsState {
  * - 가속, 감속, 엔진브레이크, 스티어링, 드리프트 슬립 시뮬레이션
  */
 export class Vehicle {
+  private static nextVehicleId = 1;
+  public readonly id: number = Vehicle.nextVehicleId++;
+
   public mesh: THREE.Group = new THREE.Group();
 
   // 물리 파라미터
@@ -52,6 +55,8 @@ export class Vehicle {
   public leftLensGlow!: THREE.Sprite;
   public rightLensGlow!: THREE.Sprite;
   public headLightMaterial!: THREE.MeshStandardMaterial;
+  public leftTailPointLight!: THREE.PointLight;
+  public rightTailPointLight!: THREE.PointLight;
   public tailPointLight!: THREE.PointLight;
   public headlightsEnabled: boolean = true;
   public bodyColorHex: number = 0xef4444;
@@ -209,24 +214,26 @@ export class Vehicle {
     this.rearLeftWheel = wheels.rearLeftWheel;
     this.rearRightWheel = wheels.rearRightWheel;
 
-    // 3. 메타데이터 좌표 기반 전방 스포트라이트, 볼류메트릭 빔 및 후방 조명 세팅
+    // 3. 메타데이터 좌표 기반 전방 스포트라이트, 볼류메트릭 빔 및 후방 듀얼 조명 세팅
     const meta = VEHICLE_MODELS[modelId] || VEHICLE_MODELS['gt_turbo'];
     this.setupLighting(
       new THREE.Vector3(...meta.headlightPos.left),
       new THREE.Vector3(...meta.headlightPos.right),
-      new THREE.Vector3(...meta.tailLightPos),
+      new THREE.Vector3(...meta.tailLightPos.left),
+      new THREE.Vector3(...meta.tailLightPos.right),
       isGhost,
       ghostColor
     );
   }
 
   /**
-   * 전방 스포트라이트, 볼류메트릭 빔 콘 및 리어 포인트 라이트 공통 바인딩
+   * 전방 스포트라이트, 볼류메트릭 빔 콘 및 좌/우 듀얼 리어 포인트 라이트 공통 바인딩
    */
   private setupLighting(
     leftHeadPos: THREE.Vector3,
     rightHeadPos: THREE.Vector3,
-    tailPos: THREE.Vector3,
+    leftTailPos: THREE.Vector3,
+    rightTailPos: THREE.Vector3,
     isGhost: boolean,
     ghostColor: number
   ): void {
@@ -261,10 +268,16 @@ export class Vehicle {
       this.headSpotLight.intensity = 55.0;
     }
 
-    // 4. 후방 레드 포인트 라이트 (평소에는 0으로 꺼져 있고, 브레이크/드리프트 시에만 점등)
-    this.tailPointLight = new THREE.PointLight(0xef4444, 0, 10, 1.5);
-    this.tailPointLight.position.copy(tailPos);
-    this.mesh.add(this.tailPointLight);
+    // 4. 후방 좌/우 듀얼 레드 포인트 라이트 (차량 양쪽에 위치, 브레이크/드리프트 시에만 점등)
+    this.leftTailPointLight = new THREE.PointLight(0xef4444, 0, 8, 1.6);
+    this.leftTailPointLight.position.copy(leftTailPos);
+    this.mesh.add(this.leftTailPointLight);
+
+    this.rightTailPointLight = new THREE.PointLight(0xef4444, 0, 8, 1.6);
+    this.rightTailPointLight.position.copy(rightTailPos);
+    this.mesh.add(this.rightTailPointLight);
+
+    this.tailPointLight = this.leftTailPointLight; // 하위 호환 레퍼런스 유지
   }
 
   private createLensGlowSprite(): THREE.Sprite {
@@ -456,10 +469,14 @@ export class Vehicle {
     const isBraking = brake > 0.1 || handbrake;
     const isBrakingOrDrifting = isBraking || this.isDrifting;
     if (this.brakeLightMaterial) {
-      this.brakeLightMaterial.emissiveIntensity = isBrakingOrDrifting ? 3.2 : 0.4;
+      this.brakeLightMaterial.emissiveIntensity = isBrakingOrDrifting ? 3.2 : 0.2;
     }
-    if (this.tailPointLight) {
-      this.tailPointLight.intensity = isBrakingOrDrifting ? 3.5 : 0;
+    const tailIntensity = isBrakingOrDrifting ? 3.0 : 0;
+    if (this.leftTailPointLight) {
+      this.leftTailPointLight.intensity = tailIntensity;
+    }
+    if (this.rightTailPointLight) {
+      this.rightTailPointLight.intensity = tailIntensity;
     }
   }
 
@@ -474,8 +491,12 @@ export class Vehicle {
       this.headLightMaterial.emissiveIntensity = enabled ? 4.5 : 0.4;
     }
     // 후방 레드 포인트 라이트는 브레이크/드리프트 전용이므로 평소에는 0 유지!
-    if (this.tailPointLight) {
-      this.tailPointLight.intensity = this.isDrifting ? 3.5 : 0;
+    const tailIntensity = this.isDrifting ? 3.0 : 0;
+    if (this.leftTailPointLight) {
+      this.leftTailPointLight.intensity = tailIntensity;
+    }
+    if (this.rightTailPointLight) {
+      this.rightTailPointLight.intensity = tailIntensity;
     }
   }
 

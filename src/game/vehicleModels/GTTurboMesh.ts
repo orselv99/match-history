@@ -136,11 +136,15 @@ export function buildGTTurboGeometry(params: VehicleMeshParams): VehicleWheels {
   rightLight.rotation.set(0.2, -0.32, 0.12);
   rootGroup.add(leftLight, rightLight);
 
-  // 7. 일자형 사이버 테일라이트 바
-  const tailLightGeom = new THREE.BoxGeometry(1.84, 0.09, 0.08);
-  const tailLight = new THREE.Mesh(tailLightGeom, brakeLightMat);
-  tailLight.position.set(0, 0.66, -2.18);
-  rootGroup.add(tailLight);
+  // 7. 듀얼 스포츠 테일라이트 (좌/우 양측 2개 리어램프)
+  const tailLightGeom = new THREE.BoxGeometry(0.48, 0.12, 0.08);
+  const leftTailLight = new THREE.Mesh(tailLightGeom, brakeLightMat);
+  leftTailLight.position.set(-0.68, 0.66, -2.18);
+
+  const rightTailLight = new THREE.Mesh(tailLightGeom, brakeLightMat);
+  rightTailLight.position.set(0.68, 0.66, -2.18);
+
+  rootGroup.add(leftTailLight, rightTailLight);
 
   // 8. 5-스포크 스포츠 알로이 휠 & 타이어 어셈블리
   const tireGeom = new THREE.CylinderGeometry(0.39, 0.39, 0.32, 24);

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { VehicleMeshParams, VehicleWheels } from './types.ts';
+import type { VehicleMeshParams, VehicleWheels } from './types.ts';
 
 /**
  * [스타일 2] formula_aero: 오픈휠 포뮬러 F1 머신 스타일 3D 지오메트리 빌더

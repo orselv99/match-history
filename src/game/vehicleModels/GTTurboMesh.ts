@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { VehicleMeshParams, VehicleWheels } from './types.ts';
+import type { VehicleMeshParams, VehicleWheels } from './types.ts';
 
 /**
  * [스타일 1] gt_turbo: 2도어 정통 스포츠 GT 쿠페 3D 지오메트리 빌더

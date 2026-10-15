@@ -17,6 +17,25 @@ export class CameraController {
     this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
   }
 
+  public snapToTarget(targetVehicle: Vehicle): void {
+    const heading = targetVehicle.heading + targetVehicle.slipAngle;
+    const sinH = Math.sin(heading);
+    const cosH = Math.cos(heading);
+
+    this.camera.position.set(
+      targetVehicle.position.x - sinH * 8.5,
+      targetVehicle.position.y + 4.2,
+      targetVehicle.position.z - cosH * 8.5
+    );
+
+    this.cameraLookTarget.set(
+      targetVehicle.position.x + sinH * 4.0,
+      targetVehicle.position.y + 1.2,
+      targetVehicle.position.z + cosH * 4.0
+    );
+    this.camera.lookAt(this.cameraLookTarget);
+  }
+
   public updateChase(delta: number, targetVehicle: Vehicle): void {
     const heading = targetVehicle.heading + targetVehicle.slipAngle;
     const sinH = Math.sin(heading);

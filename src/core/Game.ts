@@ -7,7 +7,7 @@ import { LapTimer } from '../game/LapTimer.ts';
 import { ReplayRecorder } from '../replay/ReplayRecorder.ts';
 import { ReplayPlayer } from '../replay/ReplayPlayer.ts';
 import { ReplayCodec } from '../replay/ReplayCodec.ts';
-import { MatchSummaryMetadata } from '../replay/ReplayTypes.ts';
+import { MatchSummaryMetadata, RaceResultEntry } from '../replay/ReplayTypes.ts';
 import { AICarManager } from '../game/AICarManager.ts';
 import { SkidMarkManager } from '../game/SkidMarkManager.ts';
 import { CollisionManager } from '../game/CollisionManager.ts';
@@ -396,6 +396,8 @@ export class Game {
     this.raceState = 'START_CUTSCENE';
     this.startCutsceneTimer = 0;
     this.isManualPitDriving = false;
+    this.recorder.stop();
+    this.recorder.clear();
 
     const halfW = this.track.trackWidth / 2;
 
@@ -797,7 +799,83 @@ export class Game {
     this.deactivateMirrors();
     this.replayPlayer.update(deltaMs);
     this.cameraController.updateChase(delta, this.replayPlayer.ghostVehicle);
+    this.environmentManager.update(delta, this.replayPlayer.ghostVehicle.position);
     this.emitUIState();
+  }
+
+  /**
+   * 경기 완주 시 출전 드라이버 4인의 최종 순위, 이름, 완주/추정 시간 산출 ('순위, 이름, 시간')
+   */
+  public computeRaceResults(): RaceResultEntry[] {
+    const rawList: { name: string; timeMs: number; isPlayer: boolean; colorHex?: number }[] = [];
+    const totalLaps = this.lapTimer.totalLaps;
+    const trackLen = this.track.trackCurve.getLength();
+
+    if (this.mode === 'DRIVING') {
+      const playerTimeMs = Math.round(this.lapTimer.totalTimeMs);
+      rawList.push({
+        name: this.currentDriverName || 'Apex Hunter',
+        timeMs: playerTimeMs,
+        isPlayer: true,
+        colorHex: this.playerVehicle.bodyColorHex,
+      });
+
+      for (let i = 1; i < this.aiManager.agents.length; i++) {
+        const agent = this.aiManager.agents[i];
+        if (!agent) continue;
+        let aiTimeMs: number;
+        if (agent.isFinished && agent.finishTimeMs) {
+          aiTimeMs = Math.round(agent.finishTimeMs);
+        } else {
+          // 완주선 통과 전 차량: 남은 거리 및 평균 속도 기반 완주 시간 계산
+          const remainingLaps = Math.max(0, totalLaps - agent.currentLap);
+          const remainingDist = remainingLaps * trackLen + Math.max(0, 1.0 - agent.t) * trackLen;
+          const speedMs = Math.max(25.0, agent.speedMs || agent.baseSpeedMs);
+          const estRemainingMs = (remainingDist / speedMs) * 1000;
+          aiTimeMs = Math.round(Math.max(playerTimeMs + 650, this.aiManager.raceTimeMs + estRemainingMs));
+        }
+
+        rawList.push({
+          name: agent.name,
+          timeMs: aiTimeMs,
+          isPlayer: false,
+          colorHex: agent.color,
+        });
+      }
+    } else {
+      for (let i = 0; i < this.aiManager.agents.length; i++) {
+        const agent = this.aiManager.agents[i];
+        if (!agent) continue;
+        let aiTimeMs: number;
+        if (agent.isFinished && agent.finishTimeMs) {
+          aiTimeMs = Math.round(agent.finishTimeMs);
+        } else {
+          const remainingLaps = Math.max(0, totalLaps - agent.currentLap);
+          const remainingDist = remainingLaps * trackLen + Math.max(0, 1.0 - agent.t) * trackLen;
+          const speedMs = Math.max(25.0, agent.speedMs || agent.baseSpeedMs);
+          const estRemainingMs = (remainingDist / speedMs) * 1000;
+          aiTimeMs = Math.round(this.aiManager.raceTimeMs + estRemainingMs);
+        }
+
+        rawList.push({
+          name: agent.name,
+          timeMs: aiTimeMs,
+          isPlayer: i === 0,
+          colorHex: agent.color,
+        });
+      }
+    }
+
+    rawList.sort((a, b) => a.timeMs - b.timeMs);
+
+    return rawList.map((item, idx) => ({
+      rank: idx + 1,
+      driverName: item.name,
+      timeMs: item.timeMs,
+      timeFormatted: this.formatTime(item.timeMs),
+      isPlayer: item.isPlayer,
+      colorHex: item.colorHex,
+    }));
   }
 
   private async handleFinish(targetVehicle: Vehicle, userId: string, nickname: string): Promise<void> {
@@ -811,6 +889,7 @@ export class Game {
 
     const ticks = this.recorder.getTicks();
     const benchmark = await ReplayCodec.benchmark(ticks);
+    const raceResults = this.computeRaceResults();
 
     const totalTimeMs = ticks.length > 0 ? ticks[ticks.length - 1].timeMs : 0;
     const bestLapMs = this.lapTimer.bestLapMs !== Infinity ? this.lapTimer.bestLapMs : Math.round(totalTimeMs / 3);
@@ -837,7 +916,8 @@ export class Game {
       rawJsonBytes: benchmark.rawJsonBytes,
       quantizedBinaryBytes: benchmark.binaryBytes,
       compressedBytes: benchmark.compressedBytes,
-      compressionRatioPercent: benchmark.reductionVsJsonPercent
+      compressionRatioPercent: benchmark.reductionVsJsonPercent,
+      raceResults,
     };
 
     // 리플레이 플레이어에 데이터 자동 로드
@@ -897,8 +977,13 @@ export class Game {
       this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = false;
       this.aiManager.deactivate();
+      this.replayPlayer.ghostVehicle.setModel(this.playerVehicle.currentModelId as any);
+      this.replayPlayer.ghostVehicle.setColor(this.playerVehicle.bodyColorHex);
+      this.replayPlayer.ghostVehicle.mesh.visible = true;
+      this.replayPlayer.seek(0);
       this.replayPlayer.play();
       this.raceState = 'RUNNING';
+      this.cameraController.snapToTarget(this.replayPlayer.ghostVehicle);
     } else if (mode === 'DEMO') {
       this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = false;

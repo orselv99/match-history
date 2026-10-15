@@ -17,6 +17,7 @@ export interface AICarAgent {
   color: number;
   currentLap: number;
   isFinished: boolean;
+  finishTimeMs?: number;
   // 다이내믹 레이싱 배틀 변수 (엎치락뒤치락 팽팽한 순위 싸움)
   attackTimer: number;     // 어택 모멘텀 버스트 잔여 시간
   attackCooldown: number;  // 다음 어택까지의 대기 시간
@@ -148,6 +149,7 @@ export class AICarManager {
       agent.targetLaneOffset = lane;
       agent.currentLap = 1;
       agent.isFinished = false;
+      agent.finishTimeMs = undefined;
       agent.hasPassedStartLine = false;
       agent.lastSectorTimeMs = 0;
       agent.currentSectorIndex = 0;
@@ -403,6 +405,7 @@ export class AICarManager {
           agent.currentLap++;
           if (agent.currentLap > this.totalLaps) {
             agent.isFinished = true;
+            agent.finishTimeMs = this.raceTimeMs;
             this.checkRaceFinish();
           }
         }

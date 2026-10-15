@@ -17,6 +17,15 @@ export interface RawReplayTick {
   lap: number;          // 현재 랩 번호 (1, 2, 3...)
 }
 
+export interface RaceResultEntry {
+  rank: number;
+  driverName: string;
+  timeMs: number;
+  timeFormatted: string;
+  isPlayer: boolean;
+  colorHex?: number;
+}
+
 /**
  * 경기 완주 요약 메타데이터 (전적 DB 저장용)
  */
@@ -38,6 +47,7 @@ export interface MatchSummaryMetadata {
   quantizedBinaryBytes: number;
   compressedBytes: number;
   compressionRatioPercent: number; // e.g. 98.5%
+  raceResults?: RaceResultEntry[];
 }
 
 /**

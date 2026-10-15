@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { VEHICLE_MODELS } from '../data/vehicles.ts';
+import type { VehicleMeshParams, VehicleWheels } from './vehicleModels/types.ts';
 import {
-  VehicleMeshParams,
-  VehicleWheels,
   buildGTTurboGeometry,
   buildFormulaAeroGeometry,
   buildCyberSpeedsterGeometry,
@@ -294,6 +293,7 @@ export class Vehicle {
   }
 
   private createLensGlowSprite(): THREE.Sprite {
+    if (typeof document === 'undefined') return new THREE.Sprite();
     const canvas = document.createElement('canvas');
     canvas.width = 128;
     canvas.height = 128;
@@ -324,6 +324,7 @@ export class Vehicle {
   }
 
   private createGroundBeamMesh(): THREE.Mesh {
+    if (typeof document === 'undefined') return new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial());
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;

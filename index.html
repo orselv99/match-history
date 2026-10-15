@@ -269,63 +269,59 @@
   </div>
 
   <!-- 4. 경기 완주 & 리플레이 데이터 압축 벤치마크 결과 모달 (Swiss Technical Planar Architecture) -->
+  <!-- 4. 경기 결과 및 서킷 랭킹 모달 -->
   <div id="finish-modal" class="modal-overlay">
     <div class="modal-card finish-modal-card">
       <header class="modal-header-strip">
-        <span class="modal-title" data-i18n="finish.title">경기 완주</span>
-        <span class="modal-code-tag">CODE // MONACO_01</span>
+        <span class="modal-title" data-i18n="finish.title">경기 결과</span>
+        <span id="modal-circuit-code" class="modal-code-tag">CIRCUIT // MONACO</span>
       </header>
 
       <div class="modal-content-body">
-        <!-- 주행 성적 지표 -->
-        <div class="stats-grid">
-          <div class="stat-box">
-            <div class="stat-title" data-i18n="finish.bestLap">최고 랩타임</div>
-            <div id="modal-best-lap" class="stat-value">01:14.280</div>
+        <!-- 1. 인게임 레이스 최종 순위 ('순위, 이름, 시간') -->
+        <div class="finish-section-container">
+          <div class="finish-section-header">
+            <span class="finish-section-title" data-i18n="finish.raceResults">레이스 최종 순위</span>
+            <span class="finish-section-badge">MATCH RESULTS</span>
           </div>
-          <div class="stat-box">
-            <div class="stat-title" data-i18n="finish.totalTime">총 소요 시간</div>
-            <div id="modal-total-time" class="stat-value">02:31.540</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-title" data-i18n="finish.topSpeed">최고속도</div>
-            <div id="modal-top-speed" class="stat-value">188 km/h</div>
-          </div>
-          <div class="stat-box">
-            <div class="stat-title" data-i18n="finish.avgSpeed">평균속도</div>
-            <div id="modal-avg-speed" class="stat-value">124 km/h</div>
-          </div>
+          <table class="finish-results-table">
+            <thead>
+              <tr>
+                <th style="width: 55px;" data-i18n="finish.rank">순위</th>
+                <th data-i18n="finish.driver">이름</th>
+                <th style="width: 120px; text-align: right;" data-i18n="finish.time">시간</th>
+              </tr>
+            </thead>
+            <tbody id="finish-race-results-tbody">
+              <!-- JS 동적 렌더링 -->
+            </tbody>
+          </table>
         </div>
 
-        <!-- 핵심 기술 검증: 리플레이 데이터 압축 벤치마크 -->
-        <div class="benchmark-container">
-          <div class="benchmark-header">
-            <span class="benchmark-title" data-i18n="finish.benchmarkTitle">리플레이 코덱 벤치마크</span>
-            <span id="modal-reduction-rate" class="compression-badge">98.5% SAVED</span>
+        <!-- 2. 서킷 역대 상위 5위 랭킹 (서버 연동 + 폴백) -->
+        <div class="finish-section-container">
+          <div class="finish-section-header">
+            <span class="finish-section-title" data-i18n="finish.serverTop5">서킷 상위 5위 랭킹</span>
+            <span id="finish-server-status-tag" class="finish-status-badge">서버 확인중...</span>
           </div>
-          <table class="benchmark-table">
-            <tbody>
+          <table class="finish-results-table">
+            <thead>
               <tr>
-                <td data-i18n="finish.rawJson">Raw JSON (Naive string)</td>
-                <td id="modal-json-size">2,850 KB</td>
+                <th style="width: 55px;" data-i18n="finish.rank">순위</th>
+                <th data-i18n="finish.driver">이름</th>
+                <th style="width: 120px; text-align: right;" data-i18n="finish.time">시간</th>
               </tr>
-              <tr>
-                <td data-i18n="finish.packedArray">Int16 Fixed-Point Quantization (Packed Array)</td>
-                <td id="modal-binary-size">108 KB (-96.2%)</td>
-              </tr>
-              <tr>
-                <td data-i18n="finish.finalBlob">Brotli / Gzip Compression (Final Blob)</td>
-                <td id="modal-compressed-size" style="color: var(--accent-spec);">34 KB (-98.8%)</td>
-              </tr>
+            </thead>
+            <tbody id="finish-server-top5-tbody">
+              <!-- JS 동적 렌더링 -->
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- 액션 버튼 -->
+      <!-- 액션 버튼 ('3d 재생 및 바이너리 내보내기' 제거 -> '다시보기' 추가) -->
       <footer class="modal-actions">
-        <button id="modal-btn-replay" class="primary-btn" data-i18n="finish.replay">3D 재생</button>
-        <button id="modal-btn-download" class="secondary-btn" data-i18n="finish.export">바이너리 내보내기</button>
+        <button id="modal-btn-replay" class="primary-btn" data-i18n="finish.replay">다시보기</button>
         <button id="modal-btn-restart" class="secondary-btn" data-i18n="finish.retry">다시 주행</button>
         <button id="modal-btn-title" class="secondary-btn" style="border-left: 1px solid var(--border-strong);" data-i18n="finish.titleMenu">메인 메뉴</button>
       </footer>

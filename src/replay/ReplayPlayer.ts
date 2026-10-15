@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { RawReplayTick } from './ReplayTypes.ts';
+import type { RawReplayTick } from './ReplayTypes.ts';
 import { Vehicle } from '../game/Vehicle.ts';
 
 /**
@@ -17,7 +17,7 @@ export class ReplayPlayer {
   private ticks: RawReplayTick[] = [];
 
   constructor() {
-    this.ghostVehicle = new Vehicle(true, 0x06b6d4); // 반투명 사이언 고스트 카
+    this.ghostVehicle = new Vehicle(false, 0xef4444); // 실차 외관의 3D 리플레이 차량
     this.ghostVehicle.mesh.visible = false;
   }
 
@@ -111,7 +111,8 @@ export class ReplayPlayer {
     const interpY = this.catmullRom(p0.y, t1.y, t2.y, p3.y, alpha);
     const interpZ = this.catmullRom(p0.z, t1.z, t2.z, p3.z, alpha);
 
-    this.ghostVehicle.mesh.position.set(interpX, interpY, interpZ);
+    this.ghostVehicle.position.set(interpX, interpY, interpZ);
+    this.ghostVehicle.mesh.position.copy(this.ghostVehicle.position);
 
     // 회전: 각도 언래핑 후 Slerp 보간
     const q1 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), t1.yaw);
@@ -119,6 +120,20 @@ export class ReplayPlayer {
     const interpQuat = new THREE.Quaternion().slerpQuaternions(q1, q2, alpha);
 
     this.ghostVehicle.mesh.quaternion.copy(interpQuat);
+
+    // 카메라 및 HUD 동기화를 위한 물리 변수 갱신
+    const euler = new THREE.Euler().setFromQuaternion(interpQuat, 'YXZ');
+    this.ghostVehicle.heading = euler.y;
+
+    const interpSpeedKmh = THREE.MathUtils.lerp(t1.speedKmh, t2.speedKmh, alpha);
+    this.ghostVehicle.speed = interpSpeedKmh / 3.6;
+    this.ghostVehicle.isDrifting = t1.isDrifting;
+
+    const steer = THREE.MathUtils.lerp(t1.steer, t2.steer, alpha);
+    if (this.ghostVehicle.frontLeftWheel && this.ghostVehicle.frontRightWheel) {
+      this.ghostVehicle.frontLeftWheel.rotation.y = steer * 0.55;
+      this.ghostVehicle.frontRightWheel.rotation.y = steer * 0.55;
+    }
   }
 
   /**

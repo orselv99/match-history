@@ -103,24 +103,12 @@ window.addEventListener('DOMContentLoaded', () => {
       const ticks = game.recorder.getTicks();
       game.replayPlayer.loadReplay(ticks);
       setModeUI('REPLAY');
-      game.replayPlayer.play();
     },
     onRestart: () => {
       game.restartRace();
     },
     onTitle: () => {
       setModeUI('TITLE');
-    },
-    onDownload: (meta) => {
-      const ticks = game.recorder.getTicks();
-      const buffer = ReplayCodec.encode(ticks, meta.trackId);
-      const blob = new Blob([buffer], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${meta.matchCode}_replay.bin`;
-      a.click();
-      URL.revokeObjectURL(url);
     },
   });
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { VehicleMeshParams, VehicleWheels } from './types.ts';
+import type { VehicleMeshParams, VehicleWheels } from './types.ts';
 
 /**
  * [스타일 3] cyber_speedster: 사이버펑크 쐐기형 모노볼륨 스피드스터 3D 지오메트리 빌더

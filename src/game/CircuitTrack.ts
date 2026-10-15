@@ -264,26 +264,13 @@ export class CircuitTrack {
    * 스타팅 그리드 슬롯 인덱스(0: Pole, 1, 2, 3)의 위치 및 헤딩각 반환
    */
   public getGridPosition(slotIndex: number): { position: THREE.Vector3; heading: number } {
-    const trackLength = this.trackCurve.getLength();
-    const slotDistances = [4.5, 11.5, 18.5, 25.5];
+    const slotDistances = [-5.0, -12.0, -19.0, -26.0];
     const slotLanes = [-2.2, 2.2, -2.2, 2.2];
 
-    const distBehind = slotDistances[Math.min(3, slotIndex)] || 4.5;
-    const lane = slotLanes[Math.min(3, slotIndex)] || 0;
+    const distZ = slotDistances[Math.min(3, Math.max(0, slotIndex))] ?? -5.0;
+    const laneX = slotLanes[Math.min(3, Math.max(0, slotIndex))] ?? -2.2;
 
-    const t = (1.0 - (distBehind / trackLength)) % 1.0;
-    const pt = this.trackCurve.getPointAt(t);
-    const tangent = this.trackCurve.getTangentAt(t).normalize();
-    const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-
-    const position = new THREE.Vector3()
-      .copy(pt)
-      .addScaledVector(right, lane);
-    position.y = 0.055;
-
-    const heading = Math.atan2(tangent.x, tangent.z);
-
-    return { position, heading };
+    return this.getStartStraightWorldPosition(laneX, distZ);
   }
 
   /**

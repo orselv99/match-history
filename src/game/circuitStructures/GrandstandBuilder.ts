@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { StructureMaterials } from './types.ts';
+import type { StructureMaterials } from './types.ts';
 
 /**
  * 대형 5단 관중석 그랜드스탠드 (Grandstand with Cantilever Roof)

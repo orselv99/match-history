@@ -81,7 +81,7 @@ export class Game {
 
   // 시작 컷씬 (피트 출차 -> 출발선 정렬 및 직접 운전 지원)
   private startCutsceneTimer: number = 0;
-  private readonly startCutsceneDuration: number = 3.6;
+  private readonly startCutsceneDuration: number = 4.2;
   private isManualPitDriving: boolean = false;
 
   // 카메라 & 환경 전담 매니저
@@ -320,29 +320,103 @@ export class Game {
     }
   }
 
+  /**
+   * 슬롯 인덱스(0: Pole, 1: 2nd, 2: 3rd, 3: 4th)에 해당하는 실제 차량 인스턴스 반환
+   */
+  private getVehicleForSlot(slotIndex: number): Vehicle | null {
+    if (this.mode === 'DRIVING') {
+      if (slotIndex === 0) return this.playerVehicle;
+      return this.aiManager.agents[slotIndex]?.vehicle || null;
+    } else {
+      return this.aiManager.agents[slotIndex]?.vehicle || (slotIndex === 0 ? this.playerVehicle : null);
+    }
+  }
+
+  /**
+   * 4대 레이스 머신 각각의 피트 베이 출차 -> 피트 레인 주행 -> 지정 그리드 슬롯 안착 궤적 연산
+   * - 슬롯 0: Pole (X: -2.2, Z: -5.0)
+   * - 슬롯 1: 2nd  (X: +2.2, Z: -12.0)
+   * - 슬롯 2: 3rd  (X: -2.2, Z: -19.0)
+   * - 슬롯 3: 4th  (X: +2.2, Z: -26.0)
+   */
+  private computePitRolloutState(
+    i: number,
+    progress: number,
+    halfW: number
+  ): { x: number; z: number; headingOffset: number; speed: number } {
+    const slotX = (i % 2 === 0) ? -2.2 : 2.2;
+    const slotZ = -5.0 - i * 7.0; // -5.0, -12.0, -19.0, -26.0 (그리드 브래킷 위치와 100% 일치)
+    const startX = -(halfW + 6.8);
+    const startZ = -28.0 - i * 8.0; // 피트 가레지 베이 앞 대기열 (-28, -36, -44, -52)
+    const mergeZ = -18.0 - (3 - i) * 1.5;
+
+    let curX = -(halfW + 5.5);
+    let curZ = slotZ;
+    let headingOffset = 0.0;
+    let speed = 0.0;
+
+    // 1구간: 피트 베이에서 피트 레인 중앙으로 조향 진입 (0.0 ~ 0.25)
+    if (progress < 0.25) {
+      const p1 = progress / 0.25;
+      const ease1 = p1 * p1;
+      curX = THREE.MathUtils.lerp(startX, -(halfW + 5.5), ease1);
+      curZ = THREE.MathUtils.lerp(startZ, startZ + 8.0, p1);
+      headingOffset = THREE.MathUtils.lerp(0.26, 0.0, ease1);
+      speed = 7.0;
+    }
+    // 2구간: 피트 레인 직선 직진 주행 (0.25 ~ 0.58)
+    else if (progress < 0.58) {
+      const p2 = (progress - 0.25) / 0.33;
+      curX = -(halfW + 5.5);
+      curZ = THREE.MathUtils.lerp(startZ + 8.0, mergeZ, p2);
+      headingOffset = 0.0;
+      speed = 9.0;
+    }
+    // 3구간: 피트 출구 방호벽 개방 구간을 통해 메인 스트레이트 각 슬롯으로 합류 (0.58 ~ 0.88)
+    else if (progress < 0.88) {
+      const p3 = (progress - 0.58) / 0.30;
+      const ease3 = 0.5 - 0.5 * Math.cos(p3 * Math.PI);
+      curX = THREE.MathUtils.lerp(-(halfW + 5.5), slotX, ease3);
+      curZ = THREE.MathUtils.lerp(mergeZ, slotZ, ease3);
+      headingOffset = Math.sin(p3 * Math.PI) * 0.16;
+      speed = THREE.MathUtils.lerp(9.0, 1.5, ease3);
+    }
+    // 4구간: 각 슬롯 화이트 브래킷 박스 안에 반듯하게 도킹 정차 (0.88 ~ 1.0)
+    else {
+      curX = slotX;
+      curZ = slotZ;
+      headingOffset = 0.0;
+      speed = 0.0;
+    }
+
+    return { x: curX, z: curZ, headingOffset, speed };
+  }
+
   public setupStartCutscene(): void {
     this.raceState = 'START_CUTSCENE';
     this.startCutsceneTimer = 0;
     this.isManualPitDriving = false;
 
     const halfW = this.track.trackWidth / 2;
-    // 피트 가레지 2번 베이 출구(-38.0m, 피트 레인 방향 16도 조향) 위치에서 출차 개시
-    const garageExit = this.track.getStartStraightWorldPosition(-(halfW + 7.5), -38.0);
-
-    const vehicle = this.mode === 'DEMO' ? (this.aiManager.agents[0]?.vehicle || this.playerVehicle) : this.playerVehicle;
-    vehicle.reset(garageExit.position, garageExit.heading + 0.28);
-    vehicle.speed = this.mode === 'DRIVING' ? 4.0 : 8.0;
 
     if (this.mode === 'DRIVING') {
       this.aiManager.resetToGrids(true);
-    } else if (this.mode === 'DEMO') {
-      for (let i = 1; i < this.aiManager.agents.length; i++) {
-        const gridPos = this.track.getGridPosition(i);
-        this.aiManager.agents[i].vehicle.reset(gridPos.position, gridPos.heading);
-      }
+    } else {
+      this.aiManager.resetToGrids(false);
     }
 
-    this.cameraController.updateStartCutscene(0.016, vehicle, 0);
+    // 모든 출전 차량(슬롯 0~3)을 그리드가 아닌 피트 가레지/피트 레인 대기열에 순서대로 배치
+    for (let i = 0; i < 4; i++) {
+      const v = this.getVehicleForSlot(i);
+      if (!v) continue;
+      const startState = this.computePitRolloutState(i, 0, halfW);
+      const worldPos = this.track.getStartStraightWorldPosition(startState.x, startState.z);
+      v.reset(worldPos.position, worldPos.heading + startState.headingOffset);
+      v.speed = (i === 0 && this.mode === 'DRIVING') ? 4.0 : startState.speed;
+    }
+
+    const leadVehicle = this.getVehicleForSlot(0) || this.playerVehicle;
+    this.cameraController.updateStartCutscene(0.016, leadVehicle, 0);
   }
 
   public updateStartCutscene(delta: number): void {
@@ -360,22 +434,57 @@ export class Game {
       }
     }
 
-    if (this.isManualPitDriving) {
-      this.playerVehicle.update(
-        delta,
-        this.input.throttle,
-        this.input.brake,
-        this.input.steer,
-        this.input.handbrake,
-        false
-      );
+    this.startCutsceneTimer += delta;
+    const progress = Math.min(1.0, this.startCutsceneTimer / this.startCutsceneDuration);
 
+    // 4대 차량 각각 피트 출차 주행 갱신
+    for (let i = 0; i < 4; i++) {
+      const v = this.getVehicleForSlot(i);
+      if (!v) continue;
+
+      if (i === 0 && this.isManualPitDriving) {
+        // 플레이어 직접 운전
+        this.playerVehicle.update(
+          delta,
+          this.input.throttle,
+          this.input.brake,
+          this.input.steer,
+          this.input.handbrake,
+          false
+        );
+      } else {
+        // 롤아웃 주행 (피트 베이 -> 피트 레인 -> 피트 출구 -> 지정 그리드 슬롯 안착)
+        const state = this.computePitRolloutState(i, progress, halfW);
+        const world = this.track.getStartStraightWorldPosition(state.x, state.z);
+
+        v.position.copy(world.position);
+        v.heading = world.heading + state.headingOffset;
+        v.mesh.position.copy(v.position);
+        v.mesh.rotation.set(0, v.heading, 0);
+
+        // 휠 회전
+        const wheelRot = (state.speed / 0.38) * delta;
+        v.frontLeftWheel.rotation.x += wheelRot;
+        v.frontRightWheel.rotation.x += wheelRot;
+        v.rearLeftWheel.rotation.x += wheelRot;
+        v.rearRightWheel.rotation.x += wheelRot;
+
+        // 조향 각도
+        const steerAngle = -state.headingOffset * 1.5;
+        v.frontLeftWheel.rotation.y = steerAngle;
+        v.frontRightWheel.rotation.y = steerAngle;
+      }
+    }
+
+    const leadVehicle = this.getVehicleForSlot(0) || this.playerVehicle;
+
+    if (this.isManualPitDriving) {
       this.cameraController.updateChase(delta, this.playerVehicle);
       this.environmentManager.update(delta, this.playerVehicle.position);
       this.audio.update(this.playerVehicle.getSpeedKmh(), this.playerVehicle.isDrifting, this.input.throttle);
       this.emitUIState();
 
-      // 출발선 1번 그리드 슬롯(폴 포지션) 근처 진입 감지 시 자동 정렬 및 카운트다운 시작
+      // 출발선 1번 그리드 슬롯(폴 포지션) 근처 진입 감지 시 자동 도킹 및 카운트다운 시작
       const distToGrid = this.playerVehicle.position.distanceTo(grid0.position);
       if (distToGrid < 4.2 && this.playerVehicle.speed < 14.0) {
         this.skipStartCutscene();
@@ -383,69 +492,12 @@ export class Game {
       return;
     }
 
-    // 2. 자동 주행 연출 (조작을 하지 않거나 데모 모드일 때 매끄럽게 피트 출차 및 그리드 자동 정렬)
-    this.startCutsceneTimer += delta;
-    const progress = Math.min(1.0, this.startCutsceneTimer / this.startCutsceneDuration);
-    const vehicle = this.mode === 'DEMO' ? (this.aiManager.agents[0]?.vehicle || this.playerVehicle) : this.playerVehicle;
-
-    let curLocalX = -(halfW + 5.5);
-    let curLocalZ = -4.5;
-    let headingOffset = 0.0;
-
-    // 피트 베이 출차 -> 피트 레인 주행 -> 피트 출구 갭을 통과하여 메인 트랙 1번 그리드 진입
-    if (progress < 0.28) {
-      const p1 = progress / 0.28;
-      const ease1 = p1 * p1;
-      curLocalX = THREE.MathUtils.lerp(-(halfW + 7.5), -(halfW + 5.5), ease1);
-      curLocalZ = THREE.MathUtils.lerp(-38.0, -26.0, p1);
-      headingOffset = THREE.MathUtils.lerp(0.28, 0.0, ease1);
-      vehicle.speed = 8.0;
-    } else if (progress < 0.62) {
-      const p2 = (progress - 0.28) / 0.34;
-      curLocalX = -(halfW + 5.5);
-      curLocalZ = THREE.MathUtils.lerp(-26.0, -16.0, p2);
-      headingOffset = 0.0;
-      vehicle.speed = 10.0;
-    } else if (progress < 0.88) {
-      const p3 = (progress - 0.62) / 0.26;
-      const ease3 = 0.5 - 0.5 * Math.cos(p3 * Math.PI);
-      curLocalX = THREE.MathUtils.lerp(-(halfW + 5.5), -2.2, ease3);
-      curLocalZ = THREE.MathUtils.lerp(-16.0, -4.5, ease3);
-      headingOffset = Math.sin(p3 * Math.PI) * 0.18;
-      vehicle.speed = THREE.MathUtils.lerp(10.0, 3.0, ease3);
-    } else {
-      const p4 = (progress - 0.88) / 0.12;
-      curLocalX = -2.2;
-      curLocalZ = -4.5;
-      headingOffset = 0.0;
-      vehicle.speed = THREE.MathUtils.lerp(3.0, 0, p4);
-    }
-
-    // 트랙 3D 월드 좌표 및 각도로 변환
-    const worldState = this.track.getStartStraightWorldPosition(curLocalX, curLocalZ);
-    vehicle.position.copy(worldState.position);
-    vehicle.heading = worldState.heading + headingOffset;
-    vehicle.mesh.position.copy(vehicle.position);
-    vehicle.mesh.rotation.set(0, vehicle.heading, 0);
-
-    // 바퀴 회전
-    const wheelRot = (vehicle.speed / 0.38) * delta;
-    vehicle.frontLeftWheel.rotation.x += wheelRot;
-    vehicle.frontRightWheel.rotation.x += wheelRot;
-    vehicle.rearLeftWheel.rotation.x += wheelRot;
-    vehicle.rearRightWheel.rotation.x += wheelRot;
-
-    // 조향 각도 (피트 탈출 시 조향 휠 꺾임)
-    const steerAngle = -headingOffset * 1.5;
-    vehicle.frontLeftWheel.rotation.y = steerAngle;
-    vehicle.frontRightWheel.rotation.y = steerAngle;
-
-    // 카메라 컷씬 트래킹
-    this.cameraController.updateStartCutscene(delta, vehicle, progress);
+    // 자동 컷씬 카메라 추적
+    this.cameraController.updateStartCutscene(delta, leadVehicle, progress);
 
     // 환경 효과 & 오디오 업데이트
-    this.environmentManager.update(delta, vehicle.position);
-    this.audio.update(vehicle.getSpeedKmh(), false, 0.4);
+    this.environmentManager.update(delta, leadVehicle.position);
+    this.audio.update(leadVehicle.getSpeedKmh(), false, 0.4);
     this.emitUIState();
 
     if (progress >= 1.0) {
@@ -456,10 +508,18 @@ export class Game {
   public skipStartCutscene(): void {
     if (this.raceState !== 'START_CUTSCENE') return;
     this.isManualPitDriving = false;
-    const grid0 = this.track.getGridPosition(0);
-    const vehicle = this.mode === 'DEMO' ? (this.aiManager.agents[0]?.vehicle || this.playerVehicle) : this.playerVehicle;
-    vehicle.reset(grid0.position, grid0.heading);
-    this.cameraController.updateChase(0.016, vehicle);
+
+    // 모든 출전 차량(슬롯 0~3)을 각 그리드 위치에 완벽 정렬
+    for (let i = 0; i < 4; i++) {
+      const v = this.getVehicleForSlot(i);
+      if (!v) continue;
+      const grid = this.track.getGridPosition(i);
+      v.reset(grid.position, grid.heading);
+      v.speed = 0;
+    }
+
+    const leadVehicle = this.getVehicleForSlot(0) || this.playerVehicle;
+    this.cameraController.updateChase(0.016, leadVehicle);
     this.startCountdown();
   }
 

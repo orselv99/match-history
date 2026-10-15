@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { StructureMaterials } from './types.ts';
+import type { StructureMaterials } from './types.ts';
 
 /**
  * 출발선 F1 5구 스타팅 라이트 갠트리 (Start / Finish Gantry)

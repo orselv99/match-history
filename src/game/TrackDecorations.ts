@@ -73,13 +73,14 @@ export class TrackDecorations {
       { distBehind: 26.0, lane: 2.2 },
     ];
 
-    slotConfigs.forEach((slot) => {
-      const t = (1.0 - (slot.distBehind / trackLength)) % 1.0;
-      const pt = trackCurve.getPointAt(t);
-      const tangent = trackCurve.getTangentAt(t).normalize();
-      const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+    const localXDir = new THREE.Vector3(startTangent.z, 0, -startTangent.x).normalize();
 
-      const center = new THREE.Vector3().copy(pt).addScaledVector(right, slot.lane);
+    slotConfigs.forEach((slot) => {
+      const center = new THREE.Vector3()
+        .copy(startPt)
+        .addScaledVector(startTangent, -slot.distBehind)
+        .addScaledVector(localXDir, slot.lane);
+      center.y = 0.052;
       const halfW = 1.35;
       const halfL = 2.4;
       const bracketArm = 0.7;
@@ -95,18 +96,18 @@ export class TrackDecorations {
       corners.forEach(c => {
         const cornerOrigin = new THREE.Vector3()
           .copy(center)
-          .addScaledVector(right, c.sideX * halfW)
-          .addScaledVector(tangent, c.sideZ * halfL);
+          .addScaledVector(localXDir, c.sideX * halfW)
+          .addScaledVector(startTangent, c.sideZ * halfL);
 
         // 가로 바
         const hStart = new THREE.Vector3().copy(cornerOrigin);
-        const hEnd = new THREE.Vector3().copy(cornerOrigin).addScaledVector(right, -c.sideX * bracketArm);
-        group.add(this.createMarkingStrip(hStart, hEnd, tangent, bThick, whiteMat));
+        const hEnd = new THREE.Vector3().copy(cornerOrigin).addScaledVector(localXDir, -c.sideX * bracketArm);
+        group.add(this.createMarkingStrip(hStart, hEnd, startTangent, bThick, whiteMat));
 
         // 세로 바
         const vStart = new THREE.Vector3().copy(cornerOrigin);
-        const vEnd = new THREE.Vector3().copy(cornerOrigin).addScaledVector(tangent, -c.sideZ * bracketArm);
-        group.add(this.createMarkingStrip(vStart, vEnd, right, bThick, whiteMat));
+        const vEnd = new THREE.Vector3().copy(cornerOrigin).addScaledVector(startTangent, -c.sideZ * bracketArm);
+        group.add(this.createMarkingStrip(vStart, vEnd, localXDir, bThick, whiteMat));
       });
     });
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { StructureMaterials } from './types.ts';
+import type { StructureMaterials } from './types.ts';
 
 /**
  * 4층 레이스 컨트롤 타워 & 대형 실시간 타이밍 전광판 (Race Control Tower & Timing Board)

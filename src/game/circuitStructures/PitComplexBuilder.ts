@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { StructureMaterials } from './types.ts';
+import type { StructureMaterials } from './types.ts';
 
 /**
  * 2층 레이싱팀 피트 빌딩 & 피트 월 & 피트 레인 (Pit Complex & Pit Wall)

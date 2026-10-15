@@ -173,7 +173,7 @@ export class Game {
     this.audio = new AudioManager();
     this.lapTimer = new LapTimer(3); // 3랩 완주
     this.recorder = new ReplayRecorder();
-    this.speedFX = new SpeedFX();
+    this.speedFX = new SpeedFX(this.renderer, this.scene, this.camera);
 
     this.clock = new THREE.Clock();
 
@@ -343,17 +343,21 @@ export class Game {
     // 포커싱 차량을 제외한 나머지 차량 상단에 이름 표시
     this.updateNameTags();
 
-    // 고속 주행 시각화 효과 (100km/h & 200km/h 속도선 및 모션블러 비네트)
+    // 고속 주행 시각화 효과 (100km/h & 200km/h 속도선 및 방사형 환경 블러)
     const focusedVehicle = this.getFocusedVehicle();
     const currentSpeed = focusedVehicle ? focusedVehicle.getSpeedKmh() : 0;
-    this.speedFX.update(delta, currentSpeed);
+    this.speedFX.update(delta, currentSpeed, focusedVehicle);
 
     // 미니맵 드로잉
     this.drawMinimap();
 
     // 렌더링 (메인 뷰포트 + 좌/우 백미러 시저 렌더링)
     this.renderer.setViewport(0, 0, this.renderer.domElement.width, this.renderer.domElement.height);
-    this.renderer.render(this.scene, this.camera);
+    if (this.speedFX.isActive()) {
+      this.speedFX.render();
+    } else {
+      this.renderer.render(this.scene, this.camera);
+    }
     this.renderMirrors();
   }
 
@@ -863,7 +867,7 @@ export class Game {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.speedFX.resize();
+    this.speedFX.resize(width, height);
   }
 
   /**

@@ -21,6 +21,7 @@ export interface AICarAgent {
   attackTimer: number;     // 어택 모멘텀 버스트 잔여 시간
   attackCooldown: number;  // 다음 어택까지의 대기 시간
   isDrafting: boolean;     // 슬립스트림 견인 가속 상태 여부
+  hasPassedStartLine: boolean; // 첫 랩 출발선 통과 여부 (출발선 이전 그리드 스폰 대응)
 }
 
 /**
@@ -74,6 +75,7 @@ export class AICarManager {
         attackTimer: idx * 2.0, // 초기 모멘텀 시차 분산
         attackCooldown: 3.5 + idx * 2.5,
         isDrafting: false,
+        hasPassedStartLine: false,
       });
 
       this.group.add(vehicle.mesh);
@@ -131,6 +133,7 @@ export class AICarManager {
       agent.targetLaneOffset = lane;
       agent.currentLap = 1;
       agent.isFinished = false;
+      agent.hasPassedStartLine = false;
       agent.attackTimer = idx * 1.8;
       agent.attackCooldown = 3.0 + idx * 2.2;
       agent.isDrafting = false;
@@ -309,10 +312,16 @@ export class AICarManager {
 
       // 6. 스타트/피니시 라인 통과 감지
       if (agent.prevT > 0.85 && agent.t < 0.15) {
-        agent.currentLap++;
-        if (agent.currentLap > this.totalLaps) {
-          agent.isFinished = true;
-          this.checkRaceFinish();
+        if (!agent.hasPassedStartLine) {
+          // 레이스 시작 직후 출발선 통과는 첫 랩의 시작이므로 랩 수를 올리지 않음
+          agent.hasPassedStartLine = true;
+        } else {
+          // 1바퀴를 완전히 완주했을 때만 랩 수 증가
+          agent.currentLap++;
+          if (agent.currentLap > this.totalLaps) {
+            agent.isFinished = true;
+            this.checkRaceFinish();
+          }
         }
       }
 
@@ -359,10 +368,14 @@ export class AICarManager {
    */
   public getLeaderAgent(): AICarAgent {
     let leader = this.agents[0];
+    const getProg = (a: AICarAgent) => a.hasPassedStartLine ? (a.currentLap - 1) + a.t : a.t - 1.0;
+    let leaderProg = getProg(leader);
     for (let i = 1; i < this.agents.length; i++) {
       const a = this.agents[i];
-      if (a.currentLap > leader.currentLap || (a.currentLap === leader.currentLap && a.t > leader.t)) {
+      const aProg = getProg(a);
+      if (aProg > leaderProg) {
         leader = a;
+        leaderProg = aProg;
       }
     }
     return leader;

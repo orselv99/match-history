@@ -22,7 +22,15 @@ export class ReplayRecorder {
     this.isRecording = false;
   }
 
-  public update(deltaMs: number, vehicle: Vehicle, currentLap: number, steerInput: number, throttleInput: number, brakeInput: number): void {
+  public update(
+    deltaMs: number,
+    vehicle: Vehicle,
+    currentLap: number,
+    steerInput: number,
+    throttleInput: number,
+    brakeInput: number,
+    opponents?: Vehicle[]
+  ): void {
     if (!this.isRecording) return;
 
     this.sessionElapsedMs += deltaMs;
@@ -46,6 +54,16 @@ export class ReplayRecorder {
         brake: Number(brakeInput.toFixed(2)),
         isDrifting: vehicle.isDrifting,
         lap: currentLap,
+        opponents: opponents && opponents.length > 0
+          ? opponents.map(opp => ({
+              x: Number(opp.position.x.toFixed(3)),
+              y: Number(opp.position.y.toFixed(3)),
+              z: Number(opp.position.z.toFixed(3)),
+              yaw: Number(opp.heading.toFixed(4)),
+              speedKmh: Number(opp.getSpeedKmh().toFixed(1)),
+              isDrifting: opp.isDrifting,
+            }))
+          : undefined,
       });
     }
   }

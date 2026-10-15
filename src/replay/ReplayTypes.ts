@@ -1,3 +1,12 @@
+export interface ReplayOpponentState {
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  speedKmh: number;
+  isDrifting?: boolean;
+}
+
 /**
  * 3D 주행 리플레이 원시 틱 데이터 (인메모리 런타임용)
  */
@@ -15,6 +24,7 @@ export interface RawReplayTick {
   brake: number;        // 브레이크 페달 (0.0 ~ 1.0)
   isDrifting: boolean;  // 드리프트 상태 여부
   lap: number;          // 현재 랩 번호 (1, 2, 3...)
+  opponents?: ReplayOpponentState[]; // 동승 레이스 경쟁 차량들 위치/회전 상태
 }
 
 export interface RaceResultEntry {

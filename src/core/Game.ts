@@ -147,6 +147,7 @@ export class Game {
 
     this.replayPlayer = new ReplayPlayer();
     this.scene.add(this.replayPlayer.ghostVehicle.mesh);
+    this.replayPlayer.opponentVehicles.forEach(v => this.scene.add(v.mesh));
 
     this.aiManager = new AICarManager(this.track);
     this.aiManager.onSectorPassed = (name, sectorName, timeMs) => {
@@ -689,14 +690,21 @@ export class Game {
         }
       );
 
-      // 30Hz 주행 리플레이 데이터 레코딩
+      // 30Hz 주행 리플레이 데이터 레코딩 (플레이어 및 라이벌 3대 동시 기록)
+      const opponents = [
+        this.aiManager.agents[1]?.vehicle,
+        this.aiManager.agents[2]?.vehicle,
+        this.aiManager.agents[3]?.vehicle,
+      ].filter(Boolean) as Vehicle[];
+
       this.recorder.update(
         deltaMs,
         this.playerVehicle,
         this.lapTimer.currentLap,
         this.input.steer,
         this.input.throttle,
-        this.input.brake
+        this.input.brake,
+        opponents
       );
 
       // 완주 판정 시
@@ -759,11 +767,16 @@ export class Game {
         () => this.audio.playCheckpointBeep()
       );
 
+      const opponents = this.aiManager.agents
+        .filter(a => a !== playerAgent && a.vehicle.mesh.visible)
+        .map(a => a.vehicle);
+
       this.recorder.update(
         deltaMs,
         targetVehicle,
         playerAgent.currentLap,
-        0, 0.9, 0
+        0, 0.9, 0,
+        opponents
       );
 
       // 플레이어 차량 또는 AI 전체 완주 판정
@@ -966,7 +979,7 @@ export class Game {
       this.audio.playLobbyBgm();
       this.playerVehicle.mesh.visible = true;
       this.resetCarToStart();
-      this.replayPlayer.pause();
+      this.replayPlayer.hideGhost();
       this.aiManager.deactivate();
       this.raceState = 'READY';
       this.countdownTimer = 3.0;
@@ -979,7 +992,14 @@ export class Game {
       this.aiManager.deactivate();
       this.replayPlayer.ghostVehicle.setModel(this.playerVehicle.currentModelId as any);
       this.replayPlayer.ghostVehicle.setColor(this.playerVehicle.bodyColorHex);
-      this.replayPlayer.ghostVehicle.mesh.visible = true;
+
+      // 라이벌 AI 차량 3대의 모델 및 컬러를 리플레이 플레이어에 동기화
+      this.replayPlayer.syncOpponents([
+        { modelId: this.aiManager.agents[1]?.vehicle.currentModelId, colorHex: this.aiManager.agents[1]?.color, name: this.aiManager.agents[1]?.name },
+        { modelId: this.aiManager.agents[2]?.vehicle.currentModelId, colorHex: this.aiManager.agents[2]?.color, name: this.aiManager.agents[2]?.name },
+        { modelId: this.aiManager.agents[3]?.vehicle.currentModelId, colorHex: this.aiManager.agents[3]?.color, name: this.aiManager.agents[3]?.name },
+      ]);
+
       this.replayPlayer.seek(0);
       this.replayPlayer.play();
       this.raceState = 'RUNNING';
@@ -987,7 +1007,7 @@ export class Game {
     } else if (mode === 'DEMO') {
       this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = false;
-      this.replayPlayer.pause();
+      this.replayPlayer.hideGhost();
       // 슬롯 0을 위저드에서 설정한 플레이어 차량 스펙 및 컬러로 동기화
       this.aiManager.setSlotConfig(
         0,
@@ -1007,7 +1027,7 @@ export class Game {
     } else { // DRIVING
       this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = true;
-      this.replayPlayer.pause();
+      this.replayPlayer.hideGhost();
       this.aiManager.activate(true); // 라이벌 AI 3대 (슬롯 1, 2, 3) 활성화
       this.resetCarToStart();
       this.raceState = 'READY';
@@ -1162,11 +1182,17 @@ export class Game {
   private updateNameTags(): void {
     const focused = this.getFocusedVehicle();
 
-    // AI 차량들: 카메라가 포커싱 중인 차량을 제외한 나머지 활성 차량 상단에 이름 표시
+    // AI 및 리플레이 경쟁 차량들: 카메라가 포커싱 중인 차량을 제외한 나머지 활성 차량 상단에 이름 표시
     if (this.aiManager.isActive) {
       const agents = this.aiManager.agents;
       for (let i = 0; i < agents.length; i++) {
         const v = agents[i].vehicle;
+        v.setNameTagVisible(v !== focused && v.mesh.visible);
+      }
+    } else if (this.mode === 'REPLAY') {
+      this.replayPlayer.ghostVehicle.setNameTagVisible(false);
+      for (let i = 0; i < this.replayPlayer.opponentVehicles.length; i++) {
+        const v = this.replayPlayer.opponentVehicles[i];
         v.setNameTagVisible(v !== focused && v.mesh.visible);
       }
     } else {

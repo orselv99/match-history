@@ -121,13 +121,20 @@ export class MinimapRenderer {
       });
     }
 
-    // 6. 리플레이 모드일 때만 고스트 차량 닷 표시
-    if (mode === 'REPLAY' && replayPlayer.ghostVehicle.mesh.visible && targetVehicle !== replayPlayer.ghostVehicle) {
-      const gp = replayPlayer.ghostVehicle.position;
-      ctx.fillStyle = '#7dd3fc';
-      ctx.beginPath();
-      ctx.arc(gp.x * scale + offsetX, gp.z * scale + offsetY, 4, 0, Math.PI * 2);
-      ctx.fill();
+    // 6. 리플레이 모드일 때 동승 경쟁 차량들 닷 표시
+    if (mode === 'REPLAY') {
+      replayPlayer.opponentVehicles.forEach(opp => {
+        if (!opp.mesh.visible || opp === targetVehicle) return;
+        const op = opp.position;
+        ctx.fillStyle = `#${(opp.bodyColorHex || 0x38bdf8).toString(16).padStart(6, '0')}`;
+        ctx.beginPath();
+        ctx.arc(op.x * scale + offsetX, op.z * scale + offsetY, 4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
     }
 
     // 7. 현재 중심 추적 차량 (정중앙 w/2, h/2에 방향 화살표 + 펄스 링 표시)

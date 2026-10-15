@@ -9,6 +9,7 @@ import { Vehicle } from '../game/Vehicle.ts';
  */
 export class ReplayPlayer {
   public ghostVehicle: Vehicle;
+  public opponentVehicles: Vehicle[] = [];
   public isPlaying: boolean = false;
   public currentTimeMs: number = 0;
   public totalDurationMs: number = 0;
@@ -19,6 +20,29 @@ export class ReplayPlayer {
   constructor() {
     this.ghostVehicle = new Vehicle(false, 0xef4444); // 실차 외관의 3D 리플레이 차량
     this.ghostVehicle.mesh.visible = false;
+
+    // 동승했던 라이벌 차량 3대 인스턴스 초기화
+    const defaultModels: Array<'gt_turbo' | 'formula_aero' | 'cyber_speedster'> = [
+      'formula_aero',
+      'cyber_speedster',
+      'gt_turbo'
+    ];
+    for (let i = 0; i < 3; i++) {
+      const v = new Vehicle(false, 0xc45a72, defaultModels[i % defaultModels.length]);
+      v.mesh.visible = false;
+      this.opponentVehicles.push(v);
+    }
+  }
+
+  public syncOpponents(configs: Array<{ modelId?: string; colorHex?: number; name?: string }>): void {
+    configs.forEach((cfg, idx) => {
+      const v = this.opponentVehicles[idx];
+      if (v) {
+        if (cfg.modelId) v.setModel(cfg.modelId as any);
+        if (cfg.colorHex !== undefined) v.setColor(cfg.colorHex);
+        if (cfg.name) v.setNameTag(cfg.name, cfg.colorHex || 0x38bdf8);
+      }
+    });
   }
 
   public loadReplay(ticks: RawReplayTick[]): void {
@@ -28,10 +52,12 @@ export class ReplayPlayer {
       this.currentTimeMs = 0;
       // 데이터 로드 시에는 고스트 카를 숨겨둔 상태로 유지 (리플레이 모드 재생 시에만 활성화)
       this.ghostVehicle.mesh.visible = false;
+      this.opponentVehicles.forEach(v => { v.mesh.visible = false; });
       this.seek(0);
     } else {
       this.totalDurationMs = 0;
       this.ghostVehicle.mesh.visible = false;
+      this.opponentVehicles.forEach(v => { v.mesh.visible = false; });
     }
   }
 
@@ -39,6 +65,7 @@ export class ReplayPlayer {
     if (this.ticks.length > 0) {
       this.isPlaying = true;
       this.ghostVehicle.mesh.visible = true;
+      this.opponentVehicles.forEach(v => { v.mesh.visible = true; });
     }
   }
 
@@ -49,6 +76,7 @@ export class ReplayPlayer {
   public hideGhost(): void {
     this.isPlaying = false;
     this.ghostVehicle.mesh.visible = false;
+    this.opponentVehicles.forEach(v => { v.mesh.visible = false; });
   }
 
   public seek(timeMs: number): void {
@@ -133,6 +161,39 @@ export class ReplayPlayer {
     if (this.ghostVehicle.frontLeftWheel && this.ghostVehicle.frontRightWheel) {
       this.ghostVehicle.frontLeftWheel.rotation.y = steer * 0.55;
       this.ghostVehicle.frontRightWheel.rotation.y = steer * 0.55;
+    }
+
+    // 동승했던 라이벌 경쟁 차량 3대 동시 3D 위치 및 회전 보간
+    for (let k = 0; k < this.opponentVehicles.length; k++) {
+      const opp1 = t1.opponents?.[k];
+      const opp2 = t2.opponents?.[k];
+      const oppVehicle = this.opponentVehicles[k];
+
+      if (opp1 && opp2 && oppVehicle) {
+        const oppX = THREE.MathUtils.lerp(opp1.x, opp2.x, alpha);
+        const oppY = THREE.MathUtils.lerp(opp1.y, opp2.y, alpha);
+        const oppZ = THREE.MathUtils.lerp(opp1.z, opp2.z, alpha);
+
+        oppVehicle.position.set(oppX, oppY, oppZ);
+        oppVehicle.mesh.position.copy(oppVehicle.position);
+
+        const qOpp1 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), opp1.yaw);
+        const qOpp2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), opp2.yaw);
+        oppVehicle.mesh.quaternion.slerpQuaternions(qOpp1, qOpp2, alpha);
+
+        const eulerOpp = new THREE.Euler().setFromQuaternion(oppVehicle.mesh.quaternion, 'YXZ');
+        oppVehicle.heading = eulerOpp.y;
+
+        const oppSpeedKmh = THREE.MathUtils.lerp(opp1.speedKmh, opp2.speedKmh, alpha);
+        oppVehicle.speed = oppSpeedKmh / 3.6;
+        oppVehicle.isDrifting = !!opp1.isDrifting;
+
+        const wheelRot = (oppVehicle.speed / 0.38) * 0.033;
+        if (oppVehicle.frontLeftWheel) oppVehicle.frontLeftWheel.rotation.x += wheelRot;
+        if (oppVehicle.frontRightWheel) oppVehicle.frontRightWheel.rotation.x += wheelRot;
+        if (oppVehicle.rearLeftWheel) oppVehicle.rearLeftWheel.rotation.x += wheelRot;
+        if (oppVehicle.rearRightWheel) oppVehicle.rearRightWheel.rotation.x += wheelRot;
+      }
     }
   }
 

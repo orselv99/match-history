@@ -48,15 +48,18 @@ export interface CachedAudioRecord {
   cachedAt: number;                // 캐시 저장 타임스탬프 (ms)
 }
 
+import type { RawReplayTick, MatchSummaryMetadata } from '../replay/ReplayTypes.ts';
+
 /**
- * IndexedDB에 영구 보관되는 매치 리플레이 레코드 (차후 리플레이 기능 연동)
+ * IndexedDB에 영구 보관되는 매치 리플레이 레코드 (최대 30개 보관)
  */
 export interface CachedReplayRecord {
   matchCode: string;               // Primary Key (예: 'RACE-ABCD')
-  binary: ArrayBuffer;             // Gzip 압축된 고주파 리플레이 틱 바이너리
-  metadata: any;                   // 매치 서머리 메타데이터 (드라이버, 트랙, 랩타임, 압축률 등)
+  ticks: RawReplayTick[];          // 3D 리플레이 틱 데이터 (플레이어 + 라이벌 3대 동시 기록)
+  metadata: MatchSummaryMetadata;  // 매치 서머리 메타데이터 (드라이버, 트랙, 랩타임, 순위 등)
   createdAt: string;               // 레이스 완주 ISO 시각
   savedAt: number;                 // 로컬 저장 타임스탬프 (ms)
+  binary?: ArrayBuffer;            // (옵션) 압축 바이너리
 }
 
 /**

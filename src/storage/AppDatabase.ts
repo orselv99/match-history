@@ -17,6 +17,7 @@ import {
   upgradeDatabaseSchema,
   normalizeAudioUrl,
 } from './schema.ts';
+import type { RawReplayTick, MatchSummaryMetadata } from '../replay/ReplayTypes.ts';
 
 // 외부 호환성을 위해 타입 re-export
 export type { AudioCategory, CachedAudioRecord, CachedReplayRecord, StorageStats };
@@ -280,33 +281,78 @@ export class AppDatabase {
   }
 
   /**
-   * CDN에서 수신한 리플레이 압축 바이너리를 로컬 DB에 영구 저장 (차후 조회 시 CDN Egress $0)
+   * 경기 리플레이를 로컬 IndexedDB에 영구 저장 (최대 30개 제한, 초과 시 가장 오래된 것 삭제)
    */
-  public async saveReplay(matchCode: string, binary: ArrayBuffer, metadata: any): Promise<void> {
+  public async saveReplay(
+    matchCode: string,
+    ticks: RawReplayTick[],
+    metadata: MatchSummaryMetadata,
+    binary?: ArrayBuffer
+  ): Promise<{ totalCount: number; saved: boolean }> {
     try {
       const db = await this.getDB();
       const record: CachedReplayRecord = {
         matchCode,
-        binary,
+        ticks,
         metadata,
         createdAt: metadata?.createdAt || new Date().toISOString(),
         savedAt: Date.now(),
+        binary,
       };
 
-      return new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve, reject) => {
         const tx = db.transaction(STORES.REPLAY, 'readwrite');
         const store = tx.objectStore(STORES.REPLAY);
         const req = store.put(record);
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
       });
+
+      // 최대 30개 보관 제한 (오래된 순 FIFO 삭제)
+      const all = await this.listReplays();
+      if (all.length > 30) {
+        // savedAt 오름차순 정렬 (가장 오래된 것부터)
+        all.sort((a, b) => (a.savedAt || 0) - (b.savedAt || 0));
+        const excess = all.length - 30;
+        const deleteTx = db.transaction(STORES.REPLAY, 'readwrite');
+        const delStore = deleteTx.objectStore(STORES.REPLAY);
+        for (let i = 0; i < excess; i++) {
+          delStore.delete(all[i].matchCode);
+        }
+        await new Promise<void>((resolve) => {
+          deleteTx.oncomplete = () => resolve();
+          deleteTx.onerror = () => resolve();
+        });
+      }
+
+      const totalCount = Math.min(all.length, 30);
+      return { totalCount, saved: true };
     } catch (e) {
       console.warn('[AppDatabase] Failed to save replay to IndexedDB:', e);
+      return { totalCount: 0, saved: false };
     }
   }
 
   /**
-   * 저장된 로컬 리플레이 목록 전체 조회
+   * 특정 리플레이 삭제
+   */
+  public async deleteReplay(matchCode: string): Promise<boolean> {
+    try {
+      const db = await this.getDB();
+      return new Promise<boolean>((resolve) => {
+        const tx = db.transaction(STORES.REPLAY, 'readwrite');
+        const store = tx.objectStore(STORES.REPLAY);
+        const req = store.delete(matchCode);
+        req.onsuccess = () => resolve(true);
+        req.onerror = () => resolve(false);
+      });
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * 저장된 로컬 리플레이 목록 전체 조회 (최신 저장순 정렬)
    */
   public async listReplays(): Promise<CachedReplayRecord[]> {
     try {
@@ -315,7 +361,11 @@ export class AppDatabase {
         const tx = db.transaction(STORES.REPLAY, 'readonly');
         const store = tx.objectStore(STORES.REPLAY);
         const req = store.getAll();
-        req.onsuccess = () => resolve((req.result as CachedReplayRecord[]) || []);
+        req.onsuccess = () => {
+          const list = (req.result as CachedReplayRecord[]) || [];
+          list.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+          resolve(list);
+        };
         req.onerror = () => resolve([]);
       });
     } catch {
@@ -372,7 +422,7 @@ export class AppDatabase {
           if (cursor) {
             replayCount++;
             const rec = cursor.value as CachedReplayRecord;
-            replayBytes += rec.binary ? rec.binary.byteLength : 0;
+            replayBytes += rec.ticks ? rec.ticks.length * 20 : (rec.binary ? rec.binary.byteLength : 0);
             cursor.continue();
           } else {
             resolve();

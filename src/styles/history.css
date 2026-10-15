@@ -329,6 +329,31 @@
   box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
 }
 
+.history-action-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-delete-btn {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-delete-btn:hover {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+}
+
 .history-actions {
   display: flex;
   justify-content: space-between;

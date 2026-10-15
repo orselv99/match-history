@@ -17,6 +17,8 @@ import { PauseModal } from './ui/PauseModal.ts';
 import { MatchHistoryModal } from './ui/MatchHistoryModal.ts';
 import { ModalManager } from './ui/ModalManager.ts';
 import { i18nManager } from './i18n/I18nManager.ts';
+import { appDB } from './storage/AppDatabase.ts';
+import { showToast } from './ui/Toast.ts';
 
 window.addEventListener('DOMContentLoaded', () => {
   i18nManager.init();
@@ -31,7 +33,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 2. 모듈식 UI 컨트롤러 초기화
   const hud = new HUDController();
-  const matchHistoryModal = new MatchHistoryModal();
   const settingsModal = new SettingsModal(game.audio, game);
   const replayBar = new ReplayBarController(game.replayPlayer);
 
@@ -69,6 +70,44 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const matchHistoryModal = new MatchHistoryModal({
+    onPlayReplay: (record) => {
+      // 1. 다른 서킷일 경우 트랙 로드
+      if (record.metadata.trackId && record.metadata.trackId !== game.currentTrackId) {
+        game.loadTrack(record.metadata.trackId);
+        const trackMeta = TRACK_DEFINITIONS[record.metadata.trackId];
+        if (trackMeta) hud.setCircuitTitle(trackMeta.title);
+      }
+
+      // 2. 플레이어 머신 스펙/컬러/이름 복원
+      if (record.metadata.vehicleId) {
+        game.playerVehicle.setModel(record.metadata.vehicleId as any);
+        game.replayPlayer.ghostVehicle.setModel(record.metadata.vehicleId as any);
+      }
+      if (record.metadata.playerColorHex !== undefined) {
+        game.playerVehicle.setColor(record.metadata.playerColorHex);
+        game.replayPlayer.ghostVehicle.setColor(record.metadata.playerColorHex);
+      }
+      if (record.metadata.userNickname) {
+        game.setDriverName(record.metadata.userNickname);
+      }
+
+      // 3. 상대 라이벌 3대 차량 모델/컬러/이름 동기화
+      if (record.metadata.opponentConfigs) {
+        game.replayPlayer.syncOpponents(record.metadata.opponentConfigs);
+      }
+
+      // 4. 리플레이 틱 데이터 로드 및 모드 전환
+      game.replayPlayer.loadReplay(record.ticks);
+      setModeUI('REPLAY');
+      game.replayPlayer.seek(0);
+      game.replayPlayer.play();
+      game.cameraController.snapToTarget(game.replayPlayer.ghostVehicle);
+
+      showToast(`▶ [${record.matchCode}] ${record.metadata.userNickname} 리플레이 재생을 시작합니다.`);
+    },
+  });
+
   // 3. 게임 설정 위저드 모달 (Step 1~4)
   let currentConfig: RaceSetupConfig = {
     trackId: 'circuit_monaco',
@@ -97,12 +136,24 @@ window.addEventListener('DOMContentLoaded', () => {
     },
   });
 
-  // 4. 완주 결과 모달
+  // 4. 완주 결과 모달 및 리플레이 저장
+  let lastRaceMetadata: MatchSummaryMetadata | null = null;
+
   const finishModal = new FinishModal({
-    onReplay: () => {
+    onReplay: async () => {
       const ticks = game.recorder.getTicks();
+      if (lastRaceMetadata) {
+        try {
+          const res = await appDB.saveReplay(lastRaceMetadata.matchCode, ticks, lastRaceMetadata);
+          showToast(`💾 리플레이가 로컬 저장소(IndexedDB)에 저장되었습니다. (${res.totalCount}/30)`);
+        } catch (e) {
+          console.warn('[Replay] Failed to save replay to IndexedDB:', e);
+        }
+      }
       game.replayPlayer.loadReplay(ticks);
       setModeUI('REPLAY');
+      game.replayPlayer.seek(0);
+      game.replayPlayer.play();
     },
     onRestart: () => {
       game.restartRace();
@@ -113,6 +164,7 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   game.onFinishCallback = (metadata: MatchSummaryMetadata) => {
+    lastRaceMetadata = metadata;
     finishModal.show(metadata);
   };
 

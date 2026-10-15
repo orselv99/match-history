@@ -912,12 +912,20 @@ export class Game {
     const topSpeedKmh = Math.max(...ticks.map(t => t.speedKmh), 150);
     const avgSpeedKmh = Number((ticks.reduce((acc, t) => acc + t.speedKmh, 0) / (ticks.length || 1)).toFixed(1));
 
+    const opponentConfigs = [
+      { modelId: this.aiManager.agents[1]?.vehicle.currentModelId, colorHex: this.aiManager.agents[1]?.color, name: this.aiManager.agents[1]?.name },
+      { modelId: this.aiManager.agents[2]?.vehicle.currentModelId, colorHex: this.aiManager.agents[2]?.color, name: this.aiManager.agents[2]?.name },
+      { modelId: this.aiManager.agents[3]?.vehicle.currentModelId, colorHex: this.aiManager.agents[3]?.color, name: this.aiManager.agents[3]?.name },
+    ];
+
     const metadata: MatchSummaryMetadata = {
       matchCode: `RACE-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
       userId,
       userNickname: this.currentDriverName || nickname,
       trackId: this.currentTrackId,
       vehicleId: this.playerVehicle.currentModelId,
+      playerColorHex: this.playerVehicle.bodyColorHex,
+      opponentConfigs,
       totalLaps: 3,
       totalTimeMs,
       bestLapMs,
@@ -993,12 +1001,14 @@ export class Game {
       this.replayPlayer.ghostVehicle.setModel(this.playerVehicle.currentModelId as any);
       this.replayPlayer.ghostVehicle.setColor(this.playerVehicle.bodyColorHex);
 
-      // 라이벌 AI 차량 3대의 모델 및 컬러를 리플레이 플레이어에 동기화
-      this.replayPlayer.syncOpponents([
-        { modelId: this.aiManager.agents[1]?.vehicle.currentModelId, colorHex: this.aiManager.agents[1]?.color, name: this.aiManager.agents[1]?.name },
-        { modelId: this.aiManager.agents[2]?.vehicle.currentModelId, colorHex: this.aiManager.agents[2]?.color, name: this.aiManager.agents[2]?.name },
-        { modelId: this.aiManager.agents[3]?.vehicle.currentModelId, colorHex: this.aiManager.agents[3]?.color, name: this.aiManager.agents[3]?.name },
-      ]);
+      // 라이벌 AI 차량 3대의 모델 및 컬러를 리플레이 플레이어에 동기화 (AI 매니저가 활성 상태일 때만)
+      if (this.aiManager.isActive && this.aiManager.agents[1]?.vehicle.currentModelId) {
+        this.replayPlayer.syncOpponents([
+          { modelId: this.aiManager.agents[1]?.vehicle.currentModelId, colorHex: this.aiManager.agents[1]?.color, name: this.aiManager.agents[1]?.name },
+          { modelId: this.aiManager.agents[2]?.vehicle.currentModelId, colorHex: this.aiManager.agents[2]?.color, name: this.aiManager.agents[2]?.name },
+          { modelId: this.aiManager.agents[3]?.vehicle.currentModelId, colorHex: this.aiManager.agents[3]?.color, name: this.aiManager.agents[3]?.name },
+        ]);
+      }
 
       this.replayPlayer.seek(0);
       this.replayPlayer.play();

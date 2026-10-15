@@ -45,6 +45,8 @@ export interface MatchSummaryMetadata {
   userNickname: string;
   trackId: string;
   vehicleId: string;
+  playerColorHex?: number;
+  opponentConfigs?: Array<{ modelId?: string; colorHex?: number; name?: string }>;
   totalLaps: number;
   totalTimeMs: number;
   bestLapMs: number;
@@ -53,10 +55,10 @@ export interface MatchSummaryMetadata {
   topSpeedKmh: number;
   avgSpeedKmh: number;
   createdAt: string;
-  rawJsonBytes: number;
-  quantizedBinaryBytes: number;
-  compressedBytes: number;
-  compressionRatioPercent: number; // e.g. 98.5%
+  rawJsonBytes?: number;
+  quantizedBinaryBytes?: number;
+  compressedBytes?: number;
+  compressionRatioPercent?: number; // e.g. 98.5%
   raceResults?: RaceResultEntry[];
 }
 

@@ -1,4 +1,12 @@
 import * as THREE from 'three';
+import {
+  createStructureMaterials,
+  buildStartGantry,
+  buildGrandstand,
+  buildPitComplex,
+  buildControlTower,
+} from './circuitStructures/index.ts';
+
 
 /**
  * 3D 서킷 환경 조형물 및 노면 마킹 생성 전담 빌더
@@ -266,199 +274,20 @@ export class TrackDecorations {
     group.position.copy(startPt);
     group.rotation.y = heading;
 
-    const halfW = trackWidth / 2;
-
-    // 공통 머티리얼 정의
-    const concreteMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85, metalness: 0.15 });
-    const steelMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.5, metalness: 0.6 });
-    const roofMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.4, metalness: 0.3 });
-    const seatRedMat = new THREE.MeshStandardMaterial({ color: 0xdc2626, roughness: 0.6 });
-    const seatBlueMat = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.6 });
-    const glassMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      roughness: 0.1,
-      metalness: 0.85,
-      transparent: true,
-      opacity: 0.75,
-    });
-    const emissiveRedMat = new THREE.MeshStandardMaterial({
-      color: 0xef4444,
-      emissive: 0xef4444,
-      emissiveIntensity: 2.8,
-      roughness: 0.2,
-    });
-    const emissiveCyanMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      emissive: 0x0284c7,
-      emissiveIntensity: 1.8,
-      roughness: 0.2,
-    });
+    // 공통 구조물 머티리얼 인스턴스화
+    const materials = createStructureMaterials();
 
     // 1. 출발선 갠트리 (F1 Start Lights & Race Gantry)
-    const gantry = new THREE.Group();
-    const postX = halfW + 1.4;
-    const postGeom = new THREE.BoxGeometry(0.7, 7.5, 0.7);
-    const leftPost = new THREE.Mesh(postGeom, steelMat);
-    leftPost.position.set(-postX, 3.75, 0);
-    const rightPost = new THREE.Mesh(postGeom, steelMat);
-    rightPost.position.set(postX, 3.75, 0);
+    group.add(buildStartGantry(materials, trackWidth));
 
-    const bridgeW = postX * 2 + 1.4;
-    const bridgeGeom = new THREE.BoxGeometry(bridgeW, 0.8, 1.2);
-    const bridge = new THREE.Mesh(bridgeGeom, steelMat);
-    bridge.position.set(0, 7.1, 0);
+    // 2. 그랜드스탠드 (Grandstand - 출발선 이전 Z <= 0 구간)
+    group.add(buildGrandstand(materials, trackWidth));
 
-    // 5구 스타팅 라이트 박스
-    const lightBoxGeom = new THREE.BoxGeometry(4.4, 0.9, 0.3);
-    const lightBox = new THREE.Mesh(lightBoxGeom, steelMat);
-    lightBox.position.set(0, 6.2, -0.65);
+    // 3. 피트 콤플렉스 (Pit Building & Pit Wall & Pit Lane - 출발선 이전 Z <= 0 구간)
+    group.add(buildPitComplex(materials, trackWidth));
 
-    const lightGeom = new THREE.CylinderGeometry(0.24, 0.24, 0.12, 12);
-    lightGeom.rotateX(Math.PI / 2);
-    for (let i = 0; i < 5; i++) {
-      const redLight = new THREE.Mesh(lightGeom, emissiveRedMat);
-      redLight.position.set(-1.6 + i * 0.8, 6.2, -0.82);
-      gantry.add(redLight);
-    }
-
-    // 상단 "START / FINISH" 전광판
-    const signGeom = new THREE.BoxGeometry(Math.min(12.0, trackWidth), 0.75, 0.2);
-    const sign = new THREE.Mesh(signGeom, emissiveCyanMat);
-    sign.position.set(0, 7.8, -0.65);
-
-    gantry.add(leftPost, rightPost, bridge, lightBox, sign);
-    group.add(gantry);
-
-    // 2. 그랜드스탠드 (Grandstand - 대형 관중석 & 캔틸레버 차양 지붕)
-    const grandstand = new THREE.Group();
-    const gsBaseX = halfW + 4.5;
-    const gsLength = 65.0;
-    const gsZ = -6.0;
-
-    // 5단 계단식 스탠드
-    for (let tier = 0; tier < 5; tier++) {
-      const tierW = 1.6;
-      const tierH = 0.55 * (tier + 1);
-      const tierGeom = new THREE.BoxGeometry(tierW, tierH, gsLength);
-      const tierMesh = new THREE.Mesh(tierGeom, concreteMat);
-      tierMesh.position.set(gsBaseX + tier * tierW + tierW / 2, tierH / 2, gsZ);
-      grandstand.add(tierMesh);
-
-      // 관중석 시트 (레드 & 블루 교차 배치)
-      const seatMat = tier % 2 === 0 ? seatRedMat : seatBlueMat;
-      const seatGeom = new THREE.BoxGeometry(tierW * 0.75, 0.2, gsLength - 2.0);
-      const seatMesh = new THREE.Mesh(seatGeom, seatMat);
-      seatMesh.position.set(gsBaseX + tier * tierW + tierW / 2, tierH + 0.1, gsZ);
-      grandstand.add(seatMesh);
-    }
-
-    // 캔틸레버 루프 차양막
-    const canopyGeom = new THREE.BoxGeometry(11.0, 0.3, gsLength + 2.0);
-    const canopy = new THREE.Mesh(canopyGeom, roofMat);
-    canopy.position.set(gsBaseX + 4.5, 7.2, gsZ);
-    canopy.rotation.z = -0.16; // 트랙 방향으로 살짝 기울어진 에어로 루프
-    grandstand.add(canopy);
-
-    // 후방 지지 강철 기둥 5개
-    const colGeom = new THREE.BoxGeometry(0.6, 7.5, 0.6);
-    for (let c = 0; c < 5; c++) {
-      const col = new THREE.Mesh(colGeom, steelMat);
-      col.position.set(gsBaseX + 8.5, 3.75, gsZ - 26.0 + c * 13.0);
-      grandstand.add(col);
-    }
-    group.add(grandstand);
-
-    // 3. 피트 콤플렉스 (Pit Building & Pit Wall & Pit Lane)
-    const pitGroup = new THREE.Group();
-    const pitBaseX = -(halfW + 3.0);
-    const pitLength = 65.0;
-    const pitZ = -6.0;
-
-    // A. 피트 월 (트랙과 피트 레인 분리 방호벽)
-    const pitWallGeom = new THREE.BoxGeometry(0.7, 1.15, pitLength);
-    const pitWall = new THREE.Mesh(pitWallGeom, concreteMat);
-    pitWall.position.set(pitBaseX + 1.2, 0.575, pitZ);
-    pitGroup.add(pitWall);
-
-    // 피트 스탠드 / 텔레메트리 모니터 퍼치 (팀 피트 부스 4동)
-    const perchGeom = new THREE.BoxGeometry(1.6, 1.8, 3.0);
-    for (let p = 0; p < 4; p++) {
-      const perch = new THREE.Mesh(perchGeom, steelMat);
-      perch.position.set(pitBaseX + 1.2, 1.3, pitZ - 20.0 + p * 13.0);
-      const screenGeom = new THREE.BoxGeometry(0.15, 0.6, 1.4);
-      const screen = new THREE.Mesh(screenGeom, emissiveCyanMat);
-      screen.position.set(pitBaseX + 1.2 - 0.75, 1.6, pitZ - 20.0 + p * 13.0);
-      pitGroup.add(perch, screen);
-    }
-
-    // B. 피트 레인 아스팔트 바닥 및 옐로우 라인
-    const pitRoadGeom = new THREE.PlaneGeometry(6.4, pitLength);
-    const pitRoadMat = new THREE.MeshStandardMaterial({ color: 0x22262e, roughness: 0.8, metalness: 0.1 });
-    const pitRoad = new THREE.Mesh(pitRoadGeom, pitRoadMat);
-    pitRoad.rotation.x = -Math.PI / 2;
-    pitRoad.position.set(pitBaseX - 2.5, 0.052, pitZ);
-    pitGroup.add(pitRoad);
-
-    // C. 2층 피트 가레지 빌딩
-    const bldgW = 10.5;
-    const bldgH = 7.0;
-    const bldgGeom = new THREE.BoxGeometry(bldgW, bldgH, pitLength);
-    const pitBldg = new THREE.Mesh(bldgGeom, concreteMat);
-    pitBldg.position.set(pitBaseX - 2.5 - 3.2 - bldgW / 2, bldgH / 2, pitZ);
-    pitGroup.add(pitBldg);
-
-    // 1층 피트 가레지 셔터 도어 6칸 (금속 롤업 도어 & 팀 컬러 포인트)
-    const doorGeom = new THREE.BoxGeometry(0.2, 2.8, 7.5);
-    const doorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.6 });
-    for (let d = 0; d < 6; d++) {
-      const door = new THREE.Mesh(doorGeom, doorMat);
-      door.position.set(pitBaseX - 2.5 - 3.2 + 0.1, 1.4, pitZ - 24.0 + d * 9.6);
-      pitGroup.add(door);
-    }
-
-    // 2층 VIP 패독 라운지 파노라마 틴티드 글래스 창문
-    const vipGlassGeom = new THREE.BoxGeometry(0.2, 2.2, pitLength - 4.0);
-    const vipGlass = new THREE.Mesh(vipGlassGeom, glassMat);
-    vipGlass.position.set(pitBaseX - 2.5 - 3.2 + 0.1, 5.2, pitZ);
-    pitGroup.add(vipGlass);
-
-    group.add(pitGroup);
-
-    // 4. 레이스 컨트롤 타워 (Race Control Tower & Live Timing Board)
-    const towerGroup = new THREE.Group();
-    const towerX = -(halfW + 9.5);
-    const towerZ = 16.0;
-
-    // 타워 1~3층 메인 본체
-    const towerBodyGeom = new THREE.BoxGeometry(6.8, 11.0, 6.8);
-    const towerBody = new THREE.Mesh(towerBodyGeom, concreteMat);
-    towerBody.position.set(towerX, 5.5, towerZ);
-
-    // 4층 최상단 360도 파노라마 경기 관제실
-    const obsDeckGeom = new THREE.BoxGeometry(8.6, 3.6, 8.6);
-    const obsDeck = new THREE.Mesh(obsDeckGeom, glassMat);
-    obsDeck.position.set(towerX, 12.5, towerZ);
-
-    // 타워 지붕 통신 안테나 스파이어
-    const spireGeom = new THREE.CylinderGeometry(0.12, 0.16, 6.5, 8);
-    const spire = new THREE.Mesh(spireGeom, steelMat);
-    spire.position.set(towerX, 17.5, towerZ);
-
-    // 트랙 방향 실시간 레이스 타이밍 전광판 (Live Timing LED Board)
-    const boardGeom = new THREE.BoxGeometry(0.2, 7.0, 4.2);
-    const board = new THREE.Mesh(boardGeom, steelMat);
-    board.position.set(towerX + 3.5, 6.5, towerZ);
-
-    const timingLedGeom = new THREE.BoxGeometry(0.22, 0.5, 3.6);
-    for (let l = 0; l < 4; l++) {
-      const ledMat = l === 0 ? emissiveCyanMat : emissiveRedMat;
-      const ledLine = new THREE.Mesh(timingLedGeom, ledMat);
-      ledLine.position.set(towerX + 3.51, 8.5 - l * 1.3, towerZ);
-      towerGroup.add(ledLine);
-    }
-
-    towerGroup.add(towerBody, obsDeck, spire, board);
-    group.add(towerGroup);
+    // 4. 레이스 컨트롤 타워 (Race Control Tower & Timing Board - Z <= 0 구간)
+    group.add(buildControlTower(materials, trackWidth));
 
     return group;
   }

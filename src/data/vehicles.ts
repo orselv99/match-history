@@ -1,3 +1,5 @@
+import { t } from '../i18n/I18nManager.ts';
+
 export interface VehicleModelMetadata {
   id: 'gt_turbo' | 'formula_aero' | 'cyber_speedster';
   title: string;
@@ -33,7 +35,9 @@ export const VEHICLE_MODELS: Record<string, VehicleModelMetadata> = {
     accel: '4.8s',
     downforce: 'MEDIUM',
     handling: 'STABLE',
-    desc: '균형 잡힌 밸런스와 높은 컨트롤 안정성을 자랑하는 정통 후륜 스포츠 쿠페.',
+    get desc(): string {
+      return t('wizard.carGtDesc');
+    },
     maxSpeedMs: 58.3,
     acceleration: 14.0,
     braking: 26.0,
@@ -58,7 +62,9 @@ export const VEHICLE_MODELS: Record<string, VehicleModelMetadata> = {
     accel: '2.6s',
     downforce: 'ULTRA HIGH',
     handling: 'RAZOR SHARP',
-    desc: '극강의 다운포스와 날카로운 에이펙스 공략을 위해 설계된 초경량 포뮬러 머신.',
+    get desc(): string {
+      return t('wizard.carFormulaDesc');
+    },
     maxSpeedMs: 62.5,
     acceleration: 17.5,
     braking: 32.0,
@@ -83,7 +89,9 @@ export const VEHICLE_MODELS: Record<string, VehicleModelMetadata> = {
     accel: '3.2s',
     downforce: 'HIGH',
     handling: 'HYPER DYNAMIC',
-    desc: '초고속 직선 주로와 하이퍼 스피드웨이를 압도하는 미래형 하이퍼 하이퍼카.',
+    get desc(): string {
+      return t('wizard.carCyberDesc');
+    },
     maxSpeedMs: 66.7,
     acceleration: 15.5,
     braking: 28.0,

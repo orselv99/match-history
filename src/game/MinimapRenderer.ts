@@ -2,6 +2,7 @@ import { CircuitTrack } from './CircuitTrack.ts';
 import { Vehicle } from './Vehicle.ts';
 import { AICarManager } from './AICarManager.ts';
 import { ReplayPlayer } from '../replay/ReplayPlayer.ts';
+import { t } from '../i18n/I18nManager.ts';
 
 export interface MinimapRenderParams {
   canvas: HTMLCanvasElement;
@@ -161,6 +162,6 @@ export class MinimapRenderer {
     // 8. 테크니컬 HUD 텍스트 오버레이
     ctx.fillStyle = '#94a3b8';
     ctx.font = '9px monospace';
-    ctx.fillText('GPS // TRACKING', 8, 14);
+    ctx.fillText(t('hud.minimapGps'), 8, 14);
   }
 }

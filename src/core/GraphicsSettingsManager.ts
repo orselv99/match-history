@@ -5,6 +5,8 @@
  * - 저사양 GPU 모션블러 샘플 축소/비활성화, 해상도 스케일, 그림자, 다이내믹 FOV, 카메라 진동 조절
  */
 
+import { t } from '../i18n/I18nManager.ts';
+
 export type GraphicsPreset = 'HIGH' | 'MEDIUM' | 'LOW' | 'CUSTOM';
 export type MotionBlurQuality = 'HIGH' | 'MEDIUM' | 'OFF';
 export type ShadowQuality = 'HIGH' | 'MEDIUM' | 'OFF';
@@ -25,6 +27,7 @@ export interface HardwareInfo {
   cores: number;
   memoryGb?: number;
   recommendedPreset: 'HIGH' | 'MEDIUM' | 'LOW';
+  recommendationReasonKey: string;
   recommendationReason: string;
 }
 
@@ -86,14 +89,14 @@ export class GraphicsSettingsManager {
     const isLowEndGpu = /intel|uhd|iris|hd graphics|swiftshader|llvmpipe|software/i.test(gpuLower);
 
     let recommendedPreset: 'HIGH' | 'MEDIUM' | 'LOW' = 'MEDIUM';
-    let recommendationReason = '표준 PC 환경에 적합한 밸런스 설정입니다.';
+    let recommendationReasonKey = 'settings.graphics.reasonMedium';
 
     if (isHighEndGpu || (cores >= 8 && !isLowEndGpu)) {
       recommendedPreset = 'HIGH';
-      recommendationReason = '고성능 GPU/CPU 환경입니다. 최고 품질 그래픽을 권장합니다.';
+      recommendationReasonKey = 'settings.graphics.reasonHigh';
     } else if (isLowEndGpu || cores <= 4 || (memoryGb && memoryGb <= 4)) {
       recommendedPreset = 'LOW';
-      recommendationReason = '내장 그래픽 또는 절전 환경입니다. 프레임 확보를 위한 경량 설정을 권장합니다.';
+      recommendationReasonKey = 'settings.graphics.reasonLow';
     }
 
     return {
@@ -101,7 +104,10 @@ export class GraphicsSettingsManager {
       cores,
       memoryGb,
       recommendedPreset,
-      recommendationReason,
+      recommendationReasonKey,
+      get recommendationReason(): string {
+        return t(recommendationReasonKey);
+      },
     };
   }
 

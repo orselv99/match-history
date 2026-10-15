@@ -27,10 +27,10 @@
       <div class="loading-header">
         <div class="loading-title-group">
           <span class="loading-brand-tag">APEX MOTORSPORT</span>
-          <span id="loading-title" class="loading-main-title">INITIALIZING SIMULATION ENGINE</span>
+          <span id="loading-title" class="loading-main-title" data-i18n="loading.initEngine">INITIALIZING SIMULATION ENGINE</span>
         </div>
         <div class="loading-rate-display">
-          <span class="loading-rate-label">PROGRESS</span>
+          <span class="loading-rate-label" data-i18n="loading.progress">PROGRESS</span>
           <span id="loading-percent" class="loading-percent-text">0%</span>
         </div>
       </div>
@@ -40,13 +40,13 @@
       </div>
 
       <div class="loading-task-row">
-        <span id="loading-task" class="loading-task-text">Three.js WebGL 렌더러 준비 중...</span>
+        <span id="loading-task" class="loading-task-text" data-i18n="loading.taskInit">Three.js WebGL 렌더러 준비 중...</span>
         <span class="loading-spinner-dots"></span>
       </div>
 
       <div class="loading-tip-box">
-        <span class="loading-tip-badge">SYSTEM TIP</span>
-        <span id="loading-tip-text" class="loading-tip-text">핸드브레이크(Space)를 살짝 끊어 누르면 코너 진입 시 슬립 앵글을 유지하며 다이내믹 드리프트를 구사할 수 있습니다.</span>
+        <span class="loading-tip-badge" data-i18n="loading.systemTip">SYSTEM TIP</span>
+        <span id="loading-tip-text" class="loading-tip-text" data-i18n="loading.tip1">핸드브레이크(Space)를 살짝 끊어 누르면 코너 진입 시 슬립 앵글을 유지하며 다이내믹 드리프트를 구사할 수 있습니다.</span>
       </div>
     </div>
   </div>
@@ -66,24 +66,21 @@
     <div class="title-scrim-left">
       <header class="title-brand-header">
         <div class="title-sys-indicator">
-          <span class="pulse-dot"></span>
           <span>SYSTEM READY // CLIENT MOTORSPORT SIMULATION</span>
         </div>
         <h1 class="title-main-logo">APEX RACING</h1>
         <p class="title-tagline">PRECISION MATCH HISTORY & 3D REPLAY ARCHITECTURE</p>
         
-        <div class="title-pills">
-          <span class="title-pill">BUILD 1.2.0</span>
-          <span class="title-pill">EDGE // CF R2 + D1</span>
-          <span class="title-pill">TICK // 30Hz INT16</span>
-        </div>
+        <!-- <div class="title-pills">
+
+        </div> -->
 
         <!-- 로비 BGM 오디오 상태 및 트랙 표시 배지 -->
-        <div class="title-bgm-badge" id="lobby-bgm-badge" title="클릭하여 다음 곡으로 변경 가능">
+        <div class="title-bgm-badge" id="lobby-bgm-badge" title="클릭하여 다음 곡으로 변경 가능" data-i18n-title="lobby.bgmBadgeTitle">
           <span class="bgm-icon">🎵</span>
           <span class="bgm-label">LOBBY OST //</span>
           <span id="lobby-bgm-title" class="bgm-title-text">Silk Drive</span>
-          <button id="btn-next-lobby-bgm" class="bgm-skip-btn" title="다음 곡 재생 (Next Track)">⏭</button>
+          <button id="btn-next-lobby-bgm" class="bgm-skip-btn" title="다음 곡 재생 (Next Track)" data-i18n-title="lobby.bgmNextTitle">⏭</button>
         </div>
       </header>
 
@@ -92,8 +89,8 @@
         <button id="title-btn-start" class="title-menu-item active">
           <span class="menu-num">01</span>
           <div class="menu-info">
-            <span class="menu-name">GAME START // 게임 설정 & 시작</span>
-            <span class="menu-desc">서킷 트랙, 머신 커스텀 & 주행 모드 설정</span>
+            <span class="menu-name" data-i18n="lobby.start">게임 시작</span>
+            <span class="menu-desc" data-i18n="lobby.startDesc">서킷 트랙, 머신 커스텀 & 주행 모드 선택</span>
           </div>
           <span class="menu-chevron">▶</span>
         </button>
@@ -101,8 +98,8 @@
         <button id="title-btn-history" class="title-menu-item">
           <span class="menu-num">02</span>
           <div class="menu-info">
-            <span class="menu-name">MATCH HISTORY // 전적 검색</span>
-            <span class="menu-desc">글로벌 리더보드 순위 및 드라이버 전적 조회</span>
+            <span class="menu-name" data-i18n="lobby.history">전적 & 리플레이</span>
+            <span class="menu-desc" data-i18n="lobby.historyDesc">서킷별 최고 랩타임 기록 & 3D 주행 리플레이</span>
           </div>
           <span class="menu-chevron">▶</span>
         </button>
@@ -110,15 +107,18 @@
         <button id="title-btn-settings" class="title-menu-item">
           <span class="menu-num">03</span>
           <div class="menu-info">
-            <span class="menu-name">SETTINGS // 환경 설정</span>
-            <span class="menu-desc">마스터/BGM/SFX 사운드 및 조작 감도 설정</span>
+            <span class="menu-name" data-i18n="lobby.settings">환경 설정</span>
+            <span class="menu-desc" data-i18n="lobby.settingsDesc">사운드/BGM/SFX 및 그래픽/조작 설정</span>
           </div>
           <span class="menu-chevron">▶</span>
         </button>
       </nav>
 
       <footer class="title-footer-note">
-        <span>[CLICK] 메뉴 선택 &nbsp;|&nbsp; [O] 환경설정 &nbsp;|&nbsp; [ESC] 로비 복귀</span>
+        <!-- <span data-i18n="lobby.footerNote">[클릭] 메뉴 선택 &nbsp;|&nbsp; [O] 환경설정 &nbsp;|&nbsp; [ESC] 로비 복귀</span> -->
+                   <span class="title-pill">BUILD 1.2.0</span>
+          <span class="title-pill">EDGE // CF R2 + D1</span>
+          <span class="title-pill">TICK // 30Hz INT16</span>
       </footer>
     </div>
   </div>
@@ -128,7 +128,7 @@
     <!-- 1. 상단 글로벌 바 (Hairline Grid) -->
     <!-- 1. 최상단 BGM 마키 티커 (상단 중앙, 무배경, 무테두리, 좌->우 연속 흐름) -->
     <header class="top-bar">
-      <div id="hud-bgm-marquee" class="hud-bgm-marquee interactive" title="현재 재생 음악 (클릭 시 다음 곡으로 스킵)">
+      <div id="hud-bgm-marquee" class="hud-bgm-marquee interactive" title="현재 재생 음악 (클릭 시 다음 곡으로 스킵)" data-i18n-title="hud.bgmMarqueeTitle">
         <div class="marquee-track">
           <span id="hud-bgm-text" class="marquee-item"></span>
           <span id="hud-bgm-text-dup" class="marquee-item"></span>
@@ -149,7 +149,7 @@
       </div>
       <div class="mirror-view-area"></div>
       <div class="mirror-footer">
-        <span class="mirror-blindspot" id="left-blindspot-indicator">BLIND SPOT</span>
+        <span class="mirror-blindspot" id="left-blindspot-indicator" data-i18n="hud.blindSpot">BLIND SPOT</span>
       </div>
     </div>
 
@@ -160,7 +160,7 @@
       </div>
       <div class="mirror-view-area"></div>
       <div class="mirror-footer">
-        <span class="mirror-blindspot" id="right-blindspot-indicator">BLIND SPOT</span>
+        <span class="mirror-blindspot" id="right-blindspot-indicator" data-i18n="hud.blindSpot">BLIND SPOT</span>
       </div>
     </div>
 
@@ -184,11 +184,11 @@
           </div>
           <div class="lap-body">
             <div class="time-row">
-              <span class="time-label">CURRENT</span>
+              <span class="time-label" data-i18n="hud.current">CURRENT</span>
               <span id="current-lap-time" class="time-value">00:00.000</span>
             </div>
             <div class="time-row">
-              <span class="time-label">BEST</span>
+              <span class="time-label" data-i18n="hud.best">BEST</span>
               <span id="best-lap-time" class="time-value best">--:--.---</span>
             </div>
           </div>
@@ -232,7 +232,7 @@
         <!-- 디지털 계기판 클러스터 -->
         <div class="speedometer-card">
           <div class="cluster-header">
-            <span class="cluster-label">SPEED</span>
+            <span class="cluster-label" data-i18n="hud.speed">SPEED</span>
             <span id="drift-badge" class="drift-badge">DRIFT_OFF</span>
           </div>
           <div class="cluster-body">
@@ -254,7 +254,7 @@
   <div id="finish-modal" class="modal-overlay">
     <div class="modal-card finish-modal-card">
       <header class="modal-header-strip">
-        <span class="modal-title">SESSION COMPLETE // RACE_FINISH</span>
+        <span class="modal-title" data-i18n="finish.title">경기 완주</span>
         <span class="modal-code-tag">CODE // MONACO_01</span>
       </header>
 
@@ -262,19 +262,19 @@
         <!-- 주행 성적 지표 -->
         <div class="stats-grid">
           <div class="stat-box">
-            <div class="stat-title">LAP // BEST</div>
+            <div class="stat-title" data-i18n="finish.bestLap">최고 랩타임</div>
             <div id="modal-best-lap" class="stat-value">01:14.280</div>
           </div>
           <div class="stat-box">
-            <div class="stat-title">TIME // TOTAL</div>
+            <div class="stat-title" data-i18n="finish.totalTime">총 소요 시간</div>
             <div id="modal-total-time" class="stat-value">02:31.540</div>
           </div>
           <div class="stat-box">
-            <div class="stat-title">VELOCITY // TOP</div>
+            <div class="stat-title" data-i18n="finish.topSpeed">최고속도</div>
             <div id="modal-top-speed" class="stat-value">188 km/h</div>
           </div>
           <div class="stat-box">
-            <div class="stat-title">VELOCITY // AVG</div>
+            <div class="stat-title" data-i18n="finish.avgSpeed">평균속도</div>
             <div id="modal-avg-speed" class="stat-value">124 km/h</div>
           </div>
         </div>
@@ -282,21 +282,21 @@
         <!-- 핵심 기술 검증: 리플레이 데이터 압축 벤치마크 -->
         <div class="benchmark-container">
           <div class="benchmark-header">
-            <span class="benchmark-title">BENCHMARK // CODEC</span>
+            <span class="benchmark-title" data-i18n="finish.benchmarkTitle">리플레이 코덱 벤치마크</span>
             <span id="modal-reduction-rate" class="compression-badge">98.5% SAVED</span>
           </div>
           <table class="benchmark-table">
             <tbody>
               <tr>
-                <td>Raw JSON (Naive string)</td>
+                <td data-i18n="finish.rawJson">Raw JSON (Naive string)</td>
                 <td id="modal-json-size">2,850 KB</td>
               </tr>
               <tr>
-                <td>Int16 Fixed-Point Quantization (Packed Array)</td>
+                <td data-i18n="finish.packedArray">Int16 Fixed-Point Quantization (Packed Array)</td>
                 <td id="modal-binary-size">108 KB (-96.2%)</td>
               </tr>
               <tr>
-                <td>Brotli / Gzip Compression (Final Blob)</td>
+                <td data-i18n="finish.finalBlob">Brotli / Gzip Compression (Final Blob)</td>
                 <td id="modal-compressed-size" style="color: var(--accent-spec);">34 KB (-98.8%)</td>
               </tr>
             </tbody>
@@ -306,10 +306,10 @@
 
       <!-- 액션 버튼 -->
       <footer class="modal-actions">
-        <button id="modal-btn-replay" class="primary-btn">3D REPLAY // 재생</button>
-        <button id="modal-btn-download" class="secondary-btn">EXPORT .BIN</button>
-        <button id="modal-btn-restart" class="secondary-btn">RETRY // 다시 주행</button>
-        <button id="modal-btn-title" class="secondary-btn" style="border-left: 1px solid var(--border-strong);">TITLE // 메인 메뉴</button>
+        <button id="modal-btn-replay" class="primary-btn" data-i18n="finish.replay">3D 재생</button>
+        <button id="modal-btn-download" class="secondary-btn" data-i18n="finish.export">바이너리 내보내기</button>
+        <button id="modal-btn-restart" class="secondary-btn" data-i18n="finish.retry">다시 주행</button>
+        <button id="modal-btn-title" class="secondary-btn" style="border-left: 1px solid var(--border-strong);" data-i18n="finish.titleMenu">메인 메뉴</button>
       </footer>
     </div>
   </div>
@@ -318,27 +318,27 @@
   <div id="settings-modal" class="modal-overlay">
     <div class="modal-card settings-modal-card">
       <header class="modal-header-strip">
-        <span class="modal-title" data-i18n="settings.title">SYSTEM SETTINGS // 환경 설정</span>
-        <button id="settings-btn-close" class="modal-close-btn" title="닫기 [ESC]">✕</button>
+        <span class="modal-title" data-i18n="settings.title">환경 설정</span>
+        <button id="settings-btn-close" class="modal-close-btn" title="닫기 [ESC]" data-i18n-title="common.closeEsc">✕</button>
       </header>
 
       <!-- 환경설정 탭 내비게이션 바 -->
       <nav class="settings-tabs-nav">
         <button type="button" class="settings-tab-btn active" data-tab="general">
           <span class="tab-icon">⚙</span>
-          <span data-i18n="settings.tabs.general">01 GENERAL // 일반</span>
-        </button>
-        <button type="button" class="settings-tab-btn" data-tab="audio">
-          <span class="tab-icon">🎵</span>
-          <span data-i18n="settings.tabs.audio">02 AUDIO // 사운드</span>
+          <span data-i18n="settings.tabs.general">일반</span>
         </button>
         <button type="button" class="settings-tab-btn" data-tab="gameplay">
           <span class="tab-icon">🎮</span>
-          <span data-i18n="settings.tabs.gameplay">03 GAMEPLAY // 게임플레이</span>
+          <span data-i18n="settings.tabs.gameplay">게임플레이</span>
         </button>
         <button type="button" class="settings-tab-btn" data-tab="graphics">
           <span class="tab-icon">🖥️</span>
-          <span data-i18n="settings.tabs.graphics">04 GRAPHICS // 그래픽</span>
+          <span data-i18n="settings.tabs.graphics">그래픽</span>
+        </button>
+        <button type="button" class="settings-tab-btn" data-tab="audio">
+          <span class="tab-icon">🎵</span>
+          <span data-i18n="settings.tabs.audio">오디오</span>
         </button>
       </nav>
 
@@ -346,11 +346,11 @@
         <!-- 탭 1: 일반 (GENERAL) - 언어 선택 & 캐시 초기화 등 -->
         <div id="settings-panel-general" class="settings-tab-panel active">
           <div class="settings-group">
-            <div class="settings-group-title" data-i18n="settings.general.groupTitle">GENERAL SYSTEM // 시스템 & 스토리지</div>
+            <div class="settings-group-title" data-i18n="settings.general.groupTitle">시스템 & 스토리지</div>
 
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name" data-i18n="settings.general.langName">LANGUAGE // 언어 선택</span>
+                <span class="setting-name" data-i18n="settings.general.langName">언어 선택</span>
                 <span class="setting-desc" data-i18n="settings.general.langDesc">시뮬레이션 UI 및 인게임 텍스트 언어</span>
               </div>
               <div class="setting-control-col">
@@ -363,80 +363,26 @@
 
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">LOCAL DB // 오프라인 영구 캐시</span>
-                <span class="setting-desc" id="setting-storage-desc">IndexedDB 영구 보관 (BGM 및 리플레이)</span>
+                <span class="setting-name" data-i18n="settings.general.cacheName">오프라인 영구 캐시</span>
+                <span class="setting-desc" id="setting-storage-desc" data-i18n="settings.general.cacheDesc">IndexedDB 영구 보관 (BGM 및 리플레이)</span>
               </div>
               <div class="setting-control-col">
                 <span id="setting-storage-stats" class="setting-val-display" style="font-size: 11px; margin-right: 8px;">0MB (0곡)</span>
-                <button id="btn-clear-cache" class="glass-btn" style="padding: 2px 8px; font-size: 10px;" title="로컬 IndexedDB 캐시 비우기">캐시 비우기</button>
+                <button id="btn-clear-cache" class="glass-btn" style="padding: 2px 8px; font-size: 10px;" data-i18n="settings.general.clearCache" title="로컬 IndexedDB 캐시 비우기" data-i18n-title="settings.general.clearCacheTitle">캐시 비우기</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 탭 2: 사운드 (AUDIO) - 볼륨 & 음소거 -->
-        <div id="settings-panel-audio" class="settings-tab-panel">
-          <div class="settings-group">
-            <div class="settings-group-title">AUDIO // 사운드 제어</div>
-            
-            <div class="setting-row">
-              <div class="setting-label-col">
-                <span class="setting-name">MASTER VOLUME</span>
-                <span class="setting-desc">전체 출력 음량</span>
-              </div>
-              <div class="setting-control-col">
-                <input type="range" id="vol-master" class="settings-slider" min="0" max="100" value="80" />
-                <span id="vol-master-val" class="setting-val-display">80%</span>
-              </div>
-            </div>
-
-            <div class="setting-row">
-              <div class="setting-label-col">
-                <span class="setting-name">BGM // 배경음악</span>
-                <span class="setting-desc" id="setting-bgm-desc">로비 2곡 & 인게임 6곡 다이내믹 OST</span>
-              </div>
-              <div class="setting-control-col">
-                <input type="range" id="vol-bgm" class="settings-slider" min="0" max="100" value="40" />
-                <span id="vol-bgm-val" class="setting-val-display">40%</span>
-              </div>
-            </div>
-
-            <div class="setting-row">
-              <div class="setting-label-col">
-                <span class="setting-name">SFX // 효과음</span>
-                <span class="setting-desc">엔진 RPM, 타이어 스키드, 비프</span>
-              </div>
-              <div class="setting-control-col">
-                <input type="range" id="vol-sfx" class="settings-slider" min="0" max="100" value="80" />
-                <span id="vol-sfx-val" class="setting-val-display">80%</span>
-                <button id="btn-test-sfx" class="glass-btn" style="padding: 2px 8px; font-size: 10px; margin-left: 6px;">TEST</button>
-              </div>
-            </div>
-
-            <div class="setting-row">
-              <div class="setting-label-col">
-                <span class="setting-name">MUTE ALL</span>
-                <span class="setting-desc">모든 오디오 출력 음소거</span>
-              </div>
-              <div class="setting-control-col">
-                <label class="switch-container">
-                  <input type="checkbox" id="chk-mute" />
-                  <span class="switch-slider"></span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 탭 3: 게임플레이 (GAMEPLAY) - 조향감도, 틸트, 키보드 조작 설정 -->
+        <!-- 탭 2: 게임플레이 (GAMEPLAY) - 조향감도, 틸트, 키보드 조작 설정 -->
         <div id="settings-panel-gameplay" class="settings-tab-panel">
           <div class="settings-group">
-            <div class="settings-group-title">PHYSICS & CAMERA // 조작 감도 & 시점</div>
+            <div class="settings-group-title" data-i18n="settings.gameplay.groupTitle">조작 감도 & 시점</div>
 
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">STEER SENSITIVITY</span>
-                <span class="setting-desc">조향 입력 반응 감도</span>
+                <span class="setting-name" data-i18n="settings.gameplay.steer">조향 감도</span>
+                <span class="setting-desc" data-i18n="settings.gameplay.steerDesc">조향 입력 반응 감도</span>
               </div>
               <div class="setting-control-col">
                 <input type="range" id="setting-steer" class="settings-slider" min="50" max="150" value="100" />
@@ -446,8 +392,8 @@
 
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">DYNAMIC CAMERA TILT</span>
-                <span class="setting-desc">코너링 시 체이스 카메라 롤 회전</span>
+                <span class="setting-name" data-i18n="settings.gameplay.camTilt">다이내믹 카메라 틸트</span>
+                <span class="setting-desc" data-i18n="settings.gameplay.camTiltDesc">코너링 시 체이스 카메라 롤 회전</span>
               </div>
               <div class="setting-control-col">
                 <label class="switch-container">
@@ -459,92 +405,92 @@
           </div>
 
           <div class="settings-group" style="margin-top: 16px;">
-            <div class="settings-group-title">CONTROLS // 키보드 조작 설정 (단일 키 매핑)</div>
+            <div class="settings-group-title" data-i18n="settings.gameplay.controlsTitle">키보드 조작 설정 (단일 키 매핑)</div>
 
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">CONTROL PRESET</span>
-                <span class="setting-desc">기본 프리셋 또는 완전 사용자 지정</span>
+                <span class="setting-name" data-i18n="settings.gameplay.presetName">조작 프리셋</span>
+                <span class="setting-desc" data-i18n="settings.gameplay.presetDesc">기본 프리셋 또는 완전 사용자 지정</span>
               </div>
               <div class="setting-control-col">
                 <div class="preset-btn-group">
-                  <button type="button" id="btn-preset-wasd" class="preset-choice-btn active">WASD + R_SHIFT</button>
-                  <button type="button" id="btn-preset-arrows" class="preset-choice-btn">화살표 + L_SHIFT</button>
-                  <span id="badge-preset-custom" class="custom-badge" style="display: none;">CUSTOM</span>
+                  <button type="button" id="btn-preset-wasd" class="preset-choice-btn active" data-i18n="settings.gameplay.presetWasd">WASD + R_SHIFT</button>
+                  <button type="button" id="btn-preset-arrows" class="preset-choice-btn" data-i18n="settings.gameplay.presetArrows">화살표 + L_SHIFT</button>
+                  <span id="badge-preset-custom" class="custom-badge" style="display: none;" data-i18n="common.custom">사용자 지정</span>
                 </div>
               </div>
             </div>
 
             <div class="keybind-grid" id="keybind-grid">
               <div class="keybind-item">
-                <span class="keybind-action-label">가속 (THROTTLE)</span>
+                <span class="keybind-action-label" data-i18n="settings.gameplay.throttle">가속 (THROTTLE)</span>
                 <button type="button" class="keybind-btn" data-action="throttle">W</button>
               </div>
               <div class="keybind-item">
-                <span class="keybind-action-label">감속/후진 (BRAKE)</span>
+                <span class="keybind-action-label" data-i18n="settings.gameplay.brake">감속/후진 (BRAKE)</span>
                 <button type="button" class="keybind-btn" data-action="brake">R_SHIFT</button>
               </div>
               <div class="keybind-item">
-                <span class="keybind-action-label">좌회전 (STEER LEFT)</span>
+                <span class="keybind-action-label" data-i18n="settings.gameplay.steerLeft">좌회전 (STEER LEFT)</span>
                 <button type="button" class="keybind-btn" data-action="steerLeft">A</button>
               </div>
               <div class="keybind-item">
-                <span class="keybind-action-label">우회전 (STEER RIGHT)</span>
+                <span class="keybind-action-label" data-i18n="settings.gameplay.steerRight">우회전 (STEER RIGHT)</span>
                 <button type="button" class="keybind-btn" data-action="steerRight">D</button>
               </div>
               <div class="keybind-item">
-                <span class="keybind-action-label">드리프트 (DRIFT)</span>
+                <span class="keybind-action-label" data-i18n="settings.gameplay.drift">드리프트 (DRIFT)</span>
                 <button type="button" class="keybind-btn" data-action="handbrake">SPACE</button>
               </div>
               <div class="keybind-item">
-                <span class="keybind-action-label">서킷 복귀 (RESET)</span>
+                <span class="keybind-action-label" data-i18n="settings.gameplay.reset">서킷 복귀 (RESET)</span>
                 <button type="button" class="keybind-btn" data-action="reset">R</button>
               </div>
               <div class="keybind-item">
-                <span class="keybind-action-label">헤드라이트 (LIGHTS)</span>
+                <span class="keybind-action-label" data-i18n="settings.gameplay.lights">헤드라이트 (LIGHTS)</span>
                 <button type="button" class="keybind-btn" data-action="headlights">H</button>
               </div>
             </div>
             <div class="keybind-help-note">
-              <span>※ 키 버튼을 클릭한 후 원하는 키를 누르면 즉시 변경됩니다. (ESC: 취소)</span>
+              <span data-i18n="settings.gameplay.keyNote">※ 키 버튼을 클릭한 후 원하는 키를 누르면 즉시 변경됩니다. (ESC: 취소)</span>
             </div>
           </div>
         </div>
 
-        <!-- 탭 4: 그래픽 성능 (GRAPHICS) - PC 하드웨어 감지 & 옵션 -->
+        <!-- 탭 3: 그래픽 성능 (GRAPHICS) - PC 하드웨어 감지 & 옵션 -->
         <div id="settings-panel-graphics" class="settings-tab-panel">
           <!-- PC 사양 분석 & 추천 설정 배지 -->
           <div class="settings-group">
-            <div class="settings-group-title">HARDWARE DETECTION // PC 하드웨어 사양 감지</div>
+            <div class="settings-group-title" data-i18n="settings.graphics.hwTitle">PC 하드웨어 사양 감지</div>
             <div class="setting-row">
               <div class="setting-label-col">
                 <span class="setting-name" id="gfx-detected-gpu">NVIDIA GeForce RTX / Intel UHD</span>
                 <span class="setting-desc" id="gfx-detected-specs">8 Cores | WebGL 2.0 Hardware Accelerated</span>
               </div>
               <div class="setting-control-col">
-                <span id="gfx-recommended-badge" class="custom-badge" style="background: rgba(6, 182, 212, 0.15); color: var(--accent-spec); border: 1px solid var(--accent-spec); padding: 4px 10px; font-weight: 700; font-size: 11px;">RECOMMENDED // HIGH</span>
-                <button type="button" id="btn-gfx-autodetect" class="glass-btn" style="padding: 4px 10px; font-size: 11px;">⚡ AUTO-DETECT // 자동 감지</button>
+                <span id="gfx-recommended-badge" class="custom-badge" style="background: rgba(6, 182, 212, 0.15); color: var(--accent-spec); border: 1px solid var(--accent-spec); padding: 4px 10px; font-weight: 700; font-size: 11px;">추천: HIGH</span>
+                <button type="button" id="btn-gfx-autodetect" class="glass-btn" style="padding: 4px 10px; font-size: 11px;" data-i18n="settings.graphics.autoDetectBtn">⚡ 자동 감지</button>
               </div>
             </div>
             <div class="keybind-help-note" style="border-top: 1px solid var(--border-subtle); padding: 8px 16px;">
-              <span id="gfx-recommendation-reason">고성능 GPU/CPU 환경입니다. 최고 품질 그래픽을 권장합니다.</span>
+              <span id="gfx-recommendation-reason" data-i18n="settings.graphics.reasonHigh">고성능 GPU/CPU 환경입니다. 최고 품질 그래픽을 권장합니다.</span>
             </div>
           </div>
 
           <!-- 그래픽 프리셋 선택 -->
           <div class="settings-group">
-            <div class="settings-group-title">PERFORMANCE PRESET // 그래픽 품질 프리셋</div>
+            <div class="settings-group-title" data-i18n="settings.graphics.presetTitle">그래픽 품질 프리셋</div>
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">GRAPHICS PRESET</span>
-                <span class="setting-desc">PC 사양에 맞춘 일괄 최적화 프로필</span>
+                <span class="setting-name" data-i18n="settings.graphics.presetName">그래픽 프리셋</span>
+                <span class="setting-desc" data-i18n="settings.graphics.presetDesc">PC 사양에 맞춘 일괄 최적화 프로필</span>
               </div>
               <div class="setting-control-col">
                 <div class="preset-btn-group">
-                  <button type="button" id="btn-gfx-preset-high" class="preset-choice-btn">HIGH // 고품질</button>
-                  <button type="button" id="btn-gfx-preset-medium" class="preset-choice-btn">MEDIUM // 균형</button>
-                  <button type="button" id="btn-gfx-preset-low" class="preset-choice-btn">LOW // 성능 우선</button>
-                  <span id="badge-gfx-custom" class="custom-badge" style="display: none;">CUSTOM</span>
+                  <button type="button" id="btn-gfx-preset-high" class="preset-choice-btn" data-i18n="settings.graphics.presetHigh">고품질</button>
+                  <button type="button" id="btn-gfx-preset-medium" class="preset-choice-btn" data-i18n="settings.graphics.presetMedium">균형</button>
+                  <button type="button" id="btn-gfx-preset-low" class="preset-choice-btn" data-i18n="settings.graphics.presetLow">성능 우선</button>
+                  <span id="badge-gfx-custom" class="custom-badge" style="display: none;" data-i18n="common.custom">사용자 지정</span>
                 </div>
               </div>
             </div>
@@ -552,19 +498,19 @@
 
           <!-- 세부 옵션 조절 (우려 및 성능 조절 사항) -->
           <div class="settings-group">
-            <div class="settings-group-title">ADVANCED GRAPHICS // 세부 그래픽 & 멀미 방지 설정</div>
+            <div class="settings-group-title" data-i18n="settings.graphics.advTitle">세부 그래픽 & 멀미 방지 설정</div>
 
             <!-- 1. 방사형 모션 블러 & 속도선 -->
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">SPEED FX // 방사형 모션 블러 & 가속선</span>
-                <span class="setting-desc">100/200km/h 주변 환경 블러 (초저사양: 8샘플 경량화 또는 끄기)</span>
+                <span class="setting-name" data-i18n="settings.graphics.speedFxName">방사형 모션 블러 & 가속선</span>
+                <span class="setting-desc" data-i18n="settings.graphics.speedFxDesc">100/200km/h 주변 환경 블러 (초저사양: 8샘플 경량화 또는 끄기)</span>
               </div>
               <div class="setting-control-col">
                 <select id="setting-gfx-motion-blur" class="settings-select">
-                  <option value="HIGH">HIGH (16샘플 + 색수차 + 속도선)</option>
-                  <option value="MEDIUM">MEDIUM (8샘플 경량 + 속도선)</option>
-                  <option value="OFF">OFF (블러 끄기 / 프레임 최우선)</option>
+                  <option value="HIGH" data-i18n="settings.graphics.blurHigh">HIGH (16샘플 + 색수차 + 속도선)</option>
+                  <option value="MEDIUM" data-i18n="settings.graphics.blurMedium">MEDIUM (8샘플 경량 + 속도선)</option>
+                  <option value="OFF" data-i18n="settings.graphics.blurOff">OFF (블러 끄기 / 프레임 최우선)</option>
                 </select>
               </div>
             </div>
@@ -572,14 +518,14 @@
             <!-- 2. 렌더링 해상도 스케일 -->
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">RESOLUTION SCALE // 렌더링 해상도</span>
-                <span class="setting-desc">화면 픽셀 밀도 (내장 그래픽은 1.0x 권장)</span>
+                <span class="setting-name" data-i18n="settings.graphics.resolutionName">렌더링 해상도</span>
+                <span class="setting-desc" data-i18n="settings.graphics.resolutionDesc">화면 픽셀 밀도 (내장 그래픽은 1.0x 권장)</span>
               </div>
               <div class="setting-control-col">
                 <select id="setting-gfx-resolution" class="settings-select">
-                  <option value="HIGH">HIGH (FHD Native / Retina 2.0x)</option>
-                  <option value="MEDIUM">MEDIUM (1.25x 스케일 밸런스)</option>
-                  <option value="LOW">LOW (1.0x 표준 / 최대 FPS)</option>
+                  <option value="HIGH" data-i18n="settings.graphics.resHigh">HIGH (FHD Native / Retina 2.0x)</option>
+                  <option value="MEDIUM" data-i18n="settings.graphics.resMedium">MEDIUM (1.25x 스케일 밸런스)</option>
+                  <option value="LOW" data-i18n="settings.graphics.resLow">LOW (1.0x 표준 / 최대 FPS)</option>
                 </select>
               </div>
             </div>
@@ -587,14 +533,14 @@
             <!-- 3. 동적 그림자 품질 -->
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">DYNAMIC SHADOWS // 동적 그림자</span>
-                <span class="setting-desc">차량 및 트랙 구조물 실시간 그림자</span>
+                <span class="setting-name" data-i18n="settings.graphics.shadowsName">동적 그림자</span>
+                <span class="setting-desc" data-i18n="settings.graphics.shadowsDesc">차량 및 트랙 구조물 실시간 그림자</span>
               </div>
               <div class="setting-control-col">
                 <select id="setting-gfx-shadows" class="settings-select">
-                  <option value="HIGH">HIGH (2048 소프트 섀도우)</option>
-                  <option value="MEDIUM">MEDIUM (1024 표준 섀도우)</option>
-                  <option value="OFF">OFF (그림자 끄기 / 성능 향상)</option>
+                  <option value="HIGH" data-i18n="settings.graphics.shadowHigh">HIGH (2048 소프트 섀도우)</option>
+                  <option value="MEDIUM" data-i18n="settings.graphics.shadowMedium">MEDIUM (1024 표준 섀도우)</option>
+                  <option value="OFF" data-i18n="settings.graphics.shadowOff">OFF (그림자 끄기 / 성능 향상)</option>
                 </select>
               </div>
             </div>
@@ -602,8 +548,8 @@
             <!-- 4. 다이내믹 FOV 왜곡 -->
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">DYNAMIC FOV // 고속 시야각 확장</span>
-                <span class="setting-desc">100~200km/h 초과 시 시야각을 65°에서 82°로 점진적 확장</span>
+                <span class="setting-name" data-i18n="settings.graphics.fovName">고속 시야각 확장</span>
+                <span class="setting-desc" data-i18n="settings.graphics.fovDesc">100~200km/h 초과 시 시야각을 65°에서 82°로 점진적 확장</span>
               </div>
               <div class="setting-control-col">
                 <label class="switch-container">
@@ -616,15 +562,69 @@
             <!-- 5. 카메라 쉐이크 & 진동 (멀미 방지) -->
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">CAMERA SHAKE // 차체 진동 & 충돌 쉐이크</span>
-                <span class="setting-desc">고속 공기저항 진동 및 충돌 시 카메라 흔들림 (멀미 시 끔 권장)</span>
+                <span class="setting-name" data-i18n="settings.graphics.shakeName">차체 진동 & 충돌 쉐이크</span>
+                <span class="setting-desc" data-i18n="settings.graphics.shakeDesc">고속 공기저항 진동 및 충돌 시 카메라 흔들림 (멀미 시 끔 권장)</span>
               </div>
               <div class="setting-control-col">
                 <select id="setting-gfx-shake" class="settings-select">
-                  <option value="FULL">FULL (기본 진동 / 사실적 몰입감)</option>
-                  <option value="REDUCED">REDUCED (약하게 / 50% 감쇠)</option>
-                  <option value="OFF">OFF (완전 끄기 / 화면 흔들림 방지)</option>
+                  <option value="FULL" data-i18n="settings.graphics.shakeFull">FULL (기본 진동 / 사실적 몰입감)</option>
+                  <option value="REDUCED" data-i18n="settings.graphics.shakeReduced">REDUCED (약하게 / 50% 감쇠)</option>
+                  <option value="OFF" data-i18n="settings.graphics.shakeOff">OFF (완전 끄기 / 화면 흔들림 방지)</option>
                 </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 탭 4: 사운드 (AUDIO) - 볼륨 & 음소거 -->
+        <div id="settings-panel-audio" class="settings-tab-panel">
+          <div class="settings-group">
+            <div class="settings-group-title" data-i18n="settings.audio.groupTitle">사운드 제어</div>
+            
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name" data-i18n="settings.audio.master">마스터</span>
+                <span class="setting-desc" data-i18n="settings.audio.masterDesc">전체 출력 음량</span>
+              </div>
+              <div class="setting-control-col">
+                <input type="range" id="vol-master" class="settings-slider" min="0" max="100" value="80" />
+                <span id="vol-master-val" class="setting-val-display">80%</span>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name" data-i18n="settings.audio.bgm">배경음</span>
+                <span class="setting-desc" id="setting-bgm-desc" data-i18n="settings.audio.bgmDesc">로비 2곡 & 인게임 6곡 다이내믹 OST</span>
+              </div>
+              <div class="setting-control-col">
+                <input type="range" id="vol-bgm" class="settings-slider" min="0" max="100" value="40" />
+                <span id="vol-bgm-val" class="setting-val-display">40%</span>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name" data-i18n="settings.audio.sfx">효과음</span>
+                <span class="setting-desc" data-i18n="settings.audio.sfxDesc">엔진 RPM, 타이어 스키드, 비프</span>
+              </div>
+              <div class="setting-control-col">
+                <input type="range" id="vol-sfx" class="settings-slider" min="0" max="100" value="80" />
+                <span id="vol-sfx-val" class="setting-val-display">80%</span>
+                <button id="btn-test-sfx" class="glass-btn" style="padding: 2px 8px; font-size: 10px; margin-left: 6px;" data-i18n="common.test">TEST</button>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name" data-i18n="settings.audio.mute">모두 음소거</span>
+                <span class="setting-desc" data-i18n="settings.audio.muteDesc">모든 오디오 출력 음소거</span>
+              </div>
+              <div class="setting-control-col">
+                <label class="switch-container">
+                  <input type="checkbox" id="chk-mute" />
+                  <span class="switch-slider"></span>
+                </label>
               </div>
             </div>
           </div>
@@ -632,7 +632,7 @@
       </div>
 
       <footer class="modal-actions">
-        <button id="settings-btn-save" class="primary-btn" data-i18n="common.save">SAVE & APPLY // 저장</button>
+        <button id="settings-btn-save" class="primary-btn" data-i18n="common.save">저장</button>
       </footer>
     </div>
   </div>
@@ -642,10 +642,10 @@
     <div class="modal-card setup-modal-card wizard-modal-card">
       <header class="modal-header-strip wizard-header-strip">
         <div class="wizard-header-title-wrap">
-          <span class="system-tag-badge">CONFIGURATION WIZARD // 단계별 게임 설정</span>
-          <h2 class="modal-title" id="wizard-current-step-title">01 CIRCUIT // 서킷 트랙 선택</h2>
+          <span class="system-tag-badge" data-i18n="wizard.tag">단계별 게임 설정</span>
+          <h2 class="modal-title" id="wizard-current-step-title" data-i18n="wizard.step1Title">01 서킷 트랙 선택</h2>
         </div>
-        <button id="setup-btn-close" class="modal-close-btn" title="닫기 [ESC]">✕</button>
+        <button id="setup-btn-close" class="modal-close-btn" title="닫기 [ESC]" data-i18n-title="common.closeEsc">✕</button>
       </header>
 
       <!-- 스텝 인디케이터 바 -->
@@ -653,29 +653,29 @@
         <button type="button" class="wizard-step-tab active" data-step="1">
           <span class="step-num">01</span>
           <div class="step-text-col">
-            <span class="step-name">CIRCUIT</span>
-            <span class="step-desc">서킷 선택</span>
+            <span class="step-name" data-i18n="wizard.stepCircuit">서킷 선택</span>
+            <span class="step-desc" data-i18n="wizard.selectTrack">서킷 선택</span>
           </div>
         </button>
         <button type="button" class="wizard-step-tab" data-step="2">
           <span class="step-num">02</span>
           <div class="step-text-col">
-            <span class="step-name">MACHINE</span>
-            <span class="step-desc">차량 & 컬러</span>
+            <span class="step-name" data-i18n="wizard.stepMachine">차량 & 컬러</span>
+            <span class="step-desc" data-i18n="wizard.selectMachine">머신 선택</span>
           </div>
         </button>
         <button type="button" class="wizard-step-tab" data-step="3">
           <span class="step-num">03</span>
           <div class="step-text-col">
-            <span class="step-name">ENVIRONMENT</span>
-            <span class="step-desc">시간 & 날씨</span>
+            <span class="step-name" data-i18n="wizard.stepEnv">시간 & 날씨</span>
+            <span class="step-desc" data-i18n="wizard.weather">기후 환경</span>
           </div>
         </button>
         <button type="button" class="wizard-step-tab" data-step="4">
           <span class="step-num">04</span>
           <div class="step-text-col">
-            <span class="step-name">DRIVER & MODE</span>
-            <span class="step-desc">드라이버 & 모드</span>
+            <span class="step-name" data-i18n="wizard.stepDriver">드라이버 & 모드</span>
+            <span class="step-desc" data-i18n="wizard.driverProfile">드라이버 프로필</span>
           </div>
         </button>
       </nav>
@@ -686,7 +686,7 @@
           <div class="wizard-split-layout">
             <!-- 왼쪽: 3가지 서킷 선택 버튼 -->
             <div class="wizard-choice-col">
-              <span class="wizard-col-title">SELECT TRACK // 서킷 선택</span>
+              <span class="wizard-col-title" data-i18n="wizard.selectTrack">서킷 선택</span>
               <div class="wizard-card-list">
                 <button type="button" class="wizard-choice-card active" data-track="circuit_monaco">
                   <div class="choice-card-header">
@@ -694,25 +694,25 @@
                     <span class="choice-card-badge badge-expert">★★★★★ HARD</span>
                   </div>
                   <strong class="choice-card-title">Circuit de Monaco</strong>
-                  <span class="choice-card-meta">3.337 km // 19 Corners // 가드레일 도심</span>
+                  <span class="choice-card-meta" data-i18n="wizard.trackMonacoMeta">3.337 km // 19 Corners // 가드레일 도심</span>
                 </button>
 
-                <button type="button" class="wizard-choice-card" data-track="circuit_silverstone">
+                <button type="button" class="wizard-choice-card" data-track="circuit_monza">
                   <div class="choice-card-header">
                     <span class="choice-card-num">TRK 02</span>
                     <span class="choice-card-badge badge-medium">★★★☆☆ MEDIUM</span>
                   </div>
-                  <strong class="choice-card-title">Silverstone GP</strong>
-                  <span class="choice-card-meta">5.891 km // 18 Corners // 초고속 에어로</span>
+                  <strong class="choice-card-title">Autodromo Nazionale Monza</strong>
+                  <span class="choice-card-meta" data-i18n="wizard.trackMonzaMeta">5.793 km // 11 Corners // 스피드의 신전</span>
                 </button>
 
-                <button type="button" class="wizard-choice-card" data-track="circuit_nurburgring">
+                <button type="button" class="wizard-choice-card" data-track="circuit_spa">
                   <div class="choice-card-header">
                     <span class="choice-card-num">TRK 03</span>
-                    <span class="choice-card-badge badge-insane">★★★★★★ INSANE</span>
+                    <span class="choice-card-badge badge-expert">★★★★★ HARD</span>
                   </div>
-                  <strong class="choice-card-title">Nürburgring Nordschleife</strong>
-                  <span class="choice-card-meta">20.832 km // 154 Corners // 녹색 지옥</span>
+                  <strong class="choice-card-title">Circuit de Spa-Francorchamps</strong>
+                  <span class="choice-card-meta" data-i18n="wizard.trackSpaMeta">7.004 km // 20 Corners // 아르덴 롤러코스터</span>
                 </button>
               </div>
             </div>
@@ -727,17 +727,17 @@
                     <circle cx="197.1" cy="172.8" r="5" class="track-start-pin" />
                     <text x="209.1" y="176.8" class="track-start-text">START / FINISH</text>
                   </svg>
-                  <!-- Silverstone SVG Map -->
-                  <svg id="track-svg-silverstone" class="track-svg" viewBox="0 0 400 240">
-                    <path class="track-svg-outline" d="M 212.7,151.8 L 216.5,150.0 L 221.2,149.4 L 226.7,149.5 L 232.8,150.1 L 239.2,151.1 L 245.7,152.0 L 252.1,152.7 L 258.0,152.8 L 263.4,152.2 L 267.6,150.8 L 271.7,149.2 L 275.8,147.3 L 279.8,145.2 L 283.6,142.9 L 287.1,140.3 L 290.1,137.7 L 292.6,134.9 L 294.6,132.0 L 295.7,129.1 L 296.2,126.0 L 296.2,122.7 L 295.7,119.2 L 294.8,115.5 L 293.6,111.9 L 292.1,108.4 L 290.5,105.1 L 288.6,102.1 L 286.7,99.5 L 284.6,97.6 L 282.1,96.0 L 279.3,94.7 L 276.2,93.7 L 273.1,92.7 L 269.9,91.7 L 266.8,90.5 L 264.0,89.1 L 261.4,87.2 L 259.0,84.6 L 256.8,81.3 L 255.0,77.6 L 253.4,73.6 L 251.8,69.4 L 250.3,65.2 L 248.7,61.1 L 246.9,57.2 L 244.8,53.7 L 242.4,50.8 L 240.0,48.3 L 237.5,45.8 L 234.8,43.4 L 232.0,41.2 L 229.1,39.2 L 226.1,37.5 L 223.2,36.1 L 220.1,35.0 L 217.1,34.3 L 214.0,34.0 L 210.7,34.1 L 207.3,34.5 L 203.8,35.2 L 200.4,36.2 L 197.0,37.4 L 193.7,38.9 L 190.5,40.5 L 187.6,42.4 L 184.7,44.5 L 182.0,47.1 L 179.6,50.1 L 177.2,53.4 L 175.0,56.8 L 172.9,60.5 L 170.8,64.1 L 168.6,67.7 L 166.4,71.2 L 164.1,74.5 L 161.8,77.8 L 159.5,81.1 L 157.3,84.4 L 155.0,87.6 L 152.7,90.9 L 150.4,94.2 L 148.0,97.4 L 145.6,100.7 L 143.1,103.9 L 140.4,107.2 L 137.6,110.4 L 134.6,113.6 L 131.5,116.7 L 128.5,119.9 L 125.6,123.1 L 122.7,126.4 L 120.1,129.7 L 117.8,133.2 L 115.7,136.7 L 113.5,140.3 L 111.4,144.0 L 109.4,147.8 L 107.6,151.7 L 106.0,155.6 L 104.8,159.4 L 104.1,163.1 L 103.8,166.8 L 104.2,170.3 L 105.1,174.0 L 106.5,177.7 L 108.4,181.4 L 110.6,185.0 L 113.2,188.5 L 116.1,191.8 L 119.2,194.8 L 122.4,197.4 L 125.7,199.6 L 129.9,201.6 L 134.6,203.2 L 139.8,204.5 L 145.3,205.3 L 150.9,205.8 L 156.5,206.0 L 162.0,205.8 L 167.3,205.2 L 172.1,204.3 L 176.2,203.2 L 180.0,201.7 L 183.7,199.8 L 187.4,197.7 L 190.9,195.3 L 194.2,192.7 L 197.3,190.0 L 200.1,187.1 L 202.6,184.2 L 204.6,181.3 L 206.0,178.2 L 206.9,174.7 L 207.4,171.0 L 207.7,167.2 L 208.0,163.5 L 208.5,159.9 L 209.4,156.7 L 210.7,153.9 L 212.7,151.8 Z" />
-                    <circle cx="212.7" cy="151.8" r="5" class="track-start-pin" />
-                    <text x="224.7" y="155.8" class="track-start-text">START / FINISH</text>
+                  <!-- Monza SVG Map -->
+                  <svg id="track-svg-monza" class="track-svg" viewBox="0 0 400 240">
+                    <path class="track-svg-outline" d="" />
+                    <circle cx="0" cy="0" r="5" class="track-start-pin" />
+                    <text x="0" y="0" class="track-start-text">START / FINISH</text>
                   </svg>
-                  <!-- Nürburgring SVG Map -->
-                  <svg id="track-svg-nurburgring" class="track-svg" viewBox="0 0 400 240">
-                    <path class="track-svg-outline" d="M 201.8,138.0 L 203.4,137.7 L 206.3,138.7 L 210.1,140.5 L 214.6,142.9 L 219.4,145.4 L 224.3,147.7 L 229.0,149.5 L 233.2,150.4 L 237.2,150.8 L 241.2,151.0 L 245.3,151.0 L 249.4,150.8 L 253.4,150.2 L 257.3,149.3 L 261.0,148.1 L 264.6,146.4 L 268.3,144.1 L 271.9,141.5 L 275.4,138.4 L 278.7,135.0 L 281.7,131.5 L 284.4,127.7 L 286.8,124.0 L 288.7,120.2 L 290.4,116.1 L 291.8,111.7 L 292.9,107.3 L 293.7,102.7 L 294.1,98.2 L 294.1,93.8 L 293.6,89.5 L 292.6,85.3 L 291.1,81.1 L 289.0,76.9 L 286.6,72.8 L 283.9,68.8 L 280.9,65.0 L 277.9,61.4 L 274.9,58.1 L 271.8,55.2 L 268.6,52.4 L 265.1,49.8 L 261.6,47.3 L 257.9,45.1 L 254.1,43.0 L 250.3,41.2 L 246.3,39.6 L 242.2,38.2 L 238.0,37.0 L 233.7,36.0 L 229.3,35.2 L 224.9,34.6 L 220.4,34.2 L 216.0,34.0 L 211.4,34.0 L 206.7,34.2 L 201.9,34.6 L 197.0,35.2 L 192.2,36.0 L 187.4,37.1 L 182.8,38.3 L 178.2,39.8 L 174.0,41.4 L 169.8,43.3 L 165.7,45.5 L 161.7,47.8 L 157.8,50.4 L 154.0,53.0 L 150.3,55.7 L 146.7,58.5 L 143.2,61.3 L 139.8,64.2 L 136.4,67.2 L 133.2,70.3 L 130.0,73.5 L 127.1,76.8 L 124.2,80.2 L 121.6,83.7 L 119.1,87.4 L 116.6,91.1 L 114.3,94.9 L 112.2,98.9 L 110.3,102.9 L 108.7,107.0 L 107.4,111.2 L 106.6,115.5 L 106.0,120.1 L 105.9,124.9 L 106.1,129.8 L 106.5,134.7 L 107.3,139.5 L 108.3,144.3 L 109.5,148.8 L 110.9,153.1 L 112.7,157.4 L 114.7,161.5 L 116.9,165.6 L 119.4,169.6 L 122.1,173.4 L 125.0,177.1 L 128.0,180.5 L 131.3,183.9 L 134.9,187.2 L 138.7,190.4 L 142.8,193.4 L 146.9,196.2 L 151.1,198.7 L 155.3,200.8 L 159.3,202.4 L 162.8,203.6 L 166.4,204.6 L 170.0,205.3 L 173.6,205.8 L 177.2,206.0 L 180.7,206.0 L 184.2,205.7 L 187.6,205.1 L 191.0,204.3 L 194.6,203.3 L 198.1,202.0 L 201.5,200.4 L 204.7,198.6 L 207.6,196.5 L 210.0,194.2 L 212.0,191.6 L 213.7,188.6 L 215.1,185.1 L 216.1,181.5 L 216.9,177.6 L 217.3,173.8 L 217.4,170.0 L 217.2,166.3 L 216.2,162.6 L 214.2,158.4 L 211.4,154.0 L 208.3,149.7 L 205.4,145.7 L 203.1,142.3 L 201.7,139.7 L 201.8,138.0 Z" />
-                    <circle cx="201.8" cy="138" r="5" class="track-start-pin" />
-                    <text x="213.8" y="142" class="track-start-text">START / FINISH</text>
+                  <!-- Spa SVG Map -->
+                  <svg id="track-svg-spa" class="track-svg" viewBox="0 0 400 240">
+                    <path class="track-svg-outline" d="" />
+                    <circle cx="0" cy="0" r="5" class="track-start-pin" />
+                    <text x="0" y="0" class="track-start-text">START / FINISH</text>
                   </svg>
                 </div>
 
@@ -746,24 +746,24 @@
                     <h3 id="track-showcase-title" class="track-detail-title">Circuit de Monaco</h3>
                     <span id="track-showcase-badge" class="choice-card-badge badge-expert">★★★★★ HARD</span>
                   </div>
-                  <p id="track-showcase-desc" class="track-detail-desc">
+                  <p id="track-showcase-desc" class="track-detail-desc" data-i18n="wizard.trackMonacoDesc">
                     모나코 몬테카를로 항만을 끼고 달리는 전설적인 도심 서킷. 폭이 매우 좁고 가드레일이 가까워 극한의 집중력과 브레이킹 포인트 제어가 요구됩니다.
                   </p>
                   <div class="track-spec-grid">
                     <div class="spec-cell">
-                      <span class="spec-k">LENGTH</span>
+                      <span class="spec-k" data-i18n="wizard.specLength">LENGTH</span>
                       <span id="track-spec-len" class="spec-v">3.337 km</span>
                     </div>
                     <div class="spec-cell">
-                      <span class="spec-k">CORNERS</span>
+                      <span class="spec-k" data-i18n="wizard.specCorners">CORNERS</span>
                       <span id="track-spec-corners" class="spec-v">19 CORNERS</span>
                     </div>
                     <div class="spec-cell">
-                      <span class="spec-k">LAP RECORD</span>
+                      <span class="spec-k" data-i18n="wizard.specLapRecord">LAP RECORD</span>
                       <span id="track-spec-record" class="spec-v">01:14.260</span>
                     </div>
                     <div class="spec-cell">
-                      <span class="spec-k">CHARACTER</span>
+                      <span class="spec-k" data-i18n="wizard.specCharacter">CHARACTER</span>
                       <span id="track-spec-type" class="spec-v">TECHNICAL STREET</span>
                     </div>
                   </div>
@@ -778,7 +778,7 @@
           <div class="wizard-split-layout">
             <!-- 왼쪽: 차량 3가지 버튼 + 색상 픽커 -->
             <div class="wizard-choice-col">
-              <span class="wizard-col-title">SELECT MACHINE // 차량 모델</span>
+              <span class="wizard-col-title" data-i18n="wizard.selectMachine">머신 선택</span>
               <div class="wizard-card-list">
                 <button type="button" class="wizard-choice-card active" data-model="gt_turbo">
                   <div class="choice-card-header">
@@ -786,7 +786,7 @@
                     <span class="choice-card-badge">BALANCE COUPE</span>
                   </div>
                   <strong class="choice-card-title">GT-86 Turbo</strong>
-                  <span class="choice-card-meta">최고속 210 km/h // 가속 4.8s // 밸런스형 후륜 쿠페</span>
+                  <span class="choice-card-meta" data-i18n="wizard.carGtMeta">최고속 210 km/h // 가속 4.8s // 밸런스형 후륜 쿠페</span>
                 </button>
 
                 <button type="button" class="wizard-choice-card" data-model="formula_aero">
@@ -795,7 +795,7 @@
                     <span class="choice-card-badge badge-expert">DOWNFORCE AERO</span>
                   </div>
                   <strong class="choice-card-title">Formula Aero</strong>
-                  <span class="choice-card-meta">최고속 228 km/h // 가속 2.6s // 초경량 고다운포스</span>
+                  <span class="choice-card-meta" data-i18n="wizard.carFormulaMeta">최고속 228 km/h // 가속 2.6s // 초경량 고다운포스</span>
                 </button>
 
                 <button type="button" class="wizard-choice-card" data-model="cyber_speedster">
@@ -804,13 +804,13 @@
                     <span class="choice-card-badge badge-insane">HYPER SPEED</span>
                   </div>
                   <strong class="choice-card-title">Cyber Speedster</strong>
-                  <span class="choice-card-meta">최고속 242 km/h // 가속 3.2s // 사이버 하이퍼카</span>
+                  <span class="choice-card-meta" data-i18n="wizard.carCyberMeta">최고속 242 km/h // 가속 3.2s // 사이버 하이퍼카</span>
                 </button>
               </div>
 
               <!-- 리버리 색상 허니콤 헥사곤 팔레트 (임베디드 상시 표시) -->
               <div class="wizard-color-section">
-                <span class="wizard-col-title">LIVERY COLOR PALETTE // 허니콤 색상 팔레트</span>
+                <span class="wizard-col-title" data-i18n="wizard.livery">리버리 컬러 팔레트</span>
                 <div id="wizard-honeycomb-picker-container"></div>
               </div>
             </div>
@@ -820,26 +820,26 @@
               <div class="vehicle-turntable-container">
                 <div class="turntable-header-tag">
                   <span class="pulse-dot"></span>
-                  <span>LIVE 3D TURNTABLE // 360° 실시간 렌더링</span>
+                  <span data-i18n="wizard.preview3d">360° 실시간 프리뷰</span>
                 </div>
                 <div class="turntable-canvas-wrap">
                   <canvas id="wizard-vehicle-canvas"></canvas>
                 </div>
                 <div class="turntable-specs-footer">
                   <div class="spec-cell">
-                    <span class="spec-k">TOP SPEED</span>
+                    <span class="spec-k" data-i18n="wizard.specTopSpeed">TOP SPEED</span>
                     <span id="vehicle-spec-speed" class="spec-v">210 km/h</span>
                   </div>
                   <div class="spec-cell">
-                    <span class="spec-k">0-100 ACCEL</span>
+                    <span class="spec-k" data-i18n="wizard.spec0100Accel">0-100 ACCEL</span>
                     <span id="vehicle-spec-accel" class="spec-v">4.8s</span>
                   </div>
                   <div class="spec-cell">
-                    <span class="spec-k">DOWNFORCE</span>
+                    <span class="spec-k" data-i18n="wizard.specDownforce">DOWNFORCE</span>
                     <span id="vehicle-spec-downforce" class="spec-v">MEDIUM</span>
                   </div>
                   <div class="spec-cell">
-                    <span class="spec-k">HANDLING</span>
+                    <span class="spec-k" data-i18n="wizard.specHandling">HANDLING</span>
                     <span id="vehicle-spec-handling" class="spec-v">STABLE</span>
                   </div>
                 </div>
@@ -853,37 +853,37 @@
           <div class="environment-step-grid">
             <!-- 1. 시간대 선택 (Time of Day) -->
             <div class="env-group">
-              <span class="wizard-col-title">01 TIME OF DAY // 서킷 시간대 선택</span>
+              <span class="wizard-col-title" data-i18n="wizard.timeOfDay">서킷 시간대 선택</span>
               <div class="env-options-grid env-time-grid">
                 <button type="button" class="env-chip-btn" data-time="morning">
                   <span class="env-icon">🌅</span>
                   <div class="env-chip-info">
-                    <strong class="env-name">MORNING // 아침</strong>
-                    <span class="env-desc">온화한 여명 & 황금빛 햇살</span>
+                    <strong class="env-name" data-i18n="wizard.morning">아침</strong>
+                    <span class="env-desc" data-i18n="wizard.morningDesc">온화한 여명 & 황금빛 햇살</span>
                   </div>
                 </button>
 
                 <button type="button" class="env-chip-btn active" data-time="noon">
                   <span class="env-icon">☀️</span>
                   <div class="env-chip-info">
-                    <strong class="env-name">NOON // 점심</strong>
-                    <span class="env-desc">청명하고 강렬한 정오 직사광</span>
+                    <strong class="env-name" data-i18n="wizard.noon">점심</strong>
+                    <span class="env-desc" data-i18n="wizard.noonDesc">청명하고 강렬한 정오 직사광</span>
                   </div>
                 </button>
 
                 <button type="button" class="env-chip-btn" data-time="sunset">
                   <span class="env-icon">🌇</span>
                   <div class="env-chip-info">
-                    <strong class="env-name">SUNSET // 저녁</strong>
-                    <span class="env-desc">붉게 물드는 석양 노을</span>
+                    <strong class="env-name" data-i18n="wizard.sunset">저녁</strong>
+                    <span class="env-desc" data-i18n="wizard.sunsetDesc">붉게 물드는 석양 노을</span>
                   </div>
                 </button>
 
                 <button type="button" class="env-chip-btn" data-time="night">
                   <span class="env-icon">🌙</span>
                   <div class="env-chip-info">
-                    <strong class="env-name">NIGHT // 밤</strong>
-                    <span class="env-desc">칠흑 같은 어둠 & 네온 서킷</span>
+                    <strong class="env-name" data-i18n="wizard.night">밤</strong>
+                    <span class="env-desc" data-i18n="wizard.nightDesc">칠흑 같은 어둠 & 네온 서킷</span>
                   </div>
                 </button>
               </div>
@@ -891,29 +891,29 @@
 
             <!-- 2. 날씨 선택 (Weather) -->
             <div class="env-group">
-              <span class="wizard-col-title">02 WEATHER CONDITION // 기후 & 노면 상태</span>
+              <span class="wizard-col-title" data-i18n="wizard.weather">기후 & 노면 상태</span>
               <div class="env-options-grid env-weather-grid">
                 <button type="button" class="env-chip-btn active" data-weather="clear">
                   <span class="env-icon">✨</span>
                   <div class="env-chip-info">
-                    <strong class="env-name">CLEAR // 맑음</strong>
-                    <span class="env-desc">최적의 노면 그립 & 투명한 시야</span>
+                    <strong class="env-name" data-i18n="wizard.clear">맑음</strong>
+                    <span class="env-desc" data-i18n="wizard.clearDesc">최적의 노면 그립 & 투명한 시야</span>
                   </div>
                 </button>
 
                 <button type="button" class="env-chip-btn" data-weather="rain">
                   <span class="env-icon">🌧️</span>
                   <div class="env-chip-info">
-                    <strong class="env-name">RAIN // 비</strong>
-                    <span class="env-desc">젖은 노면 반사 & 슬립 증가</span>
+                    <strong class="env-name" data-i18n="wizard.rain">비</strong>
+                    <span class="env-desc" data-i18n="wizard.rainDesc">젖은 노면 반사 & 슬립 증가</span>
                   </div>
                 </button>
 
                 <button type="button" class="env-chip-btn" data-weather="wind_fog">
                   <span class="env-icon">💨</span>
                   <div class="env-chip-info">
-                    <strong class="env-name">WIND & FOG // 바람/안개</strong>
-                    <span class="env-desc">짙은 레이싱 안개 & 측풍 시뮬레이션</span>
+                    <strong class="env-name" data-i18n="wizard.windFog">바람/안개</strong>
+                    <span class="env-desc" data-i18n="wizard.windFogDesc">짙은 레이싱 안개 & 측풍 시뮬레이션</span>
                   </div>
                 </button>
               </div>
@@ -921,8 +921,8 @@
 
             <!-- 환경 요약 상태 바 -->
             <div class="env-summary-banner">
-              <span class="env-summary-label">ACTIVE ENVIRONMENT // 적용 환경:</span>
-              <span id="env-summary-text" class="env-summary-val">NOON [점심] + CLEAR [맑음]</span>
+              <span class="env-summary-label" data-i18n="wizard.activeEnv">적용 환경:</span>
+              <span id="env-summary-text" class="env-summary-val">점심 + 맑음</span>
             </div>
           </div>
         </div>
@@ -933,11 +933,11 @@
             <!-- 1. 드라이버 이름 입력 -->
             <div class="setup-group">
               <div class="setup-group-header">
-                <span class="setup-group-title">01 DRIVER PROFILE // 드라이버 닉네임</span>
-                <button type="button" id="wizard-btn-random-name" class="glass-btn small-action-btn">🎲 랜덤 생성</button>
+                <span class="setup-group-title" data-i18n="wizard.driverProfile">드라이버 닉네임</span>
+                <button type="button" id="wizard-btn-random-name" class="glass-btn small-action-btn" data-i18n="wizard.randomName">🎲 랜덤 생성</button>
               </div>
               <div class="setup-input-wrap">
-                <input type="text" id="wizard-driver-name" class="setup-text-input" placeholder="드라이버 닉네임을 입력하세요 (예: Apex Hunter)" maxlength="16" />
+                <input type="text" id="wizard-driver-name" class="setup-text-input" placeholder="드라이버 닉네임을 입력하세요 (예: Apex Hunter)" data-i18n-placeholder="wizard.driverPlaceholder" maxlength="16" />
               </div>
             </div>
 
@@ -947,8 +947,8 @@
                 <input type="checkbox" id="wizard-chk-autodrive" />
                 <span class="autodrive-custom-chk"></span>
                 <div class="autodrive-text-wrap">
-                  <span class="autodrive-title">AI AUTO-DRIVE MODE // 컴퓨터 4대 자율 주행 배틀</span>
-                  <span class="autodrive-desc">체크 시 플레이어 수동 운전 대신, 컴퓨터 AI 4대가 주행하는 시뮬레이션 모드로 진행됩니다.</span>
+                  <span class="autodrive-title" data-i18n="wizard.autoDriveMode">컴퓨터 4대 자율 주행 배틀</span>
+                  <span class="autodrive-desc" data-i18n="wizard.autoDriveDesc">체크 시 플레이어 수동 운전 대신, 컴퓨터 AI 4대가 주행하는 시뮬레이션 모드로 진행됩니다.</span>
                 </div>
               </label>
             </div>
@@ -956,27 +956,27 @@
             <!-- 3. 최종 설정 확인 요약 (Race Setup Summary Card) -->
             <div class="race-briefing-card">
               <div class="briefing-header">
-                <span class="system-tag-badge">RACE BRIEFING // 세션 요약</span>
-                <span class="briefing-status">READY FOR START</span>
+                <span class="system-tag-badge" data-i18n="wizard.briefing">세션 요약</span>
+                <span class="briefing-status" data-i18n="wizard.briefingReady">READY FOR START</span>
               </div>
               <div class="briefing-grid">
                 <div class="briefing-item">
-                  <span class="briefing-k">SELECTED CIRCUIT</span>
+                  <span class="briefing-k" data-i18n="wizard.briefingCircuit">SELECTED CIRCUIT</span>
                   <strong id="briefing-track" class="briefing-v">Circuit de Monaco</strong>
                 </div>
                 <div class="briefing-item">
-                  <span class="briefing-k">MACHINE & COLOR</span>
+                  <span class="briefing-k" data-i18n="wizard.briefingMachine">MACHINE & COLOR</span>
                   <div class="briefing-machine-row">
                     <span id="briefing-color-dot" class="briefing-color-dot" style="background-color: #ef4444;"></span>
                     <strong id="briefing-model" class="briefing-v">GT-86 Turbo</strong>
                   </div>
                 </div>
                 <div class="briefing-item">
-                  <span class="briefing-k">ENVIRONMENT</span>
+                  <span class="briefing-k" data-i18n="wizard.briefingEnvironment">ENVIRONMENT</span>
                   <strong id="briefing-env" class="briefing-v">NOON + CLEAR</strong>
                 </div>
                 <div class="briefing-item">
-                  <span class="briefing-k">DRIVER / MODE</span>
+                  <span class="briefing-k" data-i18n="wizard.briefingDriverMode">DRIVER / MODE</span>
                   <strong id="briefing-driver" class="briefing-v">Apex Hunter (Manual Drive)</strong>
                 </div>
               </div>
@@ -988,13 +988,13 @@
       <!-- 모달 풋터 (위저드 이전 / 다음 / 시작 버튼) -->
       <footer class="modal-actions wizard-actions">
         <div class="wizard-footer-left">
-          <button type="button" id="wizard-btn-prev" class="secondary-btn" disabled>← PREV // 이전 단계</button>
-          <button type="button" id="wizard-btn-reset" class="secondary-btn" title="모든 설정을 기본값으로 초기화">↺ RESET // 기본값 초기화</button>
+          <button type="button" id="wizard-btn-prev" class="secondary-btn" disabled data-i18n="wizard.prev">← 이전 단계</button>
+          <button type="button" id="wizard-btn-reset" class="secondary-btn" data-i18n="wizard.resetBtn" title="모든 설정을 기본값으로 초기화" data-i18n-title="wizard.resetBtnTitle">↺ 기본값 초기화</button>
         </div>
         <div class="wizard-footer-right">
-          <button type="button" id="wizard-btn-random-all" class="secondary-btn">🎲 ALL RANDOM // 전체 랜덤</button>
-          <button type="button" id="wizard-btn-next" class="primary-btn">NEXT // 다음 단계 →</button>
-          <button type="button" id="wizard-btn-start" class="primary-btn start-race-btn" style="display: none;">START RACE // 레이스 시작 ▶</button>
+          <button type="button" id="wizard-btn-random-all" class="secondary-btn" data-i18n="wizard.randomAll">🎲 전체 랜덤</button>
+          <button type="button" id="wizard-btn-next" class="primary-btn" data-i18n="wizard.next">다음 단계 →</button>
+          <button type="button" id="wizard-btn-start" class="primary-btn start-race-btn" style="display: none;" data-i18n="wizard.startRace">레이스 시작 ▶</button>
         </div>
       </footer>
     </div>
@@ -1005,28 +1005,28 @@
     <div class="modal-card pause-modal-card">
       <header class="modal-header-strip pause-header-strip">
         <div class="pause-header-left">
-          <span class="system-tag-badge">RACE SUSPENDED // 경기 일시 정지</span>
-          <h2 class="modal-title">GAME PAUSED</h2>
+          <span class="system-tag-badge" data-i18n="pause.tag">경기 일시 정지</span>
+          <h2 class="modal-title" data-i18n="pause.title">일시정지</h2>
         </div>
-        <span class="pause-shortcut-tag">[ESC] TO RESUME</span>
+        <span class="pause-shortcut-tag" data-i18n="pause.escResume">[ESC] TO RESUME</span>
       </header>
 
       <div class="modal-content-body pause-content-body">
         <div class="pause-status-banner">
           <div class="pause-status-item">
-            <span class="pause-k">CIRCUIT // 서킷</span>
+            <span class="pause-k" data-i18n="pause.circuit">서킷</span>
             <strong id="pause-info-track" class="pause-v">Silverstone GP</strong>
           </div>
           <div class="pause-status-item">
-            <span class="pause-k">MACHINE // 차량</span>
+            <span class="pause-k" data-i18n="pause.machine">차량</span>
             <strong id="pause-info-car" class="pause-v">Formula Aero</strong>
           </div>
           <div class="pause-status-item">
-            <span class="pause-k">CURRENT LAP // 랩</span>
+            <span class="pause-k" data-i18n="pause.lap">현재 랩</span>
             <strong id="pause-info-lap" class="pause-v">LAP 01 / 02</strong>
           </div>
           <div class="pause-status-item">
-            <span class="pause-k">ELAPSED // 경과 시간</span>
+            <span class="pause-k" data-i18n="pause.elapsed">경과 시간</span>
             <strong id="pause-info-time" class="pause-v">00:45.320</strong>
           </div>
         </div>
@@ -1035,8 +1035,8 @@
           <button type="button" id="pause-btn-resume" class="pause-menu-btn active">
             <span class="pause-btn-num">01</span>
             <div class="pause-btn-text">
-              <span class="pause-btn-title">RESUME // 경기 계속하기</span>
-              <span class="pause-btn-desc">현재 위치와 시간에서 레이스를 재개합니다 [ESC]</span>
+              <span class="pause-btn-title" data-i18n="pause.resume">주행재개</span>
+              <span class="pause-btn-desc" data-i18n="pause.resumeDesc">현재 위치와 시간에서 레이스를 재개합니다 [ESC]</span>
             </div>
             <span class="pause-btn-chevron">▶</span>
           </button>
@@ -1044,8 +1044,8 @@
           <button type="button" id="pause-btn-restart" class="pause-menu-btn">
             <span class="pause-btn-num">02</span>
             <div class="pause-btn-text">
-              <span class="pause-btn-title">RESTART // 레이스 재도전</span>
-              <span class="pause-btn-desc">현재 트랙의 출발선 그리드로 돌아가 처음부터 다시 시작합니다 [R]</span>
+              <span class="pause-btn-title" data-i18n="pause.restart">다시 시작</span>
+              <span class="pause-btn-desc" data-i18n="pause.restartDesc">현재 트랙의 출발선 그리드로 돌아가 처음부터 다시 시작합니다 [R]</span>
             </div>
             <span class="pause-btn-chevron">↺</span>
           </button>
@@ -1053,8 +1053,8 @@
           <button type="button" id="pause-btn-settings" class="pause-menu-btn">
             <span class="pause-btn-num">03</span>
             <div class="pause-btn-text">
-              <span class="pause-btn-title">SETTINGS // 오디오 & 조작 설정</span>
-              <span class="pause-btn-desc">마스터/BGM/SFX 볼륨 및 스티어링 감도를 변경합니다 [O]</span>
+              <span class="pause-btn-title" data-i18n="pause.settings">조작 & 사운드 설정</span>
+              <span class="pause-btn-desc" data-i18n="pause.settingsDesc">마스터/BGM/SFX 볼륨 및 스티어링 감도를 변경합니다 [O]</span>
             </div>
             <span class="pause-btn-chevron">⚙</span>
           </button>
@@ -1062,8 +1062,8 @@
           <button type="button" id="pause-btn-exit" class="pause-menu-btn pause-btn-danger">
             <span class="pause-btn-num">04</span>
             <div class="pause-btn-text">
-              <span class="pause-btn-title">EXIT TO TITLE // 메인 메뉴로 나가기</span>
-              <span class="pause-btn-desc">현재 레이스를 종료하고 로비 메뉴로 돌아갑니다</span>
+              <span class="pause-btn-title" data-i18n="pause.exit">메인 메뉴로 나가기</span>
+              <span class="pause-btn-desc" data-i18n="pause.exitDesc">현재 레이스를 종료하고 로비 메뉴로 돌아갑니다</span>
             </div>
             <span class="pause-btn-chevron">✕</span>
           </button>
@@ -1077,30 +1077,30 @@
     <div class="modal-card history-modal-card">
       <header class="modal-header-strip">
         <div class="history-header-left">
-          <span class="system-tag-badge">EDGE D1 + R2 // 30Hz TICK ARCHIVE</span>
-          <h2 class="modal-title">MATCH ARCHIVE & LEADERBOARD // 전적 검색</h2>
+          <span class="system-tag-badge" data-i18n="history.tag">30Hz 틱 아카이브</span>
+          <h2 class="modal-title" data-i18n="history.title">전적 검색 및 리더보드</h2>
         </div>
-        <button id="history-btn-close" class="modal-close-btn" title="닫기 [ESC]">✕</button>
+        <button id="history-btn-close" class="modal-close-btn" title="닫기 [ESC]" data-i18n-title="common.closeEsc">✕</button>
       </header>
 
       <div class="modal-content-body history-content-body">
         <!-- 상단 통계 개요 스트립 -->
         <div class="history-metrics-row">
           <div class="history-metric-card">
-            <span class="metric-label">TOTAL MATCHES // 총 전적</span>
-            <span class="metric-value">1,284 <span class="metric-unit">RECORDS</span></span>
+            <span class="metric-label" data-i18n="history.totalMatches">총 전적</span>
+            <span class="metric-value">1,284 <span class="metric-unit" data-i18n="history.unitRecords">RECORDS</span></span>
           </div>
           <div class="history-metric-card">
-            <span class="metric-label">CIRCUIT BEST // 최고 랩타임</span>
+            <span class="metric-label" data-i18n="history.circuitBest">최고 랩타임</span>
             <span class="metric-value highlight-accent">00:48.219 <span class="metric-unit">Schumacher_KR</span></span>
           </div>
           <div class="history-metric-card">
-            <span class="metric-label">TOP SPEED RECORD // 최고속</span>
+            <span class="metric-label" data-i18n="history.topSpeed">최고속</span>
             <span class="metric-value">241.0 <span class="metric-unit">km/h</span></span>
           </div>
           <div class="history-metric-card">
-            <span class="metric-label">DATABASE NODE // 스토리지</span>
-            <span class="metric-value text-cyan">D1 EDGE <span class="metric-unit">ACTIVE</span></span>
+            <span class="metric-label" data-i18n="history.database">스토리지</span>
+            <span class="metric-value text-cyan">D1 EDGE <span class="metric-unit" data-i18n="history.unitActive">ACTIVE</span></span>
           </div>
         </div>
 
@@ -1109,25 +1109,25 @@
           <div class="history-search-group">
             <div class="history-input-wrap">
               <span class="search-icon">🔍</span>
-              <input type="text" id="history-search-driver" class="history-search-input" placeholder="드라이버 닉네임 검색 (예: Schumacher_KR, Apex Hunter)..." />
+              <input type="text" id="history-search-driver" class="history-search-input" data-i18n-placeholder="history.searchPlaceholder" placeholder="드라이버 닉네임 검색 (예: Schumacher_KR, Apex Hunter)..." />
             </div>
-            <button type="button" id="history-btn-search" class="primary-btn history-search-btn">SEARCH // 검색</button>
+            <button type="button" id="history-btn-search" class="primary-btn history-search-btn" data-i18n="history.search">검색</button>
           </div>
 
           <div class="history-filter-controls">
             <div class="history-track-tabs">
-              <button type="button" class="history-tab-btn active" data-track="all">ALL TRACKS</button>
-              <button type="button" class="history-tab-btn" data-track="circuit_monaco">MONACO GP</button>
-              <button type="button" class="history-tab-btn" data-track="circuit_silverstone">SILVERSTONE</button>
-              <button type="button" class="history-tab-btn" data-track="circuit_nurburgring">NÜRBURGRING</button>
+              <button type="button" class="history-tab-btn active" data-track="all" data-i18n="history.tabAll">ALL TRACKS</button>
+              <button type="button" class="history-tab-btn" data-track="circuit_monaco" data-i18n="history.tabMonaco">MONACO GP</button>
+              <button type="button" class="history-tab-btn" data-track="circuit_monza" data-i18n="history.tabMonza">MONZA GP</button>
+              <button type="button" class="history-tab-btn" data-track="circuit_spa" data-i18n="history.tabSpa">SPA-FRANCORCHAMPS</button>
             </div>
 
             <div class="history-sort-select-wrap">
-              <span class="filter-sort-label">SORT // 정렬:</span>
+              <span class="filter-sort-label" data-i18n="history.sort">정렬:</span>
               <select id="history-sort-select" class="history-sort-select">
-                <option value="best_lap">BEST LAP (최고 랩타임 순)</option>
-                <option value="recent">RECENT (최신 경기 순)</option>
-                <option value="top_speed">TOP SPEED (최고속 순)</option>
+                <option value="best_lap" data-i18n="history.sortBest">최고 랩타임 순</option>
+                <option value="recent" data-i18n="history.sortRecent">최신 경기 순</option>
+                <option value="top_speed" data-i18n="history.sortSpeed">최고속 순</option>
               </select>
             </div>
           </div>
@@ -1138,14 +1138,14 @@
           <table class="history-table">
             <thead>
               <tr>
-                <th class="col-rank">RANK</th>
-                <th class="col-driver">DRIVER // 드라이버</th>
-                <th class="col-machine">MACHINE // 머신</th>
-                <th class="col-track">TRACK // 서킷</th>
-                <th class="col-lap">BEST LAP // 기록</th>
-                <th class="col-speed">TOP SPEED</th>
-                <th class="col-date">RECORDED // 일시</th>
-                <th class="col-action">REPLAY // 3D</th>
+                <th class="col-rank" data-i18n="history.colRank">순위</th>
+                <th class="col-driver" data-i18n="history.colDriver">드라이버</th>
+                <th class="col-machine" data-i18n="history.colMachine">머신</th>
+                <th class="col-track" data-i18n="history.colTrack">서킷</th>
+                <th class="col-lap" data-i18n="history.colLap">기록</th>
+                <th class="col-speed" data-i18n="history.colSpeed">최고속</th>
+                <th class="col-date" data-i18n="history.colDate">일시</th>
+                <th class="col-action" data-i18n="history.colAction">3D 재생</th>
               </tr>
             </thead>
             <tbody id="history-table-tbody">
@@ -1241,11 +1241,11 @@
       <footer class="modal-actions history-actions">
         <div class="history-status-note">
           <span class="pulse-dot"></span>
-          <span>STEP 3 UI PREVIEW // 다음 단계에서 D1 DB API 실시간 쿼리 및 R2 바이너리 3D 재생이 연동됩니다.</span>
+          <span data-i18n="history.note">UI 미리보기 // D1 DB API 실시간 쿼리 및 R2 바이너리 3D 재생이 연동됩니다.</span>
         </div>
         <div class="history-footer-buttons">
-          <button type="button" id="history-btn-refresh" class="secondary-btn">🔄 REFRESH // 새로고침</button>
-          <button type="button" id="history-btn-close-bottom" class="primary-btn">CLOSE // 닫기</button>
+          <button type="button" id="history-btn-refresh" class="secondary-btn" data-i18n="history.refresh">새로고침</button>
+          <button type="button" id="history-btn-close-bottom" class="primary-btn" data-i18n="history.close">닫기</button>
         </div>
       </footer>
     </div>

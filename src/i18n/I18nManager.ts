@@ -47,6 +47,9 @@ export class I18nManager {
     } catch {
       // Ignore
     }
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.lang = lang;
+    }
     this.applyToDOM();
     for (const listener of this.listeners) {
       listener(lang);
@@ -123,9 +126,20 @@ export class I18nManager {
         el.title = this.t(key);
       }
     });
+
+    // 4. 페이지 타이틀 동기화
+    if (typeof document !== 'undefined') {
+      const pageTitle = this.t('common.pageTitle');
+      if (pageTitle && pageTitle !== 'common.pageTitle') {
+        document.title = pageTitle;
+      }
+    }
   }
 
   public init(): void {
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.lang = this.currentLanguage;
+    }
     this.applyToDOM();
   }
 }

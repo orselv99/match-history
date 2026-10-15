@@ -279,7 +279,7 @@ export class SettingsModal extends BaseModal {
 
     this.listeningAction = action;
     buttonEl.classList.add('listening');
-    buttonEl.textContent = '[입력 대기...]';
+    buttonEl.textContent = i18nManager.t('settings.gameplay.waitingKey');
 
     const onKeyDown = (e: KeyboardEvent) => {
       e.preventDefault();
@@ -373,7 +373,7 @@ export class SettingsModal extends BaseModal {
       this.gfxDetectedSpecs.textContent = `${hw.cores} Logical Cores${memStr} | WebGL 2.0 Accelerated`;
     }
     if (this.gfxRecommendedBadge) {
-      this.gfxRecommendedBadge.textContent = `RECOMMENDED // ${hw.recommendedPreset}`;
+      this.gfxRecommendedBadge.textContent = `${i18nManager.t('common.recommended')}: ${hw.recommendedPreset}`;
     }
     if (this.gfxRecommendationReason) {
       this.gfxRecommendationReason.textContent = hw.recommendationReason;

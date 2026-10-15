@@ -3,9 +3,10 @@ import { VehiclePreview } from './VehiclePreview.ts';
 import { HoneycombPicker } from './HoneycombPicker.ts';
 import { TRACK_DEFINITIONS, getCircuitSvgData } from '../data/circuitTracks.ts';
 import { VEHICLE_MODELS } from '../data/vehicles.ts';
-import { RANDOM_DRIVER_NAMES, TIME_OF_DAY_LABELS, WEATHER_LABELS } from '../data/gameConstants.ts';
+import { RANDOM_DRIVER_NAMES } from '../data/gameConstants.ts';
+import { i18nManager, t } from '../i18n/I18nManager.ts';
 
-export type TrackId = 'circuit_monaco' | 'circuit_silverstone' | 'circuit_nurburgring';
+export type TrackId = 'circuit_monaco' | 'circuit_monza' | 'circuit_spa';
 export type VehicleModelId = 'gt_turbo' | 'formula_aero' | 'cyber_speedster';
 export type TimeOfDay = 'morning' | 'noon' | 'sunset' | 'night';
 export type WeatherType = 'clear' | 'rain' | 'wind_fog';
@@ -45,8 +46,8 @@ export class GameSetupWizard extends BaseModal {
   // Step 1: 서킷 선택
   private trackCards: NodeListOf<HTMLElement>;
   private trackSvgMonaco: HTMLElement | null;
-  private trackSvgSilverstone: HTMLElement | null;
-  private trackSvgNurburgring: HTMLElement | null;
+  private trackSvgMonza: HTMLElement | null;
+  private trackSvgSpa: HTMLElement | null;
   private trackShowcaseTitle: HTMLElement | null;
   private trackShowcaseBadge: HTMLElement | null;
   private trackShowcaseDesc: HTMLElement | null;
@@ -89,12 +90,9 @@ export class GameSetupWizard extends BaseModal {
   public selectedTime: TimeOfDay = 'noon';
   public selectedWeather: WeatherType = 'clear';
 
-  private readonly stepTitles = [
-    '01 CIRCUIT // 서킷 트랙 선택',
-    '02 MACHINE // 머신 모델 & 리버리 컬러',
-    '03 ENVIRONMENT // 시간대 & 기후 환경',
-    '04 DRIVER & MODE // 드라이버 프로필 & 주행 모드',
-  ];
+  private getStepTitle(step: number): string {
+    return t(`wizard.step${step}Title`);
+  }
 
   private callbacks: GameSetupWizardCallbacks;
 
@@ -115,8 +113,8 @@ export class GameSetupWizard extends BaseModal {
     // Step 1
     this.trackCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-track]');
     this.trackSvgMonaco = document.getElementById('track-svg-monaco');
-    this.trackSvgSilverstone = document.getElementById('track-svg-silverstone');
-    this.trackSvgNurburgring = document.getElementById('track-svg-nurburgring');
+    this.trackSvgMonza = document.getElementById('track-svg-monza');
+    this.trackSvgSpa = document.getElementById('track-svg-spa');
     this.trackShowcaseTitle = document.getElementById('track-showcase-title');
     this.trackShowcaseBadge = document.getElementById('track-showcase-badge');
     this.trackShowcaseDesc = document.getElementById('track-showcase-desc');
@@ -180,8 +178,8 @@ export class GameSetupWizard extends BaseModal {
   private initTrackSvgs(): void {
     const list: Array<{ id: TrackId; el: HTMLElement | null }> = [
       { id: 'circuit_monaco', el: this.trackSvgMonaco },
-      { id: 'circuit_silverstone', el: this.trackSvgSilverstone },
-      { id: 'circuit_nurburgring', el: this.trackSvgNurburgring },
+      { id: 'circuit_monza', el: this.trackSvgMonza },
+      { id: 'circuit_spa', el: this.trackSvgSpa },
     ];
 
     list.forEach(({ id, el }) => {
@@ -223,6 +221,16 @@ export class GameSetupWizard extends BaseModal {
       if (this.currentStep < 4) {
         this.goToStep((this.currentStep + 1) as 1 | 2 | 3 | 4);
       }
+    });
+
+    i18nManager.onLanguageChange(() => {
+      if (this.currentStepTitle) {
+        this.currentStepTitle.textContent = this.getStepTitle(this.currentStep);
+      }
+      this.updateTrackShowcase();
+      this.updateModelShowcase();
+      this.updateEnvironmentShowcase();
+      this.updateBriefingCard();
     });
 
     // Step 1: 서킷 카드
@@ -316,7 +324,7 @@ export class GameSetupWizard extends BaseModal {
     this.currentStep = step;
 
     if (this.currentStepTitle) {
-      this.currentStepTitle.textContent = this.stepTitles[step - 1];
+      this.currentStepTitle.textContent = this.getStepTitle(step);
     }
 
     this.stepTabs.forEach(tab => {
@@ -360,8 +368,8 @@ export class GameSetupWizard extends BaseModal {
     });
 
     this.trackSvgMonaco?.classList.toggle('active', this.selectedTrack === 'circuit_monaco');
-    this.trackSvgSilverstone?.classList.toggle('active', this.selectedTrack === 'circuit_silverstone');
-    this.trackSvgNurburgring?.classList.toggle('active', this.selectedTrack === 'circuit_nurburgring');
+    this.trackSvgMonza?.classList.toggle('active', this.selectedTrack === 'circuit_monza');
+    this.trackSvgSpa?.classList.toggle('active', this.selectedTrack === 'circuit_spa');
 
     const meta = TRACK_DEFINITIONS[this.selectedTrack];
     if (meta) {
@@ -416,15 +424,16 @@ export class GameSetupWizard extends BaseModal {
       c.classList.toggle('active', c.dataset.weather === this.selectedWeather);
     });
 
-    if (this.envSummaryText) {
-      const t = TIME_OF_DAY_LABELS[this.selectedTime] || this.selectedTime;
-      const w = WEATHER_LABELS[this.selectedWeather] || this.selectedWeather;
-      this.envSummaryText.textContent = `${t} + ${w}`;
-    }
+    const timeKey = `wizard.${this.selectedTime}`;
+    const weatherKey = `wizard.${this.selectedWeather === 'wind_fog' ? 'windFog' : this.selectedWeather}`;
+    const envSummary = `${t(timeKey)} + ${t(weatherKey)}`;
 
-    const timeUpper = this.selectedTime.toUpperCase();
-    const weatherUpper = this.selectedWeather === 'wind_fog' ? 'WIND & FOG' : this.selectedWeather.toUpperCase();
-    if (this.briefingEnv) this.briefingEnv.textContent = `${timeUpper} + ${weatherUpper}`;
+    if (this.envSummaryText) {
+      this.envSummaryText.textContent = envSummary;
+    }
+    if (this.briefingEnv) {
+      this.briefingEnv.textContent = envSummary;
+    }
   }
 
   public updateBriefingCard(): void {
@@ -432,16 +441,16 @@ export class GameSetupWizard extends BaseModal {
     if (this.briefingModel) this.briefingModel.textContent = VEHICLE_MODELS[this.selectedModel]?.title || this.selectedModel;
     if (this.briefingColorDot) this.briefingColorDot.style.backgroundColor = this.selectedColor;
 
-    const timeUpper = this.selectedTime.toUpperCase();
-    const weatherUpper = this.selectedWeather === 'wind_fog' ? 'WIND & FOG' : this.selectedWeather.toUpperCase();
-    if (this.briefingEnv) this.briefingEnv.textContent = `${timeUpper} + ${weatherUpper}`;
+    const timeKey = `wizard.${this.selectedTime}`;
+    const weatherKey = `wizard.${this.selectedWeather === 'wind_fog' ? 'windFog' : this.selectedWeather}`;
+    if (this.briefingEnv) this.briefingEnv.textContent = `${t(timeKey)} + ${t(weatherKey)}`;
 
     if (this.briefingDriver) {
       if (this.chkAutodrive?.checked) {
-        this.briefingDriver.textContent = 'AI 4-CAR SIMULATION (컴퓨터 자율 주행 배틀)';
+        this.briefingDriver.textContent = t('wizard.autoDriveMode');
       } else {
         const name = this.driverNameInput?.value.trim() || 'Apex Hunter';
-        this.briefingDriver.textContent = `${name} (수동 주행)`;
+        this.briefingDriver.textContent = `${name} (${t('wizard.manualDrive')})`;
       }
     }
   }
@@ -455,7 +464,7 @@ export class GameSetupWizard extends BaseModal {
   public randomizeAll(): void {
     this.pickRandomName();
 
-    const tracks: TrackId[] = ['circuit_monaco', 'circuit_silverstone', 'circuit_nurburgring'];
+    const tracks: TrackId[] = ['circuit_monaco', 'circuit_monza', 'circuit_spa'];
     this.selectedTrack = tracks[Math.floor(Math.random() * tracks.length)];
     this.updateTrackShowcase();
 

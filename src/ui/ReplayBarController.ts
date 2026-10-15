@@ -24,17 +24,15 @@ export class ReplayBarController {
     };
 
     this.bindEvents();
+    this.replayPlayer.onStateChange = () => {
+      this.updateButtonState();
+    };
   }
 
   private bindEvents(): void {
     this.btnPlayPause?.addEventListener('click', () => {
-      if (this.replayPlayer.isPlaying) {
-        this.replayPlayer.pause();
-        if (this.btnPlayPause) this.btnPlayPause.textContent = '▶';
-      } else {
-        this.replayPlayer.play();
-        if (this.btnPlayPause) this.btnPlayPause.textContent = '⏸';
-      }
+      this.replayPlayer.togglePlayPause();
+      this.updateButtonState();
     });
 
     this.seekSlider?.addEventListener('input', (e) => {
@@ -55,9 +53,17 @@ export class ReplayBarController {
     setupSpeedBtn(2.0, this.speedButtons['2.0']);
   }
 
+  public updateButtonState(): void {
+    if (this.btnPlayPause) {
+      this.btnPlayPause.textContent = this.replayPlayer.isPlaying ? '⏸' : '▶';
+      this.btnPlayPause.setAttribute('title', this.replayPlayer.isPlaying ? '일시 정지 (Space)' : '재생 (Space)');
+    }
+  }
+
   public setVisible(visible: boolean): void {
     if (visible) {
       this.container?.classList.add('visible');
+      this.updateButtonState();
     } else {
       this.container?.classList.remove('visible');
     }
@@ -65,6 +71,7 @@ export class ReplayBarController {
 
   public update(replayTimeStr?: string): void {
     if (!this.replayPlayer || this.replayPlayer.totalDurationMs <= 0) return;
+    this.updateButtonState();
     if (this.seekSlider) {
       const progress = (this.replayPlayer.currentTimeMs / this.replayPlayer.totalDurationMs) * 1000;
       this.seekSlider.value = Math.round(progress).toString();

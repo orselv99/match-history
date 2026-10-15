@@ -61,22 +61,41 @@ export class ReplayPlayer {
     }
   }
 
+  public onPlaybackEnd?: () => void;
+  public onStateChange?: (isPlaying: boolean) => void;
+
   public play(): void {
     if (this.ticks.length > 0) {
+      // 리플레이 끝에 도달해 있던 경우 처음부터 다시 재생
+      if (this.currentTimeMs >= this.totalDurationMs) {
+        this.currentTimeMs = 0;
+      }
       this.isPlaying = true;
       this.ghostVehicle.mesh.visible = true;
       this.opponentVehicles.forEach(v => { v.mesh.visible = true; });
+      this.onStateChange?.(true);
     }
   }
 
   public pause(): void {
     this.isPlaying = false;
+    this.onStateChange?.(false);
+  }
+
+  public togglePlayPause(): boolean {
+    if (this.isPlaying) {
+      this.pause();
+    } else {
+      this.play();
+    }
+    return this.isPlaying;
   }
 
   public hideGhost(): void {
     this.isPlaying = false;
     this.ghostVehicle.mesh.visible = false;
     this.opponentVehicles.forEach(v => { v.mesh.visible = false; });
+    this.onStateChange?.(false);
   }
 
   public seek(timeMs: number): void {
@@ -90,8 +109,12 @@ export class ReplayPlayer {
     this.currentTimeMs += deltaMs * this.playbackSpeed;
 
     if (this.currentTimeMs >= this.totalDurationMs) {
-      // 리플레이 루프 또는 정지
-      this.currentTimeMs = 0;
+      // 연속 루프 재생 방지: 종료 지점에서 일시정지 후 재생 종료 이벤트 발생
+      this.currentTimeMs = this.totalDurationMs;
+      this.pause();
+      this.updateTransformAtTime(this.currentTimeMs);
+      this.onPlaybackEnd?.();
+      return;
     }
 
     this.updateTransformAtTime(this.currentTimeMs);

@@ -956,11 +956,17 @@ export class Game {
     this.isPaused = true;
     this.audio.pauseEngine();
     this.audio.pauseBgm();
+    if (this.mode === 'REPLAY') {
+      this.replayPlayer.pause();
+    }
   }
 
   public resume(): void {
     this.isPaused = false;
     this.audio.resumeBgm();
+    if (this.mode === 'REPLAY') {
+      this.replayPlayer.play();
+    }
   }
 
   public restartRace(): void {

@@ -170,11 +170,27 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 5. 일시정지 (Pause) 모달
   const pauseModal = new PauseModal({
-    onResume: () => game.resume(),
-    onRestart: () => game.restartRace(),
+    onResume: () => {
+      game.resume();
+      replayBar.updateButtonState();
+    },
+    onRestart: () => {
+      if (game.mode === 'REPLAY') {
+        game.replayPlayer.seek(0);
+        game.replayPlayer.play();
+        replayBar.updateButtonState();
+      } else {
+        game.restartRace();
+      }
+    },
     onSettings: () => settingsModal.open(),
     onExit: () => setModeUI('TITLE'),
   });
+
+  game.replayPlayer.onPlaybackEnd = () => {
+    replayBar.updateButtonState();
+    showToast('🏁 리플레이 재생이 완료되었습니다. [▶] 또는 [Space]로 다시 재생할 수 있습니다.');
+  };
 
   // 모달 중앙 관리자 등록
   ModalManager.register(wizard);
@@ -285,11 +301,21 @@ window.addEventListener('DOMContentLoaded', () => {
       } else if (game.mode === 'DRIVING' || game.mode === 'DEMO' || game.mode === 'REPLAY') {
         openPauseDialog();
       }
+    } else if (game.mode === 'REPLAY' && (e.code === 'Space' || e.key === 'p' || e.key === 'P' || e.key === 'k' || e.key === 'K')) {
+      if (!(e.target instanceof HTMLInputElement)) {
+        e.preventDefault();
+        game.replayPlayer.togglePlayPause();
+        replayBar.updateButtonState();
+      }
     } else if (e.key === 'r' || e.key === 'R') {
       if (!(e.target instanceof HTMLInputElement)) {
         if (pauseModal.isOpen()) pauseModal.close();
         if (game.mode === 'DRIVING' || game.mode === 'DEMO') {
           game.restartRace();
+        } else if (game.mode === 'REPLAY') {
+          game.replayPlayer.seek(0);
+          game.replayPlayer.play();
+          replayBar.updateButtonState();
         }
       }
     } else if (keyBindingManager.isActionKey('headlights', e.code) || e.key === 'h' || e.key === 'H') {

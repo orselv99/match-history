@@ -29,7 +29,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // 2. 모듈식 UI 컨트롤러 초기화
   const hud = new HUDController();
   const matchHistoryModal = new MatchHistoryModal();
-  const settingsModal = new SettingsModal(game.audio);
+  const settingsModal = new SettingsModal(game.audio, game);
   const replayBar = new ReplayBarController(game.replayPlayer);
 
   // 모드 헤더 태그 DOM (있을 경우만 동기화)

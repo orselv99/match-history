@@ -336,6 +336,10 @@
           <span class="tab-icon">🎮</span>
           <span>03 GAMEPLAY // 게임플레이</span>
         </button>
+        <button type="button" class="settings-tab-btn" data-tab="graphics">
+          <span class="tab-icon">🖥️</span>
+          <span>04 GRAPHICS // 그래픽</span>
+        </button>
       </nav>
 
       <div class="modal-content-body settings-content-body">
@@ -503,6 +507,125 @@
             </div>
             <div class="keybind-help-note">
               <span>※ 키 버튼을 클릭한 후 원하는 키를 누르면 즉시 변경됩니다. (ESC: 취소)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 탭 4: 그래픽 성능 (GRAPHICS) - PC 하드웨어 감지 & 옵션 -->
+        <div id="settings-panel-graphics" class="settings-tab-panel">
+          <!-- PC 사양 분석 & 추천 설정 배지 -->
+          <div class="settings-group">
+            <div class="settings-group-title">HARDWARE DETECTION // PC 하드웨어 사양 감지</div>
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name" id="gfx-detected-gpu">NVIDIA GeForce RTX / Intel UHD</span>
+                <span class="setting-desc" id="gfx-detected-specs">8 Cores | WebGL 2.0 Hardware Accelerated</span>
+              </div>
+              <div class="setting-control-col">
+                <span id="gfx-recommended-badge" class="custom-badge" style="background: rgba(6, 182, 212, 0.15); color: var(--accent-spec); border: 1px solid var(--accent-spec); padding: 4px 10px; font-weight: 700; font-size: 11px;">RECOMMENDED // HIGH</span>
+                <button type="button" id="btn-gfx-autodetect" class="glass-btn" style="padding: 4px 10px; font-size: 11px;">⚡ AUTO-DETECT // 자동 감지</button>
+              </div>
+            </div>
+            <div class="keybind-help-note" style="border-top: 1px solid var(--border-subtle); padding: 8px 16px;">
+              <span id="gfx-recommendation-reason">고성능 GPU/CPU 환경입니다. 최고 품질 그래픽을 권장합니다.</span>
+            </div>
+          </div>
+
+          <!-- 그래픽 프리셋 선택 -->
+          <div class="settings-group">
+            <div class="settings-group-title">PERFORMANCE PRESET // 그래픽 품질 프리셋</div>
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">GRAPHICS PRESET</span>
+                <span class="setting-desc">PC 사양에 맞춘 일괄 최적화 프로필</span>
+              </div>
+              <div class="setting-control-col">
+                <div class="preset-btn-group">
+                  <button type="button" id="btn-gfx-preset-high" class="preset-choice-btn">HIGH // 고품질</button>
+                  <button type="button" id="btn-gfx-preset-medium" class="preset-choice-btn">MEDIUM // 균형</button>
+                  <button type="button" id="btn-gfx-preset-low" class="preset-choice-btn">LOW // 성능 우선</button>
+                  <span id="badge-gfx-custom" class="custom-badge" style="display: none;">CUSTOM</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 세부 옵션 조절 (우려 및 성능 조절 사항) -->
+          <div class="settings-group">
+            <div class="settings-group-title">ADVANCED GRAPHICS // 세부 그래픽 & 멀미 방지 설정</div>
+
+            <!-- 1. 방사형 모션 블러 & 속도선 -->
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">SPEED FX // 방사형 모션 블러 & 가속선</span>
+                <span class="setting-desc">100/200km/h 주변 환경 블러 (초저사양: 8샘플 경량화 또는 끄기)</span>
+              </div>
+              <div class="setting-control-col">
+                <select id="setting-gfx-motion-blur" class="settings-select">
+                  <option value="HIGH">HIGH (16샘플 + 색수차 + 속도선)</option>
+                  <option value="MEDIUM">MEDIUM (8샘플 경량 + 속도선)</option>
+                  <option value="OFF">OFF (블러 끄기 / 프레임 최우선)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 2. 렌더링 해상도 스케일 -->
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">RESOLUTION SCALE // 렌더링 해상도</span>
+                <span class="setting-desc">화면 픽셀 밀도 (내장 그래픽은 1.0x 권장)</span>
+              </div>
+              <div class="setting-control-col">
+                <select id="setting-gfx-resolution" class="settings-select">
+                  <option value="HIGH">HIGH (FHD Native / Retina 2.0x)</option>
+                  <option value="MEDIUM">MEDIUM (1.25x 스케일 밸런스)</option>
+                  <option value="LOW">LOW (1.0x 표준 / 최대 FPS)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 3. 동적 그림자 품질 -->
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">DYNAMIC SHADOWS // 동적 그림자</span>
+                <span class="setting-desc">차량 및 트랙 구조물 실시간 그림자</span>
+              </div>
+              <div class="setting-control-col">
+                <select id="setting-gfx-shadows" class="settings-select">
+                  <option value="HIGH">HIGH (2048 소프트 섀도우)</option>
+                  <option value="MEDIUM">MEDIUM (1024 표준 섀도우)</option>
+                  <option value="OFF">OFF (그림자 끄기 / 성능 향상)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- 4. 다이내믹 FOV 왜곡 -->
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">DYNAMIC FOV // 고속 시야각 확장</span>
+                <span class="setting-desc">100~200km/h 초과 시 시야각을 65°에서 82°로 점진적 확장</span>
+              </div>
+              <div class="setting-control-col">
+                <label class="switch-container">
+                  <input type="checkbox" id="chk-gfx-dynamic-fov" checked />
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+            </div>
+
+            <!-- 5. 카메라 쉐이크 & 진동 (멀미 방지) -->
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name">CAMERA SHAKE // 차체 진동 & 충돌 쉐이크</span>
+                <span class="setting-desc">고속 공기저항 진동 및 충돌 시 카메라 흔들림 (멀미 시 끔 권장)</span>
+              </div>
+              <div class="setting-control-col">
+                <select id="setting-gfx-shake" class="settings-select">
+                  <option value="FULL">FULL (기본 진동 / 사실적 몰입감)</option>
+                  <option value="REDUCED">REDUCED (약하게 / 50% 감쇠)</option>
+                  <option value="OFF">OFF (완전 끄기 / 화면 흔들림 방지)</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>

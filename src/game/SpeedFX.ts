@@ -3,6 +3,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { Vehicle } from './Vehicle.ts';
+import { MotionBlurQuality } from '../core/GraphicsSettingsManager.ts';
 
 /**
  * 3D 환경 방사형 줌 블러(Radial Zoom Blur) 및 고속 가속선 셰이더
@@ -10,6 +11,7 @@ import { Vehicle } from './Vehicle.ts';
  * - 주변 3D 배경 환경(노면, 가드레일, 건물, 나무, 하늘) 방사형 줌 블러 스트릭
  * - 100 km/h: 주변 배경 방사형 모션블러 시작 + 쿨 에어로 아이스블루 가속선
  * - 200 km/h: 하이퍼스피드 줌 블러 극대화 + 주변부 광학 색수차(RGB 분산) + 터널 비네트 + 크림슨/화이트 가속선
+ * - 그래픽 설정(HIGH: 16샘플+색수차, MEDIUM: 8샘플 경량, OFF: 완전 비활성화)
  */
 const RadialBlurShader = {
   name: 'RadialBlurShader',
@@ -18,6 +20,8 @@ const RadialBlurShader = {
     uCenter: { value: new THREE.Vector2(0.5, 0.42) },
     uStrength: { value: 0.0 },
     uTime: { value: 0.0 },
+    uSamples: { value: 16 },
+    uEnableChrom: { value: 1.0 },
   },
   vertexShader: `
     varying vec2 vUv;
@@ -31,9 +35,9 @@ const RadialBlurShader = {
     uniform vec2 uCenter;
     uniform float uStrength;
     uniform float uTime;
+    uniform int uSamples;
+    uniform float uEnableChrom;
     varying vec2 vUv;
-
-    const int SAMPLES = 16;
 
     void main() {
       if (uStrength <= 0.001) {
@@ -51,7 +55,8 @@ const RadialBlurShader = {
       float blurMask = smoothstep(0.08, 0.38, maskDist);
       float totalStrength = uStrength * blurMask * 0.24;
 
-      vec2 stepVec = (toCenter / float(SAMPLES)) * totalStrength;
+      float sampleCount = float(clamp(uSamples, 4, 16));
+      vec2 stepVec = (toCenter / sampleCount) * totalStrength;
 
       vec4 accumColor = vec4(0.0);
       vec2 sampleUv = vUv;
@@ -60,14 +65,15 @@ const RadialBlurShader = {
       float dither = fract(sin(dot(vUv, vec2(12.9898, 78.233)) + fract(uTime) * 37.0) * 43758.5453);
       sampleUv += stepVec * (dither - 0.5);
 
-      for (int i = 0; i < SAMPLES; i++) {
+      for (int i = 0; i < 16; i++) {
+        if (float(i) >= sampleCount) break;
         accumColor += texture2D(tDiffuse, clamp(sampleUv, 0.0, 1.0));
         sampleUv += stepVec;
       }
-      accumColor /= float(SAMPLES);
+      accumColor /= sampleCount;
 
-      // 2. 140km/h 이상 고속 시 외곽부 색수차 (Chromatic Aberration - 렌즈 광학 RGB 분산)
-      if (uStrength > 0.38) {
+      // 2. 외곽부 색수차 (옵션 활성화 및 140km/h 이상 고속 시)
+      if (uEnableChrom > 0.5 && uStrength > 0.38) {
         float chromFactor = (uStrength - 0.38) / 0.62;
         float chromOffset = maskDist * chromFactor * 0.016 * blurMask;
         vec2 chromDir = normalize(toCenter + vec2(0.0001));
@@ -124,6 +130,7 @@ export class SpeedFX {
   private speedKmh: number = 0;
   private elapsedTime: number = 0;
   private tempProjPos: THREE.Vector3 = new THREE.Vector3();
+  private quality: MotionBlurQuality = 'HIGH';
 
   constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
     this.camera = camera;
@@ -149,6 +156,17 @@ export class SpeedFX {
     this.composer.addPass(this.blurPass);
   }
 
+  public setQuality(quality: MotionBlurQuality): void {
+    this.quality = quality;
+    if (quality === 'MEDIUM') {
+      this.blurPass.uniforms.uSamples.value = 8;
+      this.blurPass.uniforms.uEnableChrom.value = 0.0;
+    } else if (quality === 'HIGH') {
+      this.blurPass.uniforms.uSamples.value = 16;
+      this.blurPass.uniforms.uEnableChrom.value = 1.0;
+    }
+  }
+
   /**
    * 프레임별 속도 및 차량 위치에 따른 셰이더 Uniform 갱신
    */
@@ -156,7 +174,7 @@ export class SpeedFX {
     this.speedKmh = speedKmh;
     this.elapsedTime += delta;
 
-    if (speedKmh < 92) {
+    if (this.quality === 'OFF' || speedKmh < 92) {
       this.blurPass.uniforms.uStrength.value = 0.0;
       return;
     }
@@ -194,6 +212,7 @@ export class SpeedFX {
   }
 
   public isActive(): boolean {
+    if (this.quality === 'OFF') return false;
     return this.speedKmh >= 92;
   }
 

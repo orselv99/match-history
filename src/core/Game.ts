@@ -15,6 +15,7 @@ import { EnvironmentManager, TimeOfDay, WeatherType } from '../game/EnvironmentM
 import { MinimapRenderer } from '../game/MinimapRenderer.ts';
 import { CameraController } from './CameraController.ts';
 import { SpeedFX } from '../game/SpeedFX.ts';
+import { GraphicsSettings, graphicsSettingsManager } from './GraphicsSettingsManager.ts';
 
 export type GameMode = 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO';
 export type RaceState = 'READY' | 'COUNTDOWN' | 'RUNNING' | 'FINISHED';
@@ -174,6 +175,7 @@ export class Game {
     this.lapTimer = new LapTimer(3); // 3랩 완주
     this.recorder = new ReplayRecorder();
     this.speedFX = new SpeedFX(this.renderer, this.scene, this.camera);
+    this.applyGraphicsSettings(graphicsSettingsManager.getSettings());
 
     this.clock = new THREE.Clock();
 
@@ -866,8 +868,41 @@ export class Game {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    const settings = graphicsSettingsManager.getSettings();
+    const targetRatio = settings.resolution === 'HIGH'
+      ? Math.min(window.devicePixelRatio || 1, 2.0)
+      : settings.resolution === 'MEDIUM'
+        ? Math.min(window.devicePixelRatio || 1, 1.25)
+        : 1.0;
+    this.renderer.setPixelRatio(targetRatio);
     this.speedFX.resize(width, height);
+  }
+
+  /**
+   * 그래픽 성능 및 퀄리티 옵션 일괄 적용
+   */
+  public applyGraphicsSettings(settings: GraphicsSettings): void {
+    // 1. 렌더링 해상도 스케일 (Pixel Ratio)
+    const targetRatio = settings.resolution === 'HIGH'
+      ? Math.min(window.devicePixelRatio || 1, 2.0)
+      : settings.resolution === 'MEDIUM'
+        ? Math.min(window.devicePixelRatio || 1, 1.25)
+        : 1.0;
+    this.renderer.setPixelRatio(targetRatio);
+
+    // 2. 동적 그림자 퀄리티
+    const shadowsEnabled = settings.shadows !== 'OFF';
+    this.renderer.shadowMap.enabled = shadowsEnabled;
+    this.renderer.shadowMap.needsUpdate = true;
+    this.environmentManager?.setShadowQuality(settings.shadows);
+
+    // 3. 방사형 줌 블러 & 고속 효과 (HIGH: 16샘플, MEDIUM: 8샘플, OFF: 비활성화)
+    this.speedFX.setQuality(settings.motionBlur);
+
+    // 4. 다이내믹 FOV 왜곡 & 카메라 쉐이크
+    this.cameraController.setDynamicFovEnabled(settings.dynamicFov);
+    this.cameraController.setShakeMode(settings.cameraShake);
   }
 
   /**

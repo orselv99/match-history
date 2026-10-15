@@ -53,6 +53,19 @@ export class EnvironmentManager {
     this.scene.add(this.hemiLight);
   }
 
+  public setShadowQuality(quality: 'HIGH' | 'MEDIUM' | 'OFF'): void {
+    const enabled = quality !== 'OFF';
+    this.dirLight.castShadow = enabled;
+    if (enabled) {
+      const size = quality === 'HIGH' ? 2048 : 1024;
+      this.dirLight.shadow.mapSize.set(size, size);
+      if (this.dirLight.shadow.map) {
+        this.dirLight.shadow.map.dispose();
+        this.dirLight.shadow.map = null as any;
+      }
+    }
+  }
+
   private initRainSystem(): void {
     this.rainGeom = new THREE.BufferGeometry();
     // 빗방울 1개당 2개 정점 (시작점, 끝점 * 3 = 6 floats)

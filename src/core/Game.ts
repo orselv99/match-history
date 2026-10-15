@@ -644,10 +644,13 @@ export class Game {
     let activeSteer = isRunning ? this.input.steer : 0;
 
     if (isFinished) {
-      // 완주 컷씬: 결승선 통과 후 쿨다운 랩 자동 순항 (약 65 km/h)
-      activeThrottle = this.playerVehicle.speed < 18.0 ? 0.35 : 0;
-      activeBrake = this.playerVehicle.speed > 21.0 ? 0.2 : 0;
+      // 완주 컷씬: 결승선 통과 후 부드럽게 감속하여 결승선 부근에 우아하게 정지
+      activeThrottle = 0;
       activeSteer = 0;
+      if (this.playerVehicle.speed > 0) {
+        this.playerVehicle.speed = Math.max(0, this.playerVehicle.speed - 10.0 * delta);
+      }
+      activeBrake = this.playerVehicle.speed > 0.2 ? 0.35 : 0;
     }
 
     // 차량 물리 업데이트
@@ -714,6 +717,7 @@ export class Game {
       // 완주 판정 시
       if (this.lapTimer.isFinished && this.recorder.getTickCount() > 0) {
         this.raceState = 'FINISHED';
+        this.cameraController.snapFinishCutscene(this.playerVehicle);
         this.handleFinish(this.playerVehicle, 'driver_kr_01', 'Apex Hunter');
       }
     }
@@ -786,6 +790,7 @@ export class Game {
       // 플레이어 차량 또는 AI 전체 완주 판정
       if ((playerAgent.isFinished || this.aiManager.isAllFinished || this.lapTimer.isFinished) && this.raceState === 'RUNNING') {
         this.raceState = 'FINISHED';
+        this.cameraController.snapFinishCutscene(targetVehicle);
         this.handleFinish(targetVehicle, 'player_demo', playerAgent.name);
       }
     }
@@ -816,13 +821,19 @@ export class Game {
     this.deactivateMirrors();
 
     if (this.raceState === 'FINISHED') {
-      // 일반게임과 동일한 도착 컷씬: 결승선 통과 후 쿨다운 자동 순항 및 정면 좌측 앵글 연출
+      // 일반게임과 동일한 도착 컷씬: 결승선 통과 후 부드럽게 감속하여 정지 및 정면 좌측 앵글 연출
       const leadVehicle = this.replayPlayer.ghostVehicle;
-      leadVehicle.update(delta, 0.35, 0, 0, false, false);
+      if (leadVehicle.speed > 0) {
+        leadVehicle.speed = Math.max(0, leadVehicle.speed - 10.0 * delta);
+      }
+      leadVehicle.update(delta, 0, 0, 0, false, false);
 
       this.replayPlayer.opponentVehicles.forEach(opp => {
         if (opp.mesh.visible) {
-          opp.update(delta, 0.32, 0, 0, false, false);
+          if (opp.speed > 0) {
+            opp.speed = Math.max(0, opp.speed - 9.0 * delta);
+          }
+          opp.update(delta, 0, 0, 0, false, false);
         }
       });
 
@@ -848,9 +859,7 @@ export class Game {
     }, 2200);
 
     const leadVehicle = this.replayPlayer.ghostVehicle;
-    if (leadVehicle.speed < 12) {
-      leadVehicle.speed = 18; // 65 km/h 쿨다운 순항
-    }
+    this.cameraController.snapFinishCutscene(leadVehicle);
 
     if (this.onFinishCallback && this.currentReplayMetadata) {
       this.onFinishCallback(this.currentReplayMetadata);

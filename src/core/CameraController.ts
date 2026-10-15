@@ -117,34 +117,57 @@ export class CameraController {
 
   /**
    * 레이스 완주 컷씬 카메라:
-   * - 사용자 요청: 차량을 정면(FRONT)에서 마주보며 촬영
-   * - 1등 차량을 화면 좌측에 정확히 배치하여 우측 결과 모달과 겹치지 않도록 연출
+   * - 결승선 통과 즉시 정면 프론트 뷰로 컷 전환 (방송 중계 연출)
+   * - 차량을 화면 좌측에 안정적으로 고정 배치하여 우측 결과 모달과 분리
    */
+  public snapFinishCutscene(winnerVehicle: Vehicle): void {
+    const heading = winnerVehicle.heading;
+    const sinH = Math.sin(heading);
+    const cosH = Math.cos(heading);
+    const rightX = cosH;
+    const rightZ = -sinH;
+
+    const targetCamPos = new THREE.Vector3(
+      winnerVehicle.position.x + sinH * 5.4 - rightX * 0.8,
+      winnerVehicle.position.y + 1.2,
+      winnerVehicle.position.z + cosH * 5.4 - rightZ * 0.8
+    );
+
+    const targetLook = new THREE.Vector3(
+      winnerVehicle.position.x + rightX * 2.0,
+      winnerVehicle.position.y + 0.85,
+      winnerVehicle.position.z + rightZ * 2.0
+    );
+
+    this.camera.position.copy(targetCamPos);
+    this.cameraLookTarget.copy(targetLook);
+    this.camera.lookAt(this.cameraLookTarget);
+    this.camera.fov = 55;
+    this.camera.updateProjectionMatrix();
+  }
+
   public updateFinishCutscene(delta: number, winnerVehicle: Vehicle): void {
     const heading = winnerVehicle.heading;
     const sinH = Math.sin(heading);
     const cosH = Math.cos(heading);
-    // 우측 직교 벡터
     const rightX = cosH;
     const rightZ = -sinH;
 
-    // 카메라는 차량 전방(+6.0m) 살짝 좌측(-0.8m)에 위치하여 정면을 마주봄
     const targetCamPos = new THREE.Vector3(
-      winnerVehicle.position.x + sinH * 6.0 - rightX * 0.8,
-      winnerVehicle.position.y + 1.25,
-      winnerVehicle.position.z + cosH * 6.0 - rightZ * 0.8
+      winnerVehicle.position.x + sinH * 5.4 - rightX * 0.8,
+      winnerVehicle.position.y + 1.2,
+      winnerVehicle.position.z + cosH * 5.4 - rightZ * 0.8
     );
 
-    // 시선 중심(Target)을 차량 우측(+2.2m)으로 오프셋 -> 화면에서 차량 전면이 완벽하게 좌측에 배치됨!
     const targetLook = new THREE.Vector3(
-      winnerVehicle.position.x + rightX * 2.2,
-      winnerVehicle.position.y + 0.9,
-      winnerVehicle.position.z + rightZ * 2.2
+      winnerVehicle.position.x + rightX * 2.0,
+      winnerVehicle.position.y + 0.85,
+      winnerVehicle.position.z + rightZ * 2.0
     );
 
-    // 주행 중인 차량을 놓치지 않도록 밀착 추적
-    this.camera.position.lerp(targetCamPos, Math.min(1.0, 12.0 * delta));
-    this.cameraLookTarget.lerp(targetLook, Math.min(1.0, 12.0 * delta));
+    // 감속 및 정지 중인 차량을 안정적으로 트래킹
+    this.camera.position.lerp(targetCamPos, Math.min(1.0, 10.0 * delta));
+    this.cameraLookTarget.lerp(targetLook, Math.min(1.0, 10.0 * delta));
     this.camera.lookAt(this.cameraLookTarget);
 
     if (this.camera.fov !== 55) {

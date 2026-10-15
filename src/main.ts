@@ -34,7 +34,8 @@ window.addEventListener('DOMContentLoaded', () => {
   // 2. 모듈식 UI 컨트롤러 초기화
   const hud = new HUDController();
   const settingsModal = new SettingsModal(game.audio, game);
-  const replayBar = new ReplayBarController(game.replayPlayer);
+  let onReplayUserInteract: (() => void) | undefined;
+  const replayBar = new ReplayBarController(game.replayPlayer, () => onReplayUserInteract?.());
 
   // 모드 헤더 태그 DOM (있을 경우만 동기화)
   const modeTag = document.getElementById('mode-tag');
@@ -98,6 +99,7 @@ window.addEventListener('DOMContentLoaded', () => {
       }
 
       // 4. 리플레이 틱 데이터 로드 및 모드 전환
+      game.currentReplayMetadata = record.metadata;
       game.replayPlayer.loadReplay(record.ticks);
       setModeUI('REPLAY');
       game.replayPlayer.seek(0);
@@ -141,6 +143,15 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const finishModal = new FinishModal({
     onReplay: async () => {
+      if (game.mode === 'REPLAY') {
+        game.raceState = 'RUNNING';
+        game.replayPlayer.seek(0);
+        game.replayPlayer.play();
+        game.cameraController.snapToTarget(game.replayPlayer.ghostVehicle);
+        replayBar.updateButtonState();
+        return;
+      }
+
       const ticks = game.recorder.getTicks();
       if (lastRaceMetadata) {
         try {
@@ -150,10 +161,13 @@ window.addEventListener('DOMContentLoaded', () => {
           console.warn('[Replay] Failed to save replay to IndexedDB:', e);
         }
       }
+      game.currentReplayMetadata = lastRaceMetadata;
       game.replayPlayer.loadReplay(ticks);
       setModeUI('REPLAY');
       game.replayPlayer.seek(0);
       game.replayPlayer.play();
+      game.cameraController.snapToTarget(game.replayPlayer.ghostVehicle);
+      replayBar.updateButtonState();
     },
     onRestart: () => {
       game.restartRace();
@@ -162,6 +176,14 @@ window.addEventListener('DOMContentLoaded', () => {
       setModeUI('TITLE');
     },
   });
+
+  onReplayUserInteract = () => {
+    if (game.raceState === 'FINISHED') {
+      game.raceState = 'RUNNING';
+      if (finishModal.isOpen()) finishModal.close();
+      game.cameraController.snapToTarget(game.replayPlayer.ghostVehicle);
+    }
+  };
 
   game.onFinishCallback = (metadata: MatchSummaryMetadata) => {
     lastRaceMetadata = metadata;
@@ -176,6 +198,8 @@ window.addEventListener('DOMContentLoaded', () => {
     },
     onRestart: () => {
       if (game.mode === 'REPLAY') {
+        game.raceState = 'RUNNING';
+        if (finishModal.isOpen()) finishModal.close();
         game.replayPlayer.seek(0);
         game.replayPlayer.play();
         replayBar.updateButtonState();
@@ -186,11 +210,6 @@ window.addEventListener('DOMContentLoaded', () => {
     onSettings: () => settingsModal.open(),
     onExit: () => setModeUI('TITLE'),
   });
-
-  game.replayPlayer.onPlaybackEnd = () => {
-    replayBar.updateButtonState();
-    showToast('🏁 리플레이 재생이 완료되었습니다. [▶] 또는 [Space]로 다시 재생할 수 있습니다.');
-  };
 
   // 모달 중앙 관리자 등록
   ModalManager.register(wizard);

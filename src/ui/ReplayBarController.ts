@@ -10,9 +10,11 @@ export class ReplayBarController {
   private timeDisplay: HTMLElement | null;
   private speedButtons: Record<string, HTMLElement | null>;
   private replayPlayer: ReplayPlayer;
+  private onUserInteract?: () => void;
 
-  constructor(replayPlayer: ReplayPlayer) {
+  constructor(replayPlayer: ReplayPlayer, onUserInteract?: () => void) {
     this.replayPlayer = replayPlayer;
+    this.onUserInteract = onUserInteract;
     this.container = document.getElementById('replay-controller');
     this.btnPlayPause = document.getElementById('btn-replay-playpause');
     this.seekSlider = document.getElementById('replay-seek-slider') as HTMLInputElement | null;
@@ -31,11 +33,13 @@ export class ReplayBarController {
 
   private bindEvents(): void {
     this.btnPlayPause?.addEventListener('click', () => {
+      this.onUserInteract?.();
       this.replayPlayer.togglePlayPause();
       this.updateButtonState();
     });
 
     this.seekSlider?.addEventListener('input', (e) => {
+      this.onUserInteract?.();
       const val = Number((e.target as HTMLInputElement).value);
       const targetMs = (val / 1000) * this.replayPlayer.totalDurationMs;
       this.replayPlayer.seek(targetMs);

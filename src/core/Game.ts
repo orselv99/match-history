@@ -98,6 +98,7 @@ export class Game {
   public currentDriverName: string = 'Apex Hunter';
   public currentTrackId: string = 'circuit_monaco';
   public currentWeatherId: string = 'clear';
+  public currentReplayMetadata?: MatchSummaryMetadata | null;
 
   // 콜백
   public onFinishCallback?: (metadata: MatchSummaryMetadata) => void;
@@ -146,6 +147,9 @@ export class Game {
     this.scene.add(this.playerVehicle.mesh);
 
     this.replayPlayer = new ReplayPlayer();
+    this.replayPlayer.onPlaybackEnd = () => {
+      this.handleReplayFinish();
+    };
     this.scene.add(this.replayPlayer.ghostVehicle.mesh);
     this.replayPlayer.opponentVehicles.forEach(v => this.scene.add(v.mesh));
 
@@ -810,10 +814,47 @@ export class Game {
 
   private updateReplay(delta: number, deltaMs: number): void {
     this.deactivateMirrors();
+
+    if (this.raceState === 'FINISHED') {
+      // 일반게임과 동일한 도착 컷씬: 결승선 통과 후 쿨다운 자동 순항 및 정면 좌측 앵글 연출
+      const leadVehicle = this.replayPlayer.ghostVehicle;
+      leadVehicle.update(delta, 0.35, 0, 0, false, false);
+
+      this.replayPlayer.opponentVehicles.forEach(opp => {
+        if (opp.mesh.visible) {
+          opp.update(delta, 0.32, 0, 0, false, false);
+        }
+      });
+
+      this.cameraController.updateFinishCutscene(delta, leadVehicle);
+      this.environmentManager.update(delta, leadVehicle.position);
+      this.emitUIState();
+      return;
+    }
+
     this.replayPlayer.update(deltaMs);
     this.cameraController.updateChase(delta, this.replayPlayer.ghostVehicle);
     this.environmentManager.update(delta, this.replayPlayer.ghostVehicle.position);
     this.emitUIState();
+  }
+
+  public handleReplayFinish(): void {
+    this.raceState = 'FINISHED';
+    this.replayPlayer.pause();
+    this.audio.playFinishFanfare();
+    this.audio.duckBgm(true, 0.2);
+    setTimeout(() => {
+      this.audio.duckBgm(false);
+    }, 2200);
+
+    const leadVehicle = this.replayPlayer.ghostVehicle;
+    if (leadVehicle.speed < 12) {
+      leadVehicle.speed = 18; // 65 km/h 쿨다운 순항
+    }
+
+    if (this.onFinishCallback && this.currentReplayMetadata) {
+      this.onFinishCallback(this.currentReplayMetadata);
+    }
   }
 
   /**
@@ -940,6 +981,8 @@ export class Game {
       compressionRatioPercent: benchmark.reductionVsJsonPercent,
       raceResults,
     };
+
+    this.currentReplayMetadata = metadata;
 
     // 리플레이 플레이어에 데이터 자동 로드
     this.replayPlayer.loadReplay(ticks);

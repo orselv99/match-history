@@ -58,6 +58,7 @@ export class CircuitTrack {
     // 4. 지오메트리 및 환경 재빌드
     this.buildTrackMesh();
     this.group.add(TrackDecorations.buildGround());
+    this.group.add(TrackDecorations.buildCircuitStructures(this.trackCurve, this.trackWidth));
     this.setupCheckpoints();
 
     return def;
@@ -377,7 +378,9 @@ export class CircuitTrack {
         isPassed: false,
       });
 
-      this.buildArchGate(pos, tangent, cfg.id === 0);
+      if (cfg.id !== 0) {
+        this.buildArchGate(pos, tangent, false);
+      }
     });
   }
 

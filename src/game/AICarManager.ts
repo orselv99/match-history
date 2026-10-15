@@ -233,10 +233,12 @@ export class AICarManager {
       const turnCrossY = currTangent.x * futureTangent.z - currTangent.z * futureTangent.x;
       const turnDir = turnCrossY > 0.001 ? 1 : (turnCrossY < -0.001 ? -1 : 0);
 
-      if (agent.isFinished) {
-        // 완주 후 서서히 감속
-        agent.speedMs = Math.max(0, agent.speedMs - 15.0 * delta);
-        if (agent.speedMs <= 0.1) return;
+      if (agent.isFinished || this.isAllFinished) {
+        // 완주 후에도 멈추지 않고 쿨다운 랩(약 115~125 km/h)으로 계속 역동적으로 주행
+        const cooldownSpeed = 33.0 + (idx % 2 === 0 ? 1.5 : -1.5);
+        agent.speedMs += (cooldownSpeed - agent.speedMs) * Math.min(1.0, 3.0 * delta);
+        agent.vehicle.isDrifting = false;
+        agent.driftTimer = 0;
       } else {
         // 1. 전방 가장 가까운 라이벌 차량 탐색 (슬립스트림 및 추월 궤적 연산)
         let nearestAheadDist = Infinity;
@@ -319,27 +321,56 @@ export class AICarManager {
           }
         }
 
-        // 4. 코너 진입 시 드리프트 트리거 및 가감속
-        if (curveAngle > 0.11 && agent.speedMs > 20.0) {
-          agent.driftTimer = Math.max(agent.driftTimer, 0.7 + curveAngle * 2.2);
-          agent.steerDir = turnDir !== 0 ? turnDir : (agent.steerDir || 1);
-        }
+        // 4. 스태미나 기반 급코너 드리프트 및 스핀아웃 관리 (쿨다운 대신 스태미나 소비/충전)
+        const isSharpCorner = curveAngle > 0.28;
+        const isExitingCorner = curveAngle < 0.16;
 
-        if (agent.driftTimer > 0) {
-          agent.driftTimer -= delta;
-          agent.vehicle.isDrifting = agent.speedMs > 16.0;
+        if (agent.vehicle.isSpinningOut) {
+          agent.vehicle.spinoutTimer -= delta;
+          agent.speedMs = Math.max(0, agent.speedMs - 28.0 * delta);
+          agent.driftTimer = 0;
+          agent.vehicle.isDrifting = true;
+          if (agent.vehicle.spinoutTimer <= 0) {
+            agent.vehicle.isSpinningOut = false;
+            agent.vehicle.driftStamina = 25.0;
+          }
         } else {
-          agent.vehicle.isDrifting = false;
+          // 급코너 진입 + 고속 주행 시 드리프트 발동 (스태미나가 30% 이상일 때만 발동)
+          if (isSharpCorner && agent.speedMs > 25.0 && agent.driftTimer <= 0 && agent.vehicle.driftStamina > 30.0) {
+            agent.driftTimer = 1.1; // 약 1.1초간 파워 슬라이드
+            agent.steerDir = turnDir !== 0 ? turnDir : (agent.steerDir || 1);
+          }
+
+          if (agent.driftTimer > 0 && !isExitingCorner) {
+            agent.driftTimer -= delta;
+            agent.vehicle.isDrifting = true;
+            agent.vehicle.driftStamina = Math.max(0, agent.vehicle.driftStamina - 26.0 * delta);
+            if (agent.vehicle.driftStamina <= 0) {
+              agent.driftTimer = 0;
+              agent.vehicle.isDrifting = false;
+            }
+          } else {
+            agent.driftTimer = 0;
+            agent.vehicle.isDrifting = false;
+            agent.vehicle.driftStamina = Math.min(100.0, agent.vehicle.driftStamina + 24.0 * delta);
+          }
         }
 
         const basePace = agent.baseSpeedMs + dynamicBonus;
-        const targetSpeed = curveAngle > 0.22
+        const targetSpeed = curveAngle > 0.24
           ? basePace * 0.76
-          : (curveAngle > 0.10 ? basePace * 0.88 : basePace * 1.18);
+          : (curveAngle > 0.12 ? basePace * 0.90 : basePace * 1.18);
 
-        // 가속 반응성 (추월/어택 시 민첩한 스로틀 반응)
-        const accelRate = agent.isDrafting || agent.attackTimer > 0 ? 5.5 : 3.8;
-        agent.speedMs += (targetSpeed - agent.speedMs) * Math.min(1.0, accelRate * delta);
+        // 가속 반응성: 현실적인 제로백 (약 2.9~3.2초) 및 물리 가속도 상한 적용 (초반 1초 폭발 가속 방지)
+        const maxAccel = agent.isDrafting ? 13.0 : (agent.attackTimer > 0 ? 11.5 : 10.0);
+        const maxBrake = 24.0;
+        const speedDelta = targetSpeed - agent.speedMs;
+
+        if (speedDelta > 0) {
+          agent.speedMs += Math.min(speedDelta, maxAccel * delta);
+        } else {
+          agent.speedMs += Math.max(speedDelta, -maxBrake * delta);
+        }
 
         // 레인 스티어링 (추월 기동 시 신속한 차선 전환)
         const steerRate = (agent.isDrafting || nearestAheadDist < 20.0) ? 3.8 : 2.2;
@@ -416,12 +447,21 @@ export class AICarManager {
     const heading = Math.atan2(tangent.x, tangent.z);
     agent.vehicle.heading = heading;
 
-    // 드리프트 차체 슬립 각도 및 롤링 반영 (시각적 역동성)
-    const targetSlip = agent.vehicle.isDrifting ? -agent.steerDir * 0.32 : 0;
-    agent.vehicle.slipAngle += (targetSlip - agent.vehicle.slipAngle) * Math.min(1.0, 10.0 * delta);
+    // 드리프트 차체 슬립 각도 및 롤링 반영 (스핀아웃 시 360도 회전 연출)
+    let displayHeading = heading;
+    let rollZ = 0;
+    if (agent.vehicle.isSpinningOut) {
+      displayHeading += (1.4 - agent.vehicle.spinoutTimer) * 12.0;
+      rollZ = Math.sin(agent.vehicle.spinoutTimer * 14.0) * 0.16;
+    } else {
+      const targetSlip = agent.vehicle.isDrifting ? -agent.steerDir * 0.32 : 0;
+      agent.vehicle.slipAngle += (targetSlip - agent.vehicle.slipAngle) * Math.min(1.0, 10.0 * delta);
+      displayHeading += agent.vehicle.slipAngle;
+      rollZ = agent.vehicle.isDrifting ? agent.steerDir * 0.05 : 0;
+    }
 
-    agent.vehicle.mesh.rotation.y = heading + agent.vehicle.slipAngle;
-    agent.vehicle.mesh.rotation.z = agent.vehicle.isDrifting ? agent.steerDir * 0.05 : 0;
+    agent.vehicle.mesh.rotation.y = displayHeading;
+    agent.vehicle.mesh.rotation.z = rollZ;
     agent.vehicle.speed = agent.speedMs;
 
     // 바퀴 회전 애니메이션

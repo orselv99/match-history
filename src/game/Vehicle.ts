@@ -39,6 +39,9 @@ export class Vehicle {
   public heading: number = 0; // Yaw 각도 (라디안)
   public slipAngle: number = 0; // 드리프트 시 횡방향 미끄러짐 각도
   public isDrifting: boolean = false;
+  public driftStamina: number = 100.0; // 스태미나 (0~100%)
+  public isSpinningOut: boolean = false; // 스핀아웃 페널티 상태
+  public spinoutTimer: number = 0; // 스핀아웃 지속 타이머
 
   // 바퀴 메시 레퍼런스 (회전 및 조향 애니메이션용)
   public frontLeftWheel!: THREE.Mesh;
@@ -426,21 +429,58 @@ export class Vehicle {
 
     // 2. 조향 및 드리프트 연산
     // 고속일수록 조향각을 줄여 스티어링 락 안정화
+    // 2. 스태미나 기반 드리프트 및 스핀아웃 페널티 연산
     const speedRatio = Math.min(1.0, Math.abs(this.speed) / 25.0);
     const steerAngle = steerInput * (0.65 - speedRatio * 0.35);
 
-    // 드리프트 판정 (핸드브레이크 또는 급선회 슬립)
-    const isHighSpeedTurn = Math.abs(steerInput) > 0.6 && Math.abs(this.speed) > 12.0;
-    this.isDrifting = (handbrake && Math.abs(this.speed) > 2.5) || isHighSpeedTurn;
+    const isHighSpeedTurn = Math.abs(steerInput) > 0.65 && Math.abs(this.speed) > 13.0;
+    const wantsDrift = (handbrake && Math.abs(this.speed) > 3.0) || isHighSpeedTurn;
 
-    const driftFactor = this.isDrifting ? 2.2 : 1.0;
-    const turnRate = steerAngle * (this.speed / 4.0) * driftFactor;
-    // 우회전 시 heading 감소(-), 좌회전 시 heading 증가(+)로 정상 조향
-    this.heading -= turnRate * delta;
+    if (this.isSpinningOut) {
+      this.spinoutTimer -= delta;
+      this.isDrifting = true;
 
-    // 드리프트 시 차체 슬립 각도
-    const targetSlip = this.isDrifting ? steerInput * 0.45 : 0;
-    this.slipAngle += (targetSlip - this.slipAngle) * Math.min(1.0, 10.0 * delta);
+      // 제어 불능 스핀: 맹렬한 360도 Yaw 회전 및 급격한 속도 감쇠
+      this.heading += 12.5 * delta;
+      this.speed = Math.max(0, this.speed - 28.0 * delta);
+
+      if (this.spinoutTimer <= 0) {
+        this.isSpinningOut = false;
+        this.spinoutTimer = 0;
+        this.driftStamina = 25.0; // 회복 초기치
+      }
+    } else if (wantsDrift) {
+      if (this.driftStamina <= 0) {
+        // 스태미나 고갈 상태에서 무리한 드리프트 시도 -> 차량 스핀아웃 페널티 발동!
+        this.isSpinningOut = true;
+        this.spinoutTimer = 1.5;
+        this.isDrifting = true;
+      } else {
+        // 정상 드리프트: 스태미나 소모 (-26%/s)
+        this.isDrifting = true;
+        this.driftStamina = Math.max(0, this.driftStamina - 26.0 * delta);
+        if (this.driftStamina <= 0) {
+          // 드리프트 도중 스태미나 소진 -> 스핀아웃 즉시 발생!
+          this.isSpinningOut = true;
+          this.spinoutTimer = 1.5;
+        }
+      }
+    } else {
+      this.isDrifting = false;
+      // 드리프트 미사용 시 스태미나 자동 충전 (+24%/s)
+      this.driftStamina = Math.min(100.0, this.driftStamina + 24.0 * delta);
+    }
+
+    if (!this.isSpinningOut) {
+      const driftFactor = this.isDrifting ? 2.2 : 1.0;
+      const turnRate = steerAngle * (this.speed / 4.0) * driftFactor;
+      // 우회전 시 heading 감소(-), 좌회전 시 heading 증가(+)로 정상 조향
+      this.heading -= turnRate * delta;
+
+      // 드리프트 시 차체 슬립 각도
+      const targetSlip = this.isDrifting ? steerInput * 0.45 : 0;
+      this.slipAngle += (targetSlip - this.slipAngle) * Math.min(1.0, 10.0 * delta);
+    }
 
     // 3. 위치 업데이트 (주행 방향 벡터)
     const moveHeading = this.heading + this.slipAngle;
@@ -536,6 +576,9 @@ export class Vehicle {
     this.heading = heading;
     this.slipAngle = 0;
     this.isDrifting = false;
+    this.driftStamina = 100.0;
+    this.isSpinningOut = false;
+    this.spinoutTimer = 0;
     this.mesh.position.copy(this.position);
     this.mesh.rotation.set(0, this.heading, 0);
   }

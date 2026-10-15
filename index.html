@@ -227,13 +227,16 @@
         </div>
       </div>
 
+      <!-- 시작 컷씬 건너뛰기 안내 -->
+      <div id="cutscene-skip-prompt" class="cutscene-skip-prompt" data-i18n="hud.skipCutscene">[SPACE / CLICK] 컷씬 건너뛰기</div>
+
       <!-- 우측 하단 통합 스택: 속도계 디지털 클러스터 (좌측 서킷정보와 높이 일치) -->
       <div class="bottom-right-stack">
         <!-- 디지털 계기판 클러스터 -->
         <div class="speedometer-card">
           <div class="cluster-header">
             <span class="cluster-label" data-i18n="hud.speed">SPEED</span>
-            <span id="drift-badge" class="drift-badge">DRIFT_OFF</span>
+            <span id="drift-badge" class="drift-badge">DRIFT_READY</span>
           </div>
           <div class="cluster-body">
             <div id="gear-indicator" class="gear-display">N</div>
@@ -244,6 +247,15 @@
           </div>
           <div class="rpm-bar-container">
             <div id="rpm-bar" class="rpm-bar-fill"></div>
+          </div>
+          <div class="drift-stamina-container">
+            <div class="drift-stamina-header">
+              <span class="drift-stamina-label" data-i18n="hud.driftStamina">DRIFT STAMINA</span>
+              <span id="drift-stamina-value" class="drift-stamina-value">100%</span>
+            </div>
+            <div class="drift-stamina-bar-bg">
+              <div id="drift-stamina-bar" class="drift-stamina-bar-fill" style="width: 100%;"></div>
+            </div>
           </div>
         </div>
       </div>

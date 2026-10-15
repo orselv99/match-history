@@ -20,6 +20,9 @@ export class HUDController {
   private gearIndicator: HTMLElement | null;
   private rpmBar: HTMLElement | null;
   private driftBadge: HTMLElement | null;
+  private driftStaminaBar: HTMLElement | null;
+  private driftStaminaValue: HTMLElement | null;
+  private cutsceneSkipPrompt: HTMLElement | null;
 
   private lapCounter: HTMLElement | null;
   private currentLapTime: HTMLElement | null;
@@ -43,6 +46,9 @@ export class HUDController {
     this.gearIndicator = document.getElementById('gear-indicator');
     this.rpmBar = document.getElementById('rpm-bar');
     this.driftBadge = document.getElementById('drift-badge');
+    this.driftStaminaBar = document.getElementById('drift-stamina-bar');
+    this.driftStaminaValue = document.getElementById('drift-stamina-value');
+    this.cutsceneSkipPrompt = document.getElementById('cutscene-skip-prompt');
 
     this.lapCounter = document.getElementById('lap-counter');
     this.currentLapTime = document.getElementById('current-lap-time');
@@ -105,13 +111,37 @@ export class HUDController {
       this.rpmBar.style.backgroundColor = gearColor;
     }
 
+    const stamina = Math.round(state.driftStamina ?? 100);
+    if (this.driftStaminaValue) {
+      this.driftStaminaValue.textContent = `${stamina}%`;
+    }
+    if (this.driftStaminaBar) {
+      this.driftStaminaBar.style.width = `${stamina}%`;
+      if (state.isSpinningOut) {
+        this.driftStaminaBar.style.backgroundColor = '#ef4444';
+        if (this.driftStaminaValue) this.driftStaminaValue.style.color = '#ef4444';
+      } else if (stamina > 45) {
+        this.driftStaminaBar.style.backgroundColor = '#38bdf8';
+        if (this.driftStaminaValue) this.driftStaminaValue.style.color = '#38bdf8';
+      } else if (stamina > 20) {
+        this.driftStaminaBar.style.backgroundColor = '#fbbf24';
+        if (this.driftStaminaValue) this.driftStaminaValue.style.color = '#fbbf24';
+      } else {
+        this.driftStaminaBar.style.backgroundColor = '#f43f5e';
+        if (this.driftStaminaValue) this.driftStaminaValue.style.color = '#f43f5e';
+      }
+    }
+
     if (this.driftBadge) {
-      if (state.isDrifting) {
+      this.driftBadge.classList.remove('spinout', 'active');
+      if (state.isSpinningOut) {
+        this.driftBadge.classList.add('spinout');
+        this.driftBadge.textContent = 'SPINOUT!';
+      } else if (state.isDrifting) {
         this.driftBadge.classList.add('active');
         this.driftBadge.textContent = 'DRIFT_ACTIVE';
       } else {
-        this.driftBadge.classList.remove('active');
-        this.driftBadge.textContent = 'DRIFT_OFF';
+        this.driftBadge.textContent = 'DRIFT_READY';
       }
     }
 
@@ -154,6 +184,10 @@ export class HUDController {
       } else {
         this.countdownOverlay.classList.remove('visible');
       }
+    }
+
+    if (this.cutsceneSkipPrompt) {
+      this.cutsceneSkipPrompt.classList.toggle('visible', state.raceState === 'START_CUTSCENE');
     }
 
     // 로비 또는 준비 상태 진입 시 섹터 텍스트 초기화

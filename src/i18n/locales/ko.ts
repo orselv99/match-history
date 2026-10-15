@@ -33,6 +33,8 @@ export const ko = {
     speed: '속도',
     blindSpot: '사각지대 경고',
     minimapGps: 'GPS // 트래킹',
+    driftStamina: '드리프트 스태미나',
+    skipCutscene: '[SPACE / CLICK] 컷씬 건너뛰기',
   },
   settings: {
     title: '환경 설정',

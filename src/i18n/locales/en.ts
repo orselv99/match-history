@@ -33,6 +33,8 @@ export const en = {
     speed: 'SPEED',
     blindSpot: 'BLIND SPOT',
     minimapGps: 'GPS // TRACKING',
+    driftStamina: 'DRIFT STAMINA',
+    skipCutscene: '[SPACE / CLICK] SKIP CUTSCENE',
   },
   settings: {
     title: 'SYSTEM SETTINGS',

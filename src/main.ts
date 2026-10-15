@@ -16,8 +16,11 @@ import { SettingsModal } from './ui/SettingsModal.ts';
 import { PauseModal } from './ui/PauseModal.ts';
 import { MatchHistoryModal } from './ui/MatchHistoryModal.ts';
 import { ModalManager } from './ui/ModalManager.ts';
+import { i18nManager } from './i18n/I18nManager.ts';
 
 window.addEventListener('DOMContentLoaded', () => {
+  i18nManager.init();
+
   const container = document.getElementById('game-container') as HTMLElement;
   const minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
   if (!container || !minimapCanvas) return;

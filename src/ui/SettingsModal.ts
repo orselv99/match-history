@@ -3,6 +3,7 @@ import { AudioManager } from '../core/AudioManager.ts';
 import { appDB } from '../storage/AppDatabase.ts';
 import { keyBindingManager, KeyAction } from '../core/KeyBindingManager.ts';
 import { graphicsSettingsManager, MotionBlurQuality, ShadowQuality, ResolutionScale, CameraShakeMode } from '../core/GraphicsSettingsManager.ts';
+import { i18nManager, Language } from '../i18n/I18nManager.ts';
 import type { Game } from '../core/Game.ts';
 
 /**
@@ -34,6 +35,7 @@ export class SettingsModal extends BaseModal {
   private settingBgmDesc: HTMLElement | null;
   private storageStatsEl: HTMLElement | null;
   private btnClearCache: HTMLElement | null;
+  private settingLanguage: HTMLSelectElement | null;
 
   // 키 바인딩 컨트롤 (단일 키 매핑)
   private btnPresetWasd: HTMLButtonElement | null;
@@ -88,6 +90,7 @@ export class SettingsModal extends BaseModal {
     this.settingBgmDesc = document.getElementById('setting-bgm-desc');
     this.storageStatsEl = document.getElementById('setting-storage-stats');
     this.btnClearCache = document.getElementById('btn-clear-cache');
+    this.settingLanguage = document.getElementById('setting-language') as HTMLSelectElement | null;
 
     this.btnPresetWasd = document.getElementById('btn-preset-wasd') as HTMLButtonElement | null;
     this.btnPresetArrows = document.getElementById('btn-preset-arrows') as HTMLButtonElement | null;
@@ -250,6 +253,16 @@ export class SettingsModal extends BaseModal {
       if (this.game) this.game.applyGraphicsSettings(s);
       this.syncUI();
     });
+
+    this.settingLanguage?.addEventListener('change', () => {
+      const lang = (this.settingLanguage?.value || 'ko') as Language;
+      i18nManager.setLanguage(lang);
+      this.syncUI();
+    });
+
+    i18nManager.onLanguageChange(() => {
+      this.syncUI();
+    });
   }
 
   public switchTab(tabId: string): void {
@@ -377,5 +390,9 @@ export class SettingsModal extends BaseModal {
     if (this.selectGfxShadows) this.selectGfxShadows.value = gfx.shadows;
     if (this.chkGfxDynamicFov) this.chkGfxDynamicFov.checked = gfx.dynamicFov;
     if (this.selectGfxShake) this.selectGfxShake.value = gfx.cameraShake;
+
+    if (this.settingLanguage) {
+      this.settingLanguage.value = i18nManager.getLanguage();
+    }
   }
 }

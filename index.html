@@ -318,27 +318,27 @@
   <div id="settings-modal" class="modal-overlay">
     <div class="modal-card settings-modal-card">
       <header class="modal-header-strip">
-        <span class="modal-title">SYSTEM SETTINGS // 환경 설정</span>
+        <span class="modal-title" data-i18n="settings.title">SYSTEM SETTINGS // 환경 설정</span>
         <button id="settings-btn-close" class="modal-close-btn" title="닫기 [ESC]">✕</button>
       </header>
 
-      <!-- 환경설정 3대 탭 내비게이션 바 -->
+      <!-- 환경설정 탭 내비게이션 바 -->
       <nav class="settings-tabs-nav">
         <button type="button" class="settings-tab-btn active" data-tab="general">
           <span class="tab-icon">⚙</span>
-          <span>01 GENERAL // 일반</span>
+          <span data-i18n="settings.tabs.general">01 GENERAL // 일반</span>
         </button>
         <button type="button" class="settings-tab-btn" data-tab="audio">
           <span class="tab-icon">🎵</span>
-          <span>02 AUDIO // 사운드</span>
+          <span data-i18n="settings.tabs.audio">02 AUDIO // 사운드</span>
         </button>
         <button type="button" class="settings-tab-btn" data-tab="gameplay">
           <span class="tab-icon">🎮</span>
-          <span>03 GAMEPLAY // 게임플레이</span>
+          <span data-i18n="settings.tabs.gameplay">03 GAMEPLAY // 게임플레이</span>
         </button>
         <button type="button" class="settings-tab-btn" data-tab="graphics">
           <span class="tab-icon">🖥️</span>
-          <span>04 GRAPHICS // 그래픽</span>
+          <span data-i18n="settings.tabs.graphics">04 GRAPHICS // 그래픽</span>
         </button>
       </nav>
 
@@ -346,17 +346,17 @@
         <!-- 탭 1: 일반 (GENERAL) - 언어 선택 & 캐시 초기화 등 -->
         <div id="settings-panel-general" class="settings-tab-panel active">
           <div class="settings-group">
-            <div class="settings-group-title">GENERAL SYSTEM // 시스템 & 스토리지</div>
+            <div class="settings-group-title" data-i18n="settings.general.groupTitle">GENERAL SYSTEM // 시스템 & 스토리지</div>
 
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name">LANGUAGE // 언어 선택</span>
-                <span class="setting-desc">시뮬레이션 UI 및 인게임 텍스트 언어</span>
+                <span class="setting-name" data-i18n="settings.general.langName">LANGUAGE // 언어 선택</span>
+                <span class="setting-desc" data-i18n="settings.general.langDesc">시뮬레이션 UI 및 인게임 텍스트 언어</span>
               </div>
               <div class="setting-control-col">
-                <select id="setting-language" class="settings-select" disabled>
-                  <option value="ko" selected>한국어 (KOREAN)</option>
-                  <option value="en">English (준비 중 / Coming soon)</option>
+                <select id="setting-language" class="settings-select">
+                  <option value="ko">한국어 (KOREAN)</option>
+                  <option value="en">English (영어)</option>
                 </select>
               </div>
             </div>
@@ -632,7 +632,7 @@
       </div>
 
       <footer class="modal-actions">
-        <button id="settings-btn-save" class="primary-btn">SAVE & APPLY // 저장</button>
+        <button id="settings-btn-save" class="primary-btn" data-i18n="common.save">SAVE & APPLY // 저장</button>
       </footer>
     </div>
   </div>

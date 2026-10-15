@@ -197,12 +197,13 @@
   100% { opacity: 1.0; }
 }
 
-/* 4. 좌측 하단 스택 (서킷 정보 카드: 우측 스택과 높이 및 너비 동일 통일) */
+/* 4. 좌측 하단 스택 (서킷 정보 카드: 우측 스택과 높이 116px 통일) */
 .bottom-left-stack {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 300px;
-  height: 164px;
+  height: 116px;
   pointer-events: auto;
 }
 
@@ -223,7 +224,7 @@
   align-items: center;
   background: var(--surface-subtle);
   border-bottom: 1px solid var(--border-strong);
-  padding: 8px 14px;
+  padding: 6px 14px;
   flex-shrink: 0;
 }
 
@@ -245,7 +246,7 @@
 }
 
 .lap-body {
-  padding: 10px 14px 12px;
+  padding: 8px 14px 10px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -282,74 +283,190 @@
 }
 
 .sectors-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  border-top: 1px solid var(--border-subtle);
-  margin-top: 0;
-  padding-top: 6px;
-  gap: 1px;
-  background: var(--border-subtle);
+  display: none;
 }
 
-.sector-chip {
-  background: var(--surface-card);
-  padding: 4px 2px;
-  text-align: center;
+/* 섹터 통과 텍스트 알림 목록 (서킷 정보 카드 위 순수 텍스트) */
+.sector-text-container {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.sector-text-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
   letter-spacing: 0.04em;
-}
-
-.sector-chip.passed {
   color: var(--text-primary);
-  background: var(--surface-subtle);
-  font-weight: 600;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95), 0 0 8px rgba(0, 0, 0, 0.8);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  white-space: nowrap;
 }
 
-/* 5. 하단 HUD (좌측 서킷정보 스택, 중앙 리플레이 컨트롤, 우측 속도계+키안내 스택) */
+.sector-text-line.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sector-text-line.fade-out {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.sector-text-sector {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent-spec);
+  letter-spacing: 0.06em;
+}
+
+.sector-text-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.sector-text-time {
+  font-size: 13px;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-left: auto;
+}
+
+/* 5. 하단 HUD (좌측 서킷정보 스택, 중앙 리플레이 컨트롤 & 키 오버레이, 우측 속도계 스택) */
 .bottom-hud {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   width: 100%;
 }
 
-/* 우측 하단 통합 스택: 속도계 + 하단 인풋가이드 (너비 300px, 좌측 서킷정보와 높이 164px 일치) */
+/* 하단 중앙 실시간 키 오버레이 (외곽 컨테이너 UI 제거, 순수 키캡만 노출) */
+.key-overlay {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.key-cluster-wasd {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.key-row-top {
+  display: flex;
+  justify-content: center;
+}
+
+.key-row-bottom {
+  display: flex;
+  gap: 3px;
+}
+
+.key-cap {
+  width: 28px;
+  height: 28px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  transition: background 0.08s ease, border-color 0.08s ease, box-shadow 0.08s ease, transform 0.08s ease;
+}
+
+.key-cap-letter {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.key-cap-letter.compact {
+  font-size: 7.5px;
+  letter-spacing: -0.04em;
+  font-weight: 800;
+}
+
+.key-cap.active {
+  background: var(--accent-spec);
+  border-color: #f43f5e;
+  box-shadow: 0 0 10px rgba(196, 90, 114, 0.7);
+  transform: translateY(1px);
+}
+
+.key-cap.active .key-cap-letter {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.key-cluster-space {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.key-cap.space-cap {
+  width: 76px;
+  height: 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.key-cap.space-cap .key-cap-letter {
+  font-size: 10px;
+}
+
+.key-cap-sub {
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  line-height: 1;
+}
+
+.key-cap.active .key-cap-sub {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* 우측 하단 통합 스택: 속도계 디지털 클러스터 (너비 300px, 좌측 서킷정보와 높이 116px 일치) */
 .bottom-right-stack {
   display: flex;
   flex-direction: column;
-  gap: 6px;
   width: 300px;
-  height: 164px;
+  height: 116px;
   pointer-events: auto;
-}
-
-.control-guide {
-  background: var(--surface-card);
-  border: 1px solid var(--border-strong);
-  padding: 6px 10px;
-  font-family: var(--font-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.02em;
-  color: var(--text-secondary);
-  line-height: 1.45;
-  width: 100%;
-  margin: 0;
-  box-sizing: border-box;
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-align: center;
-}
-
-.key-badge {
-  background: var(--surface-subtle);
-  border: 1px solid var(--border-strong);
-  padding: 1px 4px;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-weight: 600;
-  font-size: 8.5px;
 }
 
 /* 디지털 클러스터 (Swiss Technical Metric Card) */
@@ -357,7 +474,7 @@
   background: var(--surface-card);
   border: 1px solid var(--border-strong);
   width: 100%;
-  flex: 1;
+  height: 100%;
   margin: 0;
   box-sizing: border-box;
   display: flex;
@@ -370,7 +487,7 @@
   align-items: center;
   background: var(--surface-subtle);
   border-bottom: 1px solid var(--border-strong);
-  padding: 5px 14px;
+  padding: 6px 14px;
   flex-shrink: 0;
 }
 
@@ -397,7 +514,7 @@
 }
 
 .cluster-body {
-  padding: 8px 14px;
+  padding: 6px 14px 8px;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -410,6 +527,7 @@
   font-family: var(--font-mono);
   color: var(--accent-spec);
   line-height: 1;
+  transition: color 0.15s ease;
 }
 
 .speed-main {
@@ -446,7 +564,7 @@
   height: 100%;
   width: 0%;
   background: var(--accent-spec);
-  transition: width 0.05s linear;
+  transition: width 0.05s linear, background-color 0.15s ease;
 }
 
 /* 중앙 카운트다운 */

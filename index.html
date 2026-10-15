@@ -172,6 +172,9 @@
     <footer class="bottom-hud">
       <!-- 좌측 하단 스택: 게임서킷정보 카드 -->
       <div class="bottom-left-stack">
+        <!-- 섹터 통과 텍스트 알림 목록 (서킷정보 위, 텍스트 전용) -->
+        <div id="sector-text-container" class="sector-text-container"></div>
+
         <!-- 랩 타이머 & 서킷 정보 카드 -->
         <div class="lap-card">
           <div class="lap-header">
@@ -180,17 +183,12 @@
           </div>
           <div class="lap-body">
             <div class="time-row">
-              <span class="time-label">TIME // CURRENT</span>
+              <span class="time-label">CURRENT</span>
               <span id="current-lap-time" class="time-value">00:00.000</span>
             </div>
             <div class="time-row">
-              <span class="time-label">TIME // BEST</span>
+              <span class="time-label">BEST</span>
               <span id="best-lap-time" class="time-value best">--:--.---</span>
-            </div>
-            <div class="sectors-row">
-              <div id="sector-1" class="sector-chip">S1: --.-s</div>
-              <div id="sector-2" class="sector-chip">S2: --.-s</div>
-              <div id="sector-3" class="sector-chip">S3: --.-s</div>
             </div>
           </div>
         </div>
@@ -208,7 +206,27 @@
         </div>
       </div>
 
-      <!-- 우측 하단 통합 스택: 속도계 + 하단 인풋가이드 (너비 300px, 좌측 서킷정보와 높이 일치) -->
+      <!-- 하단 중앙: 실시간 키 입력 오버레이 -->
+      <div id="key-overlay" class="key-overlay">
+        <div class="key-cluster-wasd">
+          <div class="key-row-top">
+            <div id="key-cap-throttle" class="key-cap"><span id="key-cap-throttle-letter" class="key-cap-letter">W</span></div>
+          </div>
+          <div class="key-row-bottom">
+            <div id="key-cap-steer-l" class="key-cap"><span id="key-cap-steer-l-letter" class="key-cap-letter">A</span></div>
+            <div id="key-cap-brake" class="key-cap"><span id="key-cap-brake-letter" class="key-cap-letter">S</span></div>
+            <div id="key-cap-steer-r" class="key-cap"><span id="key-cap-steer-r-letter" class="key-cap-letter">D</span></div>
+          </div>
+        </div>
+        <div class="key-cluster-space">
+          <div id="key-cap-drift" class="key-cap space-cap">
+            <span id="key-cap-drift-letter" class="key-cap-letter">SPACE</span>
+            <span class="key-cap-sub">DRIFT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 우측 하단 통합 스택: 속도계 디지털 클러스터 (좌측 서킷정보와 높이 일치) -->
       <div class="bottom-right-stack">
         <!-- 디지털 계기판 클러스터 -->
         <div class="speedometer-card">
@@ -226,12 +244,6 @@
           <div class="rpm-bar-container">
             <div id="rpm-bar" class="rpm-bar-fill"></div>
           </div>
-        </div>
-
-        <!-- 조작 가이드 (속도계 바로 아래 위치, 맵핑된 키 동적 연동) -->
-        <div class="control-guide" id="control-guide">
-          <div><span id="guide-key-throttle" class="key-badge">W</span> THROTTLE &nbsp;|&nbsp; <span id="guide-key-brake" class="key-badge">R_SHIFT</span> BRAKE</div>
-          <div style="margin-top: 4px;"><span id="guide-key-steer-l" class="key-badge">A</span> <span id="guide-key-steer-r" class="key-badge">D</span> STEER &nbsp;|&nbsp; <span id="guide-key-drift" class="key-badge">SPACE</span> DRIFT &nbsp;|&nbsp; <span class="key-badge">ESC</span> MENU</div>
         </div>
       </div>
     </footer>

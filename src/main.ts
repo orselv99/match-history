@@ -83,7 +83,7 @@ window.addEventListener('DOMContentLoaded', () => {
       game.loadTrack(config.trackId);
       game.playerVehicle.setModel(config.modelId);
       game.playerVehicle.setColor(parseInt(config.color.replace('#', '0x'), 16));
-      game.currentDriverName = config.driverName;
+      game.setDriverName(config.driverName);
       game.setEnvironment(config.timeOfDay, config.weather);
 
       const trackMeta = TRACK_DEFINITIONS[config.trackId];
@@ -156,6 +156,10 @@ window.addEventListener('DOMContentLoaded', () => {
     if (state.gameMode === 'REPLAY' && game.replayPlayer.totalDurationMs > 0) {
       replayBar.update(state.replayTimeStr);
     }
+  };
+
+  game.onSectorPassed = (driverName: string, sectorName: string, timeMs: number) => {
+    hud.showSectorNotification(driverName, sectorName, timeMs);
   };
 
   // 7. 로비 & HUD 버튼 바인딩

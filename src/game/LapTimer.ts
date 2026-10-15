@@ -23,17 +23,18 @@ export class LapTimer {
   public lapHistory: LapResult[] = [];
   public currentSectorTimes: number[] = [0, 0, 0];
 
-  private nextCheckpointIndex: number = 1; // 0번(Start) 이후 1번(Sector 1)부터 대기
+  private nextCheckpointIndex: number = 0; // 그리드 스폰 후 출발선(0번) 통과부터 대기
   private lastCheckpointTimestamp: number = 0;
   private currentSectorIndex: number = 0;
   private prevCarPos: THREE.Vector3 = new THREE.Vector3();
   private hasPrevCarPos: boolean = false;
+  public hasPassedStartLine: boolean = false;
 
   constructor(totalLaps: number = 3) {
     this.totalLaps = totalLaps;
   }
 
-  public update(deltaMs: number, carPos: THREE.Vector3, checkpoints: CheckpointTrigger[], onCheckpointPassed?: (cpId: number) => void): void {
+  public update(deltaMs: number, carPos: THREE.Vector3, checkpoints: CheckpointTrigger[], onCheckpointPassed?: (cpId: number, sectorTimeMs: number) => void): void {
     if (this.isFinished) return;
 
     if (!this.isStarted) {
@@ -85,14 +86,28 @@ export class LapTimer {
         }
       }
 
+      // 첫 랩 시작: 그리드에서 출발하여 첫 출발선 통과 시 랩 타이머 0초 초기화 (알림 제외)
+      if (!this.hasPassedStartLine && targetCp.id === 0) {
+        this.hasPassedStartLine = true;
+        this.currentLap = 1;
+        this.currentLapTimeMs = 0;
+        this.lastCheckpointTimestamp = 0;
+        this.currentSectorIndex = 0;
+        this.nextCheckpointIndex = 1;
+        this.prevCarPos.copy(carPos);
+        return;
+      }
+
       // 체크포인트 통과 성공
       const sectorTime = this.currentLapTimeMs - this.lastCheckpointTimestamp;
-      this.currentSectorTimes[this.currentSectorIndex] = Math.round(sectorTime);
+      const sectorTimeMs = Math.round(sectorTime);
+      this.currentSectorTimes[this.currentSectorIndex] = sectorTimeMs;
       this.lastCheckpointTimestamp = this.currentLapTimeMs;
       this.currentSectorIndex = (this.currentSectorIndex + 1) % 3;
 
       if (onCheckpointPassed) {
-        onCheckpointPassed(targetCp.id);
+        // 누적 랩타임을 전달하여 통과 순서와 타임스탬프 순서가 완전 일치하도록 보장
+        onCheckpointPassed(targetCp.id, Math.round(this.currentLapTimeMs));
       }
 
       // 다음 체크포인트로 전환
@@ -155,7 +170,8 @@ export class LapTimer {
     this.bestLapMs = Infinity;
     this.lapHistory = [];
     this.currentSectorTimes = [0, 0, 0];
-    this.nextCheckpointIndex = 1;
+    this.nextCheckpointIndex = 0;
+    this.hasPassedStartLine = false;
     this.lastCheckpointTimestamp = 0;
     this.currentSectorIndex = 0;
     this.hasPrevCarPos = false;

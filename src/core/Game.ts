@@ -18,6 +18,14 @@ import { CameraController } from './CameraController.ts';
 export type GameMode = 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO';
 export type RaceState = 'READY' | 'COUNTDOWN' | 'RUNNING' | 'FINISHED';
 
+export interface KeyInputState {
+  throttle: boolean;
+  brake: boolean;
+  steerLeft: boolean;
+  steerRight: boolean;
+  handbrake: boolean;
+}
+
 export interface GameUIState {
   speedKmh: number;
   gear: string;
@@ -33,6 +41,7 @@ export interface GameUIState {
   countdownText?: string;
   countdownVisible: boolean;
   replayTimeStr?: string;
+  inputState?: KeyInputState;
 }
 
 /**
@@ -83,6 +92,7 @@ export class Game {
   // 콜백
   public onFinishCallback?: (metadata: MatchSummaryMetadata) => void;
   public onStateUpdate?: (state: GameUIState) => void;
+  public onSectorPassed?: (driverName: string, sectorName: string, timeMs: number) => void;
 
   constructor(container: HTMLElement, minimapCanvas: HTMLCanvasElement) {
     this.container = container;
@@ -129,6 +139,11 @@ export class Game {
     this.scene.add(this.replayPlayer.ghostVehicle.mesh);
 
     this.aiManager = new AICarManager(this.track);
+    this.aiManager.onSectorPassed = (name, sectorName, timeMs) => {
+      if (this.onSectorPassed) {
+        this.onSectorPassed(name, sectorName, timeMs);
+      }
+    };
     this.scene.add(this.aiManager.group);
 
     // 스키드마크 & 충돌 매니저
@@ -238,6 +253,10 @@ export class Game {
     return next;
   }
 
+  public setDriverName(name: string): void {
+    this.currentDriverName = name;
+  }
+
   /**
    * 선택된 서킷(Monaco, Silverstone, Nürburgring)을 인게임에 실시간 적용 및 재배치
    */
@@ -317,6 +336,9 @@ export class Game {
     } else if (this.mode === 'DEMO') {
       this.updateDemo(delta, deltaMs);
     }
+
+    // 포커싱 차량을 제외한 나머지 차량 상단에 이름 표시
+    this.updateNameTags();
 
     // 미니맵 드로잉
     this.drawMinimap();
@@ -401,7 +423,13 @@ export class Game {
         deltaMs,
         this.playerVehicle.position,
         this.track.checkpoints,
-        (cpId) => this.audio.playCheckpointBeep()
+        (cpId, sectorTimeMs) => {
+          this.audio.playCheckpointBeep();
+          const sectorName = cpId === 1 ? 'S1' : cpId === 2 ? 'S2' : '도착선';
+          if (this.onSectorPassed) {
+            this.onSectorPassed('Player', sectorName, sectorTimeMs);
+          }
+        }
       );
 
       // 30Hz 주행 리플레이 데이터 레코딩
@@ -463,7 +491,7 @@ export class Game {
         deltaMs,
         targetVehicle.position,
         this.track.checkpoints,
-        (cpId) => this.audio.playCheckpointBeep()
+        () => this.audio.playCheckpointBeep()
       );
 
       this.recorder.update(
@@ -610,8 +638,7 @@ export class Game {
       this.aiManager.setSlotConfig(
         0,
         this.playerVehicle.currentModelId as any,
-        this.playerVehicle.bodyColorHex,
-        this.currentDriverName || 'Apex Hunter'
+        this.playerVehicle.bodyColorHex
       );
       this.aiManager.activate(false); // 4대 차량 전체 그리드 정렬
       if (this.aiManager.agents[0]) {
@@ -698,6 +725,51 @@ export class Game {
       countdownVisible = false;
     }
 
+    let inputState: KeyInputState;
+
+    if (this.mode === 'DRIVING') {
+      inputState = {
+        throttle: this.input.throttle > 0.05,
+        brake: this.input.brake > 0.05,
+        steerLeft: this.input.steer < -0.05,
+        steerRight: this.input.steer > 0.05,
+        handbrake: this.input.handbrake,
+      };
+    } else if (this.mode === 'DEMO') {
+      // shortcut: 트랙 탄젠트 각도 및 차선 변경량으로 AI 조작 키 추정, AI 컨트롤러에 가상 입력 축이 통합되면 직접 바인딩
+      const playerAgent = this.aiManager.agents[0];
+      if (playerAgent && this.raceState === 'RUNNING') {
+        const futureT = (playerAgent.t + 0.02) % 1.0;
+        const currTangent = this.track.trackCurve.getTangentAt(playerAgent.t);
+        const futureTangent = this.track.trackCurve.getTangentAt(futureT);
+        const crossY = currTangent.x * futureTangent.z - currTangent.z * futureTangent.x;
+        const laneDelta = playerAgent.targetLaneOffset - playerAgent.laneOffset;
+        const steerVal = crossY * 8.0 + laneDelta * 0.4;
+        const curveAngle = currTangent.angleTo(futureTangent);
+
+        inputState = {
+          throttle: playerAgent.speedMs < playerAgent.maxSpeedMs + 1.0,
+          brake: playerAgent.vehicle.isDrifting ? false : (curveAngle > 0.35 && playerAgent.speedMs > 35),
+          steerLeft: steerVal < -0.15,
+          steerRight: steerVal > 0.15,
+          handbrake: playerAgent.vehicle.isDrifting,
+        };
+      } else {
+        inputState = { throttle: false, brake: false, steerLeft: false, steerRight: false, handbrake: false };
+      }
+    } else if (this.mode === 'REPLAY') {
+      const tick = this.replayPlayer.getCurrentTick();
+      inputState = {
+        throttle: (tick?.throttle || 0) > 0.05,
+        brake: (tick?.brake || 0) > 0.05,
+        steerLeft: (tick?.steer || 0) < -0.05,
+        steerRight: (tick?.steer || 0) > 0.05,
+        handbrake: false,
+      };
+    } else {
+      inputState = { throttle: false, brake: false, steerLeft: false, steerRight: false, handbrake: false };
+    }
+
     this.onStateUpdate({
       speedKmh: Math.round(speed),
       gear,
@@ -714,17 +786,41 @@ export class Game {
       raceState: this.raceState,
       countdownText,
       countdownVisible,
-      replayTimeStr: this.mode === 'REPLAY' ? `${this.formatTime(this.replayPlayer.currentTimeMs)} / ${this.formatTime(this.replayPlayer.totalDurationMs)}` : undefined
+      replayTimeStr: this.mode === 'REPLAY' ? `${this.formatTime(this.replayPlayer.currentTimeMs)} / ${this.formatTime(this.replayPlayer.totalDurationMs)}` : undefined,
+      inputState,
     });
   }
 
-  private drawMinimap(): void {
-    let targetVehicle = this.playerVehicle;
+  public getFocusedVehicle(): Vehicle | null {
     if (this.mode === 'DEMO') {
-      targetVehicle = this.aiManager.agents[0]?.vehicle || this.playerVehicle;
-    } else if (this.mode === 'REPLAY') {
-      targetVehicle = this.replayPlayer.ghostVehicle;
+      return this.aiManager.agents[0]?.vehicle || this.playerVehicle;
     }
+    if (this.mode === 'REPLAY') {
+      return this.replayPlayer.ghostVehicle;
+    }
+    return this.playerVehicle;
+  }
+
+  private updateNameTags(): void {
+    const focused = this.getFocusedVehicle();
+
+    // AI 차량들: 카메라가 포커싱 중인 차량을 제외한 나머지 활성 차량 상단에 이름 표시
+    if (this.aiManager.isActive) {
+      const agents = this.aiManager.agents;
+      for (let i = 0; i < agents.length; i++) {
+        const v = agents[i].vehicle;
+        v.setNameTagVisible(v !== focused && v.mesh.visible);
+      }
+    } else {
+      const agents = this.aiManager.agents;
+      for (let i = 0; i < agents.length; i++) {
+        agents[i].vehicle.setNameTagVisible(false);
+      }
+    }
+  }
+
+  private drawMinimap(): void {
+    const targetVehicle = this.getFocusedVehicle() || this.playerVehicle;
 
     MinimapRenderer.draw({
       canvas: this.minimapCanvas,

@@ -22,6 +22,8 @@ export interface AICarAgent {
   attackCooldown: number;  // 다음 어택까지의 대기 시간
   isDrafting: boolean;     // 슬립스트림 견인 가속 상태 여부
   hasPassedStartLine: boolean; // 첫 랩 출발선 통과 여부 (출발선 이전 그리드 스폰 대응)
+  lastSectorTimeMs: number;
+  currentSectorIndex: number;
 }
 
 /**
@@ -37,6 +39,9 @@ export class AICarManager {
   public isActive: boolean = false;
   public totalLaps: number = 3; // 3 Lap 완주
   public isAllFinished: boolean = false;
+  public raceTimeMs: number = 0;
+  public isRivalsMode: boolean = false;
+  public onSectorPassed?: (name: string, sectorName: string, timeMs: number) => void;
 
   private track: CircuitTrack;
 
@@ -54,6 +59,7 @@ export class AICarManager {
       const model = defaultModels[idx % defaultModels.length];
       const vehicle = new Vehicle(false, 0x06b6d4, model);
       vehicle.setColor(cfg.color);
+      vehicle.setNameTag(cfg.name, cfg.color);
 
       // 차량 기본 속도를 대등하게 정규화하여 성능 격차로 인한 일방적 독주 방지
       const balancedBase = 48.0 + (idx === 1 ? 0.4 : idx === 3 ? 0.2 : -0.2);
@@ -76,6 +82,8 @@ export class AICarManager {
         attackCooldown: 3.5 + idx * 2.5,
         isDrafting: false,
         hasPassedStartLine: false,
+        lastSectorTimeMs: 0,
+        currentSectorIndex: 0,
       });
 
       this.group.add(vehicle.mesh);
@@ -95,10 +103,11 @@ export class AICarManager {
   ): void {
     if (slotIndex < 0 || slotIndex >= this.agents.length) return;
     const agent = this.agents[slotIndex];
+    if (name) agent.name = name;
     agent.vehicle.setModel(modelId);
     agent.vehicle.setColor(colorHex);
     agent.color = colorHex;
-    if (name) agent.name = name;
+    agent.vehicle.setNameTag(agent.name, colorHex);
   }
 
   /**
@@ -106,6 +115,7 @@ export class AICarManager {
    * @param asRivals 플레이어 주행 모드 시 (슬롯 0은 플레이어 전용, AI는 1, 2, 3번 슬롯에 배치)
    */
   public resetToGrids(asRivals: boolean = false): void {
+    this.isRivalsMode = asRivals;
     this.isActive = true;
     this.group.visible = true;
     this.isAllFinished = false;
@@ -114,6 +124,7 @@ export class AICarManager {
     const slotDistances = [4.5, 11.5, 18.5, 25.5];
     const slotLanes = [-2.2, 2.2, -2.2, 2.2];
 
+    this.raceTimeMs = 0;
     this.agents.forEach((agent, idx) => {
       if (asRivals && idx === 0) {
         // 슬롯 0은 플레이어 차량이 차지하므로 비활성화
@@ -134,6 +145,8 @@ export class AICarManager {
       agent.currentLap = 1;
       agent.isFinished = false;
       agent.hasPassedStartLine = false;
+      agent.lastSectorTimeMs = 0;
+      agent.currentSectorIndex = 0;
       agent.attackTimer = idx * 1.8;
       agent.attackCooldown = 3.0 + idx * 2.2;
       agent.isDrafting = false;
@@ -198,10 +211,12 @@ export class AICarManager {
       return;
     }
 
+    this.raceTimeMs += delta * 1000;
+
     const trackLength = this.track.trackCurve.getLength();
     const leader = this.getLeaderAgent();
 
-    this.agents.forEach((agent) => {
+    this.agents.forEach((agent, idx) => {
       if (!agent.vehicle.mesh.visible) return;
 
       if (agent.isFinished) {
@@ -310,18 +325,40 @@ export class AICarManager {
       const distTraveled = agent.speedMs * delta;
       agent.t = (agent.t + (distTraveled / trackLength)) % 1.0;
 
-      // 6. 스타트/피니시 라인 통과 감지
+      // 6. 스타트/피니시 라인 및 섹터(S1, S2, 도착선) 통과 감지
+      const isEligible = this.isRivalsMode ? (idx !== 0) : true;
+      const displayName = (!this.isRivalsMode && idx === 0) ? 'Player' : agent.name;
+
       if (agent.prevT > 0.85 && agent.t < 0.15) {
         if (!agent.hasPassedStartLine) {
-          // 레이스 시작 직후 출발선 통과는 첫 랩의 시작이므로 랩 수를 올리지 않음
+          // 레이스 시작 직후 출발선 통과는 첫 랩의 시작이므로 알림/랩 수 증가 제외
           agent.hasPassedStartLine = true;
+          agent.lastSectorTimeMs = this.raceTimeMs;
+          agent.currentSectorIndex = 0;
         } else {
-          // 1바퀴를 완전히 완주했을 때만 랩 수 증가
+          // 1바퀴 완주 (도착선 통과)
+          if (isEligible && this.onSectorPassed && agent.currentSectorIndex === 2) {
+            const lapTime = Math.round(this.raceTimeMs - agent.lastSectorTimeMs);
+            agent.lastSectorTimeMs = this.raceTimeMs;
+            agent.currentSectorIndex = 0;
+            this.onSectorPassed(displayName, '도착선', lapTime);
+          }
           agent.currentLap++;
           if (agent.currentLap > this.totalLaps) {
             agent.isFinished = true;
             this.checkRaceFinish();
           }
+        }
+      } else if (agent.hasPassedStartLine && isEligible && this.onSectorPassed) {
+        // shortcut: 트랙 정규화 t 비율(0.33, 0.66) 기반 섹터 체크, 트랙별 개별 체크포인트 3D 볼륨 충돌 매니저로 통합 시 업그레이드
+        if (agent.currentSectorIndex === 0 && agent.prevT < 0.33 && agent.t >= 0.33) {
+          const timeAtSector = Math.round(this.raceTimeMs - agent.lastSectorTimeMs);
+          agent.currentSectorIndex = 1;
+          this.onSectorPassed(displayName, 'S1', timeAtSector);
+        } else if (agent.currentSectorIndex === 1 && agent.prevT < 0.66 && agent.t >= 0.66) {
+          const timeAtSector = Math.round(this.raceTimeMs - agent.lastSectorTimeMs);
+          agent.currentSectorIndex = 2;
+          this.onSectorPassed(displayName, 'S2', timeAtSector);
         }
       }
 

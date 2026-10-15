@@ -60,6 +60,9 @@ export class Vehicle {
   public tailPointLight!: THREE.PointLight;
   public headlightsEnabled: boolean = true;
   public bodyColorHex: number = 0xef4444;
+  public driverName: string = '';
+  public nameTagColorHex?: number;
+  public nameTagSprite?: THREE.Sprite;
   private isGhost: boolean = false;
   private ghostColor: number = 0x06b6d4;
 
@@ -82,6 +85,9 @@ export class Vehicle {
     this.bodyColorHex = colorHex;
     if (this.bodyMaterial) {
       this.bodyMaterial.color.setHex(colorHex);
+    }
+    if (this.driverName) {
+      this.setNameTag(this.driverName, colorHex);
     }
   }
 
@@ -224,6 +230,10 @@ export class Vehicle {
       isGhost,
       ghostColor
     );
+
+    if (this.nameTagSprite) {
+      this.mesh.add(this.nameTagSprite);
+    }
   }
 
   /**
@@ -528,5 +538,116 @@ export class Vehicle {
     this.isDrifting = false;
     this.mesh.position.copy(this.position);
     this.mesh.rotation.set(0, this.heading, 0);
+  }
+
+  /**
+   * 차량 상단 3D 빌보드 네임태그 생성 및 갱신
+   */
+  public setNameTag(name: string, colorHex?: number): void {
+    this.driverName = name;
+    if (colorHex !== undefined) {
+      this.nameTagColorHex = colorHex;
+    }
+
+    const wasVisible = this.nameTagSprite ? this.nameTagSprite.visible : false;
+    if (this.nameTagSprite) {
+      if (this.nameTagSprite.material.map) {
+        this.nameTagSprite.material.map.dispose();
+      }
+      this.nameTagSprite.material.dispose();
+      this.mesh.remove(this.nameTagSprite);
+      this.nameTagSprite = undefined;
+    }
+
+    if (!name || typeof document === 'undefined') return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 384;
+    canvas.height = 96;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, 384, 96);
+
+      const fontSize = 26;
+      ctx.font = `700 ${fontSize}px 'JetBrains Mono', 'Inter', -apple-system, BlinkMacSystemFont, monospace, sans-serif`;
+      ctx.textBaseline = 'middle';
+
+      const textW = ctx.measureText(name).width;
+      const dotRadius = 7;
+      const paddingX = 18;
+      const dotSpace = dotRadius * 2 + 12;
+      const contentW = dotSpace + textW;
+      const pillW = Math.min(368, Math.max(120, contentW + paddingX * 2));
+      const pillH = 52;
+      const pillX = (384 - pillW) / 2;
+      const pillY = (96 - pillH) / 2;
+      const pillRadius = 14;
+
+      // 그림자
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 3;
+
+      // 필 배경
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(pillX, pillY, pillW, pillH, pillRadius);
+      } else {
+        ctx.rect(pillX, pillY, pillW, pillH);
+      }
+      ctx.fill();
+
+      // 테두리 및 텍스트는 선명하게
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // 차량 고유 컬러 인디케이터 도트
+      const hex = (this.nameTagColorHex ?? this.bodyColorHex)
+        .toString(16)
+        .padStart(6, '0');
+      const dotX = pillX + paddingX + dotRadius;
+      const dotY = 96 / 2;
+
+      ctx.fillStyle = `#${hex}`;
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // 드라이버 / AI 이름
+      const textX = dotX + dotRadius + 12;
+      const maxTextW = pillW - (textX - pillX) - paddingX;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(name, textX, dotY, maxTextW);
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      depthTest: true,
+      depthWrite: false,
+    });
+
+    this.nameTagSprite = new THREE.Sprite(mat);
+    this.nameTagSprite.position.set(0, 1.95, 0);
+    this.nameTagSprite.scale.set(2.4, 0.6, 1.0);
+    this.nameTagSprite.visible = wasVisible;
+    this.mesh.add(this.nameTagSprite);
+  }
+
+  public setNameTagVisible(visible: boolean): void {
+    if (this.nameTagSprite && this.nameTagSprite.visible !== visible) {
+      this.nameTagSprite.visible = visible;
+    }
   }
 }

@@ -292,13 +292,14 @@ export class CircuitTrack {
   public getStartStraightWorldPosition(localX: number, localZ: number): { position: THREE.Vector3; heading: number } {
     const startPt = this.trackCurve.getPointAt(0);
     const tangent = this.trackCurve.getTangentAt(0).normalize();
-    const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+    // Three.js Object3D(rotation.y = heading) 로컬 X축 단위 벡터는 (tangent.z, 0, -tangent.x)
+    const localXDir = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
     const heading = Math.atan2(tangent.x, tangent.z);
 
     const position = new THREE.Vector3()
       .copy(startPt)
       .addScaledVector(tangent, localZ)
-      .addScaledVector(right, localX);
+      .addScaledVector(localXDir, localX);
     position.y = 0.055;
 
     return { position, heading };

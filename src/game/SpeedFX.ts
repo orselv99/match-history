@@ -53,7 +53,8 @@ const RadialBlurShader = {
 
       // 차량 영역(0.08 이내)은 100% 선명하게 보존, 외곽(0.38 이상)은 완전 블러 처리
       float blurMask = smoothstep(0.08, 0.38, maskDist);
-      float totalStrength = uStrength * blurMask * 0.24;
+      // 고속에서만 점진적으로 블러 강도 상승 (저속에서는 선명도 최우선)
+      float totalStrength = pow(uStrength, 1.35) * blurMask * 0.22;
 
       float sampleCount = float(clamp(uSamples, 4, 16));
       vec2 stepVec = (toCenter / sampleCount) * totalStrength;
@@ -72,46 +73,53 @@ const RadialBlurShader = {
       }
       accumColor /= sampleCount;
 
-      // 2. 외곽부 색수차 (옵션 활성화 및 140km/h 이상 고속 시)
-      if (uEnableChrom > 0.5 && uStrength > 0.38) {
-        float chromFactor = (uStrength - 0.38) / 0.62;
-        float chromOffset = maskDist * chromFactor * 0.016 * blurMask;
+      // 2. 외곽부 색수차 (옵션 활성화 및 155km/h 이상 고속 시)
+      if (uEnableChrom > 0.5 && uStrength > 0.48) {
+        float chromFactor = (uStrength - 0.48) / 0.52;
+        float chromOffset = maskDist * chromFactor * 0.015 * blurMask;
         vec2 chromDir = normalize(toCenter + vec2(0.0001));
         float r = texture2D(tDiffuse, clamp(vUv + chromDir * chromOffset, 0.0, 1.0)).r;
         float b = texture2D(tDiffuse, clamp(vUv - chromDir * chromOffset, 0.0, 1.0)).b;
-        accumColor.r = mix(accumColor.r, r, 0.55);
-        accumColor.b = mix(accumColor.b, b, 0.55);
+        accumColor.r = mix(accumColor.r, r, 0.50);
+        accumColor.b = mix(accumColor.b, b, 0.50);
       }
 
-      // 3. 동적 방사형 속도선 (Radial Speed Lines / Wind Streaks)
+      // 3. 다단계 세분화된 방사형 가속선 (Multi-tier Granular Speed Lines)
       float angle = atan(toCenter.y, toCenter.x);
       
-      float ray1 = fract(sin(floor(angle * 75.0) * 12.9898 + 45.1) * 43758.5453);
-      float ray2 = fract(sin(floor(angle * 120.0 + 17.0) * 78.233 + 12.3) * 23421.6312);
-      
-      float streakTravel1 = fract(maskDist * 2.2 - uTime * (5.0 + ray1 * 4.0));
-      float streakTravel2 = fract(maskDist * 3.0 - uTime * (6.5 + ray2 * 5.0));
-      
-      float shape1 = smoothstep(0.0, 0.12, streakTravel1) * smoothstep(0.70, 0.12, streakTravel1);
-      float shape2 = smoothstep(0.0, 0.10, streakTravel2) * smoothstep(0.60, 0.10, streakTravel2);
-      
-      float streak1 = step(0.74, ray1) * shape1 * (ray1 - 0.74) * 3.8;
-      float streak2 = step(0.80, ray2) * shape2 * (ray2 - 0.80) * 5.0;
-      
-      float totalStreak = (streak1 + streak2) * blurMask * uStrength;
+      // [티어 1: 70~110 km/h] 얇고 섬세한 공기 기류선 (Soft Aero Stream)
+      float ray1 = fract(sin(floor(angle * 60.0) * 12.9898 + 45.1) * 43758.5453);
+      float travel1 = fract(maskDist * 2.0 - uTime * (4.2 + ray1 * 3.0));
+      float shape1 = smoothstep(0.0, 0.12, travel1) * smoothstep(0.70, 0.12, travel1);
+      float streak1 = smoothstep(0.82, 0.96, ray1) * shape1 * 2.2 * smoothstep(0.02, 0.22, uStrength);
 
-      // 100km/h: 쿨 아이스 에어로 스카이블루 / 200km/h+: 순백색 코어 + 하이퍼 크림슨
-      vec3 streakColor = mix(
-        vec3(0.75, 0.92, 1.0),
-        vec3(1.0, 0.35, 0.25),
-        smoothstep(0.45, 0.90, uStrength)
-      );
+      // [티어 2: 110~160 km/h] 뚜렷하고 경쾌한 네온 가속선 (Crisp Dynamic Lines)
+      float ray2 = fract(sin(floor(angle * 105.0 + 19.0) * 78.233 + 12.3) * 23421.6312);
+      float travel2 = fract(maskDist * 2.7 - uTime * (5.8 + ray2 * 4.2));
+      float shape2 = smoothstep(0.0, 0.10, travel2) * smoothstep(0.60, 0.10, travel2);
+      float streak2 = smoothstep(0.78, 0.92, ray2) * shape2 * 3.4 * smoothstep(0.20, 0.52, uStrength);
 
-      vec3 finalColor = accumColor.rgb + streakColor * totalStreak * 1.5;
+      // [티어 3: 160~220 km/h+] 초고속 하이퍼 코어 스트릭 (Intense Hyper Streak)
+      float ray3 = fract(sin(floor(angle * 165.0 + 51.0) * 45.312 + 89.1) * 31415.9265);
+      float travel3 = fract(maskDist * 3.4 - uTime * (7.6 + ray3 * 5.5));
+      float shape3 = smoothstep(0.0, 0.08, travel3) * smoothstep(0.50, 0.08, travel3);
+      float streak3 = smoothstep(0.74, 0.88, ray3) * shape3 * 4.6 * smoothstep(0.50, 0.82, uStrength);
 
-      // 4. 주변부 고속 터널 비네트 (고속 주행 집중도 극대화)
-      float vignette = smoothstep(1.05, 0.38, maskDist * (0.8 + uStrength * 0.45));
-      finalColor = mix(finalColor * 0.72, finalColor, vignette);
+      float totalStreak = (streak1 + streak2 + streak3) * blurMask;
+
+      // 속도 단계별 색상 그라데이션 블렌딩 (스카이블루 -> 퓨어 시안 -> 하이퍼 크림슨)
+      vec3 colLow = vec3(0.68, 0.90, 1.0);
+      vec3 colMid = vec3(0.88, 0.97, 1.0);
+      vec3 colHigh = vec3(1.0, 0.32, 0.22);
+      vec3 streakColor = mix(colLow, colMid, smoothstep(0.18, 0.52, uStrength));
+      streakColor = mix(streakColor, colHigh, smoothstep(0.62, 0.92, uStrength));
+
+      vec3 finalColor = accumColor.rgb + streakColor * totalStreak * (1.1 + uStrength * 0.7);
+
+      // 4. 주변부 고속 터널 비네트 (170km/h 이상에서 점진적 활성화)
+      float vignetteFactor = smoothstep(0.55, 0.95, uStrength);
+      float vignette = smoothstep(1.10, 0.40, maskDist * (0.8 + vignetteFactor * 0.45));
+      finalColor = mix(finalColor * (1.0 - vignetteFactor * 0.28), finalColor, vignette);
 
       gl_FragColor = vec4(finalColor, 1.0);
     }
@@ -131,6 +139,7 @@ export class SpeedFX {
   private elapsedTime: number = 0;
   private tempProjPos: THREE.Vector3 = new THREE.Vector3();
   private quality: MotionBlurQuality = 'HIGH';
+  private smoothStrength: number = 0;
 
   constructor(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.PerspectiveCamera) {
     this.camera = camera;
@@ -169,27 +178,39 @@ export class SpeedFX {
 
   /**
    * 프레임별 속도 및 차량 위치에 따른 셰이더 Uniform 갱신
+   * - 5단계 속도별 목표 강도 세분화 (70 -> 110 -> 155 -> 195+ km/h)
+   * - 프레임 간 지수 보간 스무딩으로 뚝뚝 끊기는 어색함 완전 해소
    */
   public update(delta: number, speedKmh: number, targetVehicle: Vehicle | null): void {
     this.speedKmh = speedKmh;
     this.elapsedTime += delta;
 
-    if (this.quality === 'OFF' || speedKmh < 92) {
-      this.blurPass.uniforms.uStrength.value = 0.0;
-      return;
-    }
-
-    // 100km/h: ~0.32 (뚜렷한 블러와 에어로 스트릭 시작)
-    // 150km/h: ~0.66 (외곽 색수차 및 강한 줌 블러)
-    // 200km/h+: 1.00 (맥시멈 하이퍼스피드 블러)
-    let strength = 0;
-    if (speedKmh < 100) {
-      strength = ((speedKmh - 92) / 8.0) * 0.32;
+    // 5단계 속도별 목표 강도 세분화 (부드러운 smoothstep S-커브 전환)
+    let targetStrength = 0;
+    if (this.quality === 'OFF' || speedKmh < 70) {
+      targetStrength = 0;
+    } else if (speedKmh < 110) {
+      // [1단계: 70 ~ 110 km/h] 0.0 ~ 0.20 (미세한 바람결 기류선 페이드인)
+      targetStrength = THREE.MathUtils.smoothstep(speedKmh, 70, 110) * 0.20;
+    } else if (speedKmh < 155) {
+      // [2단계: 110 ~ 155 km/h] 0.20 ~ 0.50 (선명한 네온 가속선 & 가벼운 줌블러)
+      targetStrength = 0.20 + THREE.MathUtils.smoothstep(speedKmh, 110, 155) * 0.30;
+    } else if (speedKmh < 195) {
+      // [3단계: 155 ~ 195 km/h] 0.50 ~ 0.78 (하이스피드 레이싱 블러 & 색수차)
+      targetStrength = 0.50 + THREE.MathUtils.smoothstep(speedKmh, 155, 195) * 0.28;
     } else {
-      strength = 0.32 + Math.min(1.0, (speedKmh - 100) / 100.0) * 0.68;
+      // [4단계: 195 km/h+] 0.78 ~ 1.00 (초고속 하이퍼스피드 터널 비네트)
+      targetStrength = 0.78 + Math.min(1.0, (speedKmh - 195) / 45.0) * 0.22;
     }
 
-    this.blurPass.uniforms.uStrength.value = strength;
+    // 뚝뚝 끊김 완전 제거: 프레임 간 지수 보간 스무딩 (Exponential Lerp Smoothing)
+    this.smoothStrength = THREE.MathUtils.lerp(
+      this.smoothStrength,
+      targetStrength,
+      Math.min(1.0, 7.5 * delta)
+    );
+
+    this.blurPass.uniforms.uStrength.value = this.smoothStrength;
     this.blurPass.uniforms.uTime.value = this.elapsedTime;
 
     // 차량 3D 위치를 2D 화면 좌표계(UV: 0.0 ~ 1.0)로 투영하여 블러 소실점 센터 실시간 동기화
@@ -213,7 +234,7 @@ export class SpeedFX {
 
   public isActive(): boolean {
     if (this.quality === 'OFF') return false;
-    return this.speedKmh >= 92;
+    return this.smoothStrength > 0.005;
   }
 
   public render(): void {
@@ -226,6 +247,7 @@ export class SpeedFX {
 
   public clear(): void {
     this.speedKmh = 0;
+    this.smoothStrength = 0;
     this.blurPass.uniforms.uStrength.value = 0.0;
   }
 }

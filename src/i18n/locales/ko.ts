@@ -34,7 +34,7 @@ export const ko = {
     blindSpot: '사각지대 경고',
     minimapGps: 'GPS // 트래킹',
     driftStamina: '드리프트 스태미나',
-    skipCutscene: '[SPACE / CLICK] 컷씬 건너뛰기',
+    skipCutscene: '[W/A/S/D] 피트에서 그리드로 직접 운전  |  [SPACE] 즉시 정렬',
   },
   settings: {
     title: '환경 설정',

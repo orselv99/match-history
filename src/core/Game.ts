@@ -14,6 +14,7 @@ import { CollisionManager } from '../game/CollisionManager.ts';
 import { EnvironmentManager, TimeOfDay, WeatherType } from '../game/EnvironmentManager.ts';
 import { MinimapRenderer } from '../game/MinimapRenderer.ts';
 import { CameraController } from './CameraController.ts';
+import { SpeedFX } from '../game/SpeedFX.ts';
 
 export type GameMode = 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO';
 export type RaceState = 'READY' | 'COUNTDOWN' | 'RUNNING' | 'FINISHED';
@@ -78,6 +79,7 @@ export class Game {
   // 카메라 & 환경 전담 매니저
   public cameraController!: CameraController;
   public environmentManager!: EnvironmentManager;
+  public speedFX: SpeedFX;
 
   // 좌/우 백미러 카메라 및 렌더링 상태
   private leftMirrorCamera: THREE.PerspectiveCamera;
@@ -171,6 +173,7 @@ export class Game {
     this.audio = new AudioManager();
     this.lapTimer = new LapTimer(3); // 3랩 완주
     this.recorder = new ReplayRecorder();
+    this.speedFX = new SpeedFX();
 
     this.clock = new THREE.Clock();
 
@@ -339,6 +342,11 @@ export class Game {
 
     // 포커싱 차량을 제외한 나머지 차량 상단에 이름 표시
     this.updateNameTags();
+
+    // 고속 주행 시각화 효과 (100km/h & 200km/h 속도선 및 모션블러 비네트)
+    const focusedVehicle = this.getFocusedVehicle();
+    const currentSpeed = focusedVehicle ? focusedVehicle.getSpeedKmh() : 0;
+    this.speedFX.update(delta, currentSpeed);
 
     // 미니맵 드로잉
     this.drawMinimap();
@@ -611,6 +619,9 @@ export class Game {
   public setMode(mode: GameMode): void {
     this.isPaused = false;
     this.mode = mode;
+    this.speedFX.clear();
+    this.cameraController.camera.fov = 65;
+    this.cameraController.camera.updateProjectionMatrix();
 
     if (mode === 'TITLE') {
       this.audio.pauseEngine();
@@ -852,6 +863,7 @@ export class Game {
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.speedFX.resize();
   }
 
   /**

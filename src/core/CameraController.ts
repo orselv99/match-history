@@ -40,6 +40,28 @@ export class CameraController {
       this.camera.position.z += (Math.random() - 0.5) * this.cameraShakeIntensity * 1.6;
       this.cameraShakeIntensity *= Math.max(0, 1.0 - 7.5 * delta);
     }
+
+    // 100km/h 및 200km/h 초과 시 시각적 속도감 극대화를 위한 다이내믹 FOV 왜곡
+    const speedKmh = targetVehicle.getSpeedKmh();
+    let targetFov = 65;
+    if (speedKmh > 95) {
+      // 100km/h: ~68°, 200km/h: 80°~82°
+      const fovBoost = Math.min(17, (speedKmh - 95) * 0.14);
+      targetFov = 65 + fovBoost;
+    }
+
+    if (Math.abs(this.camera.fov - targetFov) > 0.05) {
+      this.camera.fov += (targetFov - this.camera.fov) * Math.min(1.0, 4.5 * delta);
+      this.camera.updateProjectionMatrix();
+    }
+
+    // 185km/h 초과 시 에어로다이내믹 고속 주행 진동 미세 쉐이크
+    if (speedKmh > 185) {
+      const aeroShake = Math.min(0.045, (speedKmh - 185) * 0.0008);
+      this.camera.position.x += (Math.random() - 0.5) * aeroShake;
+      this.camera.position.y += (Math.random() - 0.5) * aeroShake * 0.7;
+      this.camera.position.z += (Math.random() - 0.5) * aeroShake;
+    }
   }
 
   public triggerShake(intensity: number): void {

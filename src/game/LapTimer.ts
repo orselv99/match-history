@@ -63,29 +63,30 @@ export class LapTimer {
     const dz = carPos.z - targetCp.position.z;
     const distSq = dx * dx + dz * dz;
 
-    if (distSq < targetCp.radius ** 2) {
-      // 1. 역주행 감지: 차량의 이동 방향이 트랙 진행 방향과 일치하는지 확인
-      if (targetCp.direction) {
-        const moveX = carPos.x - this.prevCarPos.x;
-        const moveZ = carPos.z - this.prevCarPos.z;
-        const moveDistSq = moveX * moveX + moveZ * moveZ;
-        if (moveDistSq > 0.0001) {
-          const fwdDot = moveX * targetCp.direction.x + moveZ * targetCp.direction.z;
-          if (fwdDot <= 0) {
-            // 역주행 중에는 체크포인트 통과 불인정
-            this.prevCarPos.copy(carPos);
-            return;
-          }
-        }
+    const dirX = targetCp.direction ? targetCp.direction.x : 0;
+    const dirZ = targetCp.direction ? targetCp.direction.z : 1;
 
-        // 2. 게이트 통과 검증: 반경에 진입했더라도 게이트 라인(-1.2m)에 도달하기 전 조기 트리거 방지
-        const distAlong = dx * targetCp.direction.x + dz * targetCp.direction.z;
-        if (distAlong < -1.2) {
-          this.prevCarPos.copy(carPos);
-          return;
-        }
-      }
+    // 현재 프레임 및 직전 프레임의 게이트 축 투영 거리 계산
+    const currDistAlong = dx * dirX + dz * dirZ;
+    const currDistLateral = Math.abs(-dx * dirZ + dz * dirX);
 
+    // 게이트 좌우 폭(트랙 폭 반경) 내 주행 여부 검증
+    if (currDistLateral > targetCp.radius) {
+      this.prevCarPos.copy(carPos);
+      return;
+    }
+
+    const prevDx = this.prevCarPos.x - targetCp.position.x;
+    const prevDz = this.prevCarPos.z - targetCp.position.z;
+    const prevDistAlong = prevDx * dirX + prevDz * dirZ;
+
+    // 1. 역주행 및 게이트 평면 통과(Plane-crossing) 엄격 판정:
+    // 직전 프레임은 게이트 진입부(<= 0.3m), 현재 프레임은 진출부(>= -0.3m)이며 정방향 전진일 때만 인정
+    const isMovingForward = (currDistAlong - prevDistAlong) > 0.001;
+    const isCrossingPlane = prevDistAlong <= 0.3 && currDistAlong >= -0.3;
+    const isWithinSpeedWindow = prevDistAlong > -8.0 && currDistAlong < 8.0;
+
+    if (isMovingForward && isCrossingPlane && isWithinSpeedWindow) {
       // 첫 랩 시작: 그리드에서 출발하여 첫 출발선 통과 시 랩 타이머 0초 초기화 (알림 제외)
       if (!this.hasPassedStartLine && targetCp.id === 0) {
         this.hasPassedStartLine = true;
@@ -129,7 +130,8 @@ export class LapTimer {
     this.currentLap = 1;
     this.currentLapTimeMs = 0;
     this.totalTimeMs = 0;
-    this.nextCheckpointIndex = 1;
+    this.nextCheckpointIndex = 0;
+    this.hasPassedStartLine = false;
     this.lastCheckpointTimestamp = 0;
     this.currentSectorIndex = 0;
     this.currentSectorTimes = [0, 0, 0];

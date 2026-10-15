@@ -532,7 +532,7 @@ export class Game {
     if (this.raceState === 'FINISHED') {
       this.audio.pauseEngine();
     } else {
-      this.audio.update(targetVehicle.getSpeedKmh(), false, isRunning ? 0.9 : 0.0);
+      this.audio.update(targetVehicle.getSpeedKmh(), targetVehicle.isDrifting, isRunning ? 0.9 : 0.0);
     }
 
     this.emitUIState();
@@ -798,7 +798,9 @@ export class Game {
         : this.formatTime(this.lapTimer.currentLapTimeMs),
       bestLapTimeStr: this.lapTimer.bestLapMs !== Infinity ? this.formatTime(this.lapTimer.bestLapMs) : '--:--.---',
       sectorsMs: this.lapTimer.currentSectorTimes,
-      isDrifting: this.mode === 'DRIVING' ? this.playerVehicle.isDrifting : false,
+      isDrifting: this.mode === 'DRIVING'
+        ? this.playerVehicle.isDrifting
+        : (this.mode === 'DEMO' ? (this.aiManager.agents[0]?.vehicle.isDrifting ?? false) : false),
       gameMode: this.mode,
       raceState: this.raceState,
       countdownText,

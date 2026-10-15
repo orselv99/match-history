@@ -24,6 +24,8 @@ export interface AICarAgent {
   hasPassedStartLine: boolean; // 첫 랩 출발선 통과 여부 (출발선 이전 그리드 스폰 대응)
   lastSectorTimeMs: number;
   currentSectorIndex: number;
+  driftTimer: number;      // 코너 드리프트 지속 타이머
+  steerDir: number;        // 드리프트/선회 조향 방향 (-1: 좌, 1: 우)
 }
 
 /**
@@ -62,7 +64,7 @@ export class AICarManager {
       vehicle.setNameTag(cfg.name, cfg.color);
 
       // 차량 기본 속도를 대등하게 정규화하여 성능 격차로 인한 일방적 독주 방지
-      const balancedBase = 48.0 + (idx === 1 ? 0.4 : idx === 3 ? 0.2 : -0.2);
+      const balancedBase = 49.0;
 
       this.agents.push({
         id: cfg.id,
@@ -72,18 +74,20 @@ export class AICarManager {
         prevT: 0,
         speedMs: 0,
         baseSpeedMs: balancedBase,
-        maxSpeedMs: balancedBase + 9.5,
+        maxSpeedMs: balancedBase + 10.0,
         laneOffset: cfg.laneOffset,
         targetLaneOffset: cfg.laneOffset,
         color: cfg.color,
         currentLap: 1,
         isFinished: false,
-        attackTimer: idx * 2.0, // 초기 모멘텀 시차 분산
-        attackCooldown: 3.5 + idx * 2.5,
+        attackTimer: idx * 1.5, // 초기 모멘텀 시차 분산
+        attackCooldown: 2.5 + idx * 2.0,
         isDrafting: false,
         hasPassedStartLine: false,
         lastSectorTimeMs: 0,
         currentSectorIndex: 0,
+        driftTimer: 0,
+        steerDir: 0,
       });
 
       this.group.add(vehicle.mesh);
@@ -150,6 +154,8 @@ export class AICarManager {
       agent.attackTimer = idx * 1.8;
       agent.attackCooldown = 3.0 + idx * 2.2;
       agent.isDrafting = false;
+      agent.driftTimer = 0;
+      agent.steerDir = 0;
 
       // 그리드 박스 위치에 차량 스폰 (Y: 0.055m 지면 밀착)
       const gridPos = this.track.getGridPosition(idx);
@@ -219,6 +225,14 @@ export class AICarManager {
     this.agents.forEach((agent, idx) => {
       if (!agent.vehicle.mesh.visible) return;
 
+      // 트랙 코너 곡률 및 선회 방향 사전 계산 (추월 라인 선정 및 드리프트 판단)
+      const futureT = (agent.t + 0.016) % 1.0;
+      const currTangent = this.track.trackCurve.getTangentAt(agent.t);
+      const futureTangent = this.track.trackCurve.getTangentAt(futureT);
+      const curveAngle = currTangent.angleTo(futureTangent);
+      const turnCrossY = currTangent.x * futureTangent.z - currTangent.z * futureTangent.x;
+      const turnDir = turnCrossY > 0.001 ? 1 : (turnCrossY < -0.001 ? -1 : 0);
+
       if (agent.isFinished) {
         // 완주 후 서서히 감속
         agent.speedMs = Math.max(0, agent.speedMs - 15.0 * delta);
@@ -233,90 +247,102 @@ export class AICarManager {
           let dt = other.t - agent.t;
           if (dt < 0) dt += 1.0;
           const dist = dt * trackLength;
-          if (dist > 0.5 && dist < 50.0 && dist < nearestAheadDist) {
+          if (dist > 0.3 && dist < 60.0 && dist < nearestAheadDist) {
             nearestAheadDist = dist;
             carAhead = other;
           }
         }
 
-        // 2. 어택 모멘텀 버스트 타이머 업데이트 (주기적인 공격적 페이스 업)
+        // 2. 어택 모멘텀 버스트 타이머 업데이트 (빈번한 공격적 순위 쟁탈 페이스)
         if (agent.attackTimer > 0) {
           agent.attackTimer -= delta;
         } else {
           agent.attackCooldown -= delta;
           if (agent.attackCooldown <= 0) {
-            // 새로운 어택 모멘텀 발동 (4~7초간 가속 부스트 및 적극적 추월 라인 공략)
-            agent.attackTimer = 4.2 + Math.random() * 3.2;
-            agent.attackCooldown = 7.0 + Math.random() * 5.0;
+            agent.attackTimer = 3.5 + Math.random() * 3.0; // 3.5~6.5초간 어택 모멘텀
+            agent.attackCooldown = 3.0 + Math.random() * 4.0;
           }
         }
 
-        // 3. 동적 레이스 보너스 속도 계산 (슬립스트림 + 어택 모멘텀 + 팩 압축)
+        // 3. 동적 레이스 보너스 속도 계산 (슬립스트림 + 어택 모멘텀 + 팩 압축 초접전)
         let dynamicBonus = 0;
 
-        // A. 어택 모멘텀 부스트
+        // A. 어택 모멘텀 부스트 (+4.5 m/s)
         if (agent.attackTimer > 0) {
-          dynamicBonus += 4.2;
+          dynamicBonus += 4.5;
         }
 
-        // B. 슬립스트림 견인 가속 (전방 32m 이내 추격 시 공기 저항 감소 가속)
+        // B. 슬립스트림 견인 가속 (전방 38m 이내 추격 시 강력한 가속)
         agent.isDrafting = false;
-        if (carAhead && nearestAheadDist < 32.0) {
-          const latDiff = Math.abs(agent.laneOffset - carAhead.laneOffset);
-          if (latDiff < 2.5) {
-            agent.isDrafting = true;
-            // 가까워질수록 최대 +7.5 m/s까지 강력한 가속 부스트
-            const draftFactor = 1.0 - (nearestAheadDist / 32.0);
-            dynamicBonus += 2.8 + draftFactor * 5.2;
-          }
+        if (carAhead && nearestAheadDist < 38.0) {
+          agent.isDrafting = true;
+          const draftFactor = 1.0 - (nearestAheadDist / 38.0);
+          dynamicBonus += 3.2 + draftFactor * 5.8;
 
-          // C. 능동적 추월 차선 기동 (16m 이내 접근 시 전방 차량 빈 차선으로 날카롭게 스위칭)
-          if (nearestAheadDist < 16.0) {
-            if (carAhead.laneOffset <= 0) {
-              agent.targetLaneOffset = 2.4; // 우측 추월 레인
+          // C. 능동적 추월 차선 기동 (20m 이내 접근 시 슬링샷 스위칭)
+          if (nearestAheadDist < 20.0) {
+            // 코너 선회 중이면 인코너 다이브, 직선주로면 반대 차선 추월
+            if (turnDir !== 0) {
+              agent.targetLaneOffset = turnDir > 0 ? 2.4 : -2.4;
             } else {
-              agent.targetLaneOffset = -2.4; // 좌측 추월 레인
+              agent.targetLaneOffset = carAhead.laneOffset <= 0 ? 2.4 : -2.4;
             }
           }
         } else {
-          // 전방 자유 주행 시: 주기적인 최적 레이싱 라인 스윙
-          if (Math.random() < 0.015) {
-            agent.targetLaneOffset = (Math.random() * 4.6) - 2.3;
+          // 전방 클리어 주행 시 최적 레이싱 라인 스윙
+          if (Math.random() < 0.02) {
+            agent.targetLaneOffset = (Math.random() * 4.4) - 2.2;
           }
         }
 
-        // D. 팽팽한 레이스 팩 유지 (선두 독주 방지 및 후미 차량 캐치업 텐션)
-        if (leader === agent && nearestAheadDist > 150.0) {
-          // 선두 독주 차량: 정면 공기 저항 및 타이어 관리로 페이스 소폭 조절
-          dynamicBonus -= 2.0;
-        } else if (leader !== agent) {
+        // D. 팽팽한 레이스 팩 유지 (선두 독주 견제 및 후미 차량 캐치업 러버밴딩)
+        if (leader === agent) {
+          let distBehindLeader = Infinity;
+          for (const other of this.agents) {
+            if (other === agent || !other.vehicle.mesh.visible || other.isFinished) continue;
+            let dt = agent.t - other.t;
+            if (dt < 0) dt += 1.0;
+            const dist = dt * trackLength;
+            if (dist < distBehindLeader) distBehindLeader = dist;
+          }
+          if (distBehindLeader > 8.0 && distBehindLeader < 250.0) {
+            // 선두가 8m 이상 벌리면 페이스 조절로 팩을 묶음
+            dynamicBonus -= Math.min(4.5, (distBehindLeader - 8.0) * 0.25);
+          }
+        } else {
           let distToLeader = leader.t - agent.t;
           if (distToLeader < 0) distToLeader += 1.0;
           const mToLeader = distToLeader * trackLength;
-          if (mToLeader > 22.0) {
+          if (mToLeader > 8.0) {
             // 후미 차량 팩 합류 캐치업 부스트
-            dynamicBonus += Math.min(5.5, (mToLeader - 22.0) * 0.16);
+            dynamicBonus += Math.min(6.5, (mToLeader - 8.0) * 0.22);
           }
         }
 
-        // 4. 코너 곡률에 따른 가감속 (인사이드 라인은 후기 제동, 아웃사이드 라인은 탈출 가속)
-        const futureT = (agent.t + 0.02) % 1.0;
-        const currTangent = this.track.trackCurve.getTangentAt(agent.t);
-        const futureTangent = this.track.trackCurve.getTangentAt(futureT);
-        const curveAngle = currTangent.angleTo(futureTangent);
+        // 4. 코너 진입 시 드리프트 트리거 및 가감속
+        if (curveAngle > 0.11 && agent.speedMs > 20.0) {
+          agent.driftTimer = Math.max(agent.driftTimer, 0.7 + curveAngle * 2.2);
+          agent.steerDir = turnDir !== 0 ? turnDir : (agent.steerDir || 1);
+        }
+
+        if (agent.driftTimer > 0) {
+          agent.driftTimer -= delta;
+          agent.vehicle.isDrifting = agent.speedMs > 16.0;
+        } else {
+          agent.vehicle.isDrifting = false;
+        }
 
         const basePace = agent.baseSpeedMs + dynamicBonus;
-        const targetSpeed = curveAngle > 0.30 ? basePace * 0.70 : basePace * 1.16;
+        const targetSpeed = curveAngle > 0.22
+          ? basePace * 0.76
+          : (curveAngle > 0.10 ? basePace * 0.88 : basePace * 1.18);
 
         // 가속 반응성 (추월/어택 시 민첩한 스로틀 반응)
-        const accelRate = agent.isDrafting || agent.attackTimer > 0 ? 5.2 : 3.6;
+        const accelRate = agent.isDrafting || agent.attackTimer > 0 ? 5.5 : 3.8;
         agent.speedMs += (targetSpeed - agent.speedMs) * Math.min(1.0, accelRate * delta);
 
-        // 고속 급선회 시 AI 차량 드리프트 활성화
-        agent.vehicle.isDrifting = curveAngle > 0.32 && agent.speedMs > 24.0;
-
         // 레인 스티어링 (추월 기동 시 신속한 차선 전환)
-        const steerRate = (agent.isDrafting || nearestAheadDist < 16.0) ? 3.6 : 2.0;
+        const steerRate = (agent.isDrafting || nearestAheadDist < 20.0) ? 3.8 : 2.2;
         agent.laneOffset += (agent.targetLaneOffset - agent.laneOffset) * Math.min(1.0, steerRate * delta);
       }
 
@@ -363,7 +389,7 @@ export class AICarManager {
       }
 
       // 7. 위치 및 방향 계산
-      this.updateAgentPosition(agent, delta);
+      this.updateAgentPosition(agent, delta, curveAngle);
     });
   }
 
@@ -374,7 +400,7 @@ export class AICarManager {
     }
   }
 
-  private updateAgentPosition(agent: AICarAgent, delta: number): void {
+  private updateAgentPosition(agent: AICarAgent, delta: number, curveAngle: number): void {
     const pt = this.track.trackCurve.getPointAt(agent.t);
     const tangent = this.track.trackCurve.getTangentAt(agent.t).normalize();
     const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
@@ -389,7 +415,13 @@ export class AICarManager {
 
     const heading = Math.atan2(tangent.x, tangent.z);
     agent.vehicle.heading = heading;
-    agent.vehicle.mesh.rotation.y = heading;
+
+    // 드리프트 차체 슬립 각도 및 롤링 반영 (시각적 역동성)
+    const targetSlip = agent.vehicle.isDrifting ? -agent.steerDir * 0.32 : 0;
+    agent.vehicle.slipAngle += (targetSlip - agent.vehicle.slipAngle) * Math.min(1.0, 10.0 * delta);
+
+    agent.vehicle.mesh.rotation.y = heading + agent.vehicle.slipAngle;
+    agent.vehicle.mesh.rotation.z = agent.vehicle.isDrifting ? agent.steerDir * 0.05 : 0;
     agent.vehicle.speed = agent.speedMs;
 
     // 바퀴 회전 애니메이션
@@ -398,6 +430,26 @@ export class AICarManager {
     agent.vehicle.frontRightWheel.rotation.x += wheelRotSpeed;
     agent.vehicle.rearLeftWheel.rotation.x += wheelRotSpeed;
     agent.vehicle.rearRightWheel.rotation.x += wheelRotSpeed;
+
+    // 앞바퀴 조향 각도 (드리프트 시 카운터 스티어링, 일반 선회 시 코너 조향)
+    const steerAngle = agent.vehicle.isDrifting
+      ? agent.steerDir * 0.38
+      : -agent.steerDir * Math.min(0.35, curveAngle * 1.8);
+    agent.vehicle.frontLeftWheel.rotation.y = steerAngle;
+    agent.vehicle.frontRightWheel.rotation.y = steerAngle;
+
+    // 브레이크등/드리프트 후방 램프 점등
+    const isBrakingOrDrifting = agent.vehicle.isDrifting || (curveAngle > 0.22 && agent.speedMs > 30.0);
+    if (agent.vehicle.brakeLightMaterial) {
+      agent.vehicle.brakeLightMaterial.emissiveIntensity = isBrakingOrDrifting ? 3.2 : 0.2;
+    }
+    const tailIntensity = isBrakingOrDrifting ? 3.0 : 0;
+    if (agent.vehicle.leftTailPointLight) {
+      agent.vehicle.leftTailPointLight.intensity = tailIntensity;
+    }
+    if (agent.vehicle.rightTailPointLight) {
+      agent.vehicle.rightTailPointLight.intensity = tailIntensity;
+    }
   }
 
   /**

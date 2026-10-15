@@ -45,7 +45,7 @@ export class Vehicle {
   public frontRightWheel!: THREE.Mesh;
   public rearLeftWheel!: THREE.Mesh;
   public rearRightWheel!: THREE.Mesh;
-  private brakeLightMaterial!: THREE.MeshStandardMaterial;
+  public brakeLightMaterial!: THREE.MeshStandardMaterial;
   public bodyMaterial!: THREE.MeshStandardMaterial;
   public currentModelId: string = 'gt_turbo';
 
@@ -58,7 +58,7 @@ export class Vehicle {
   public leftTailPointLight!: THREE.PointLight;
   public rightTailPointLight!: THREE.PointLight;
   public tailPointLight!: THREE.PointLight;
-  public headlightsEnabled: boolean = true;
+  public headlightsEnabled: boolean = false;
   public bodyColorHex: number = 0xef4444;
   public driverName: string = '';
   public nameTagColorHex?: number;

@@ -234,8 +234,8 @@ export class AICarManager {
       const turnDir = turnCrossY > 0.001 ? 1 : (turnCrossY < -0.001 ? -1 : 0);
 
       if (agent.isFinished || this.isAllFinished) {
-        // 완주 후에도 멈추지 않고 쿨다운 랩(약 115~125 km/h)으로 계속 역동적으로 주행
-        const cooldownSpeed = 33.0 + (idx % 2 === 0 ? 1.5 : -1.5);
+        // 완주 후에도 멈추지 않고 쿨다운 랩(약 65 km/h)으로 계속 역동적으로 주행
+        const cooldownSpeed = 18.0 + (idx % 2 === 0 ? 1.0 : -1.0);
         agent.speedMs += (cooldownSpeed - agent.speedMs) * Math.min(1.0, 3.0 * delta);
         agent.vehicle.isDrifting = false;
         agent.driftTimer = 0;

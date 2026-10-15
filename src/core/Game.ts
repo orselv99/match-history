@@ -323,14 +323,13 @@ export class Game {
     this.raceState = 'START_CUTSCENE';
     this.startCutsceneTimer = 0;
 
-    const grid0 = this.track.getGridPosition(0);
     const halfW = this.track.trackWidth / 2;
-    const pitLaneX = -(halfW + 5.5);
+    // 피트 가레지 2번 베이 출구(-38.0m) 위치에서 출차 개시
+    const garageExit = this.track.getStartStraightWorldPosition(-(halfW + 8.2), -38.0);
 
-    // 슬롯 0 차량(플레이어 또는 데모 차량)을 피트 출구(-24.0m) 위치에 배치
     const vehicle = this.mode === 'DEMO' ? (this.aiManager.agents[0]?.vehicle || this.playerVehicle) : this.playerVehicle;
-    vehicle.reset(new THREE.Vector3(pitLaneX, 0.055, -24.0), 0);
-    vehicle.speed = 11.0;
+    vehicle.reset(garageExit.position, garageExit.heading + 0.32);
+    vehicle.speed = 8.0;
 
     if (this.mode === 'DRIVING') {
       this.aiManager.resetToGrids(true);
@@ -348,32 +347,45 @@ export class Game {
     this.startCutsceneTimer += delta;
     const progress = Math.min(1.0, this.startCutsceneTimer / this.startCutsceneDuration);
     const vehicle = this.mode === 'DEMO' ? (this.aiManager.agents[0]?.vehicle || this.playerVehicle) : this.playerVehicle;
-    const grid0 = this.track.getGridPosition(0);
     const halfW = this.track.trackWidth / 2;
-    const pitLaneX = -(halfW + 5.5);
 
-    // 1. 피트 레인 직진 -> 트랙 진입 및 그리드 1번 슬롯 정렬 궤적 연산
-    if (progress < 0.45) {
-      const p1 = progress / 0.45;
-      vehicle.position.x = pitLaneX;
-      vehicle.position.z = THREE.MathUtils.lerp(-24.0, -12.0, p1);
-      vehicle.heading = grid0.heading;
-      vehicle.speed = 11.0;
+    let curLocalX = -(halfW + 5.5);
+    let curLocalZ = -4.5;
+    let headingOffset = 0.0;
+
+    // 1. 레이싱팀 피트 가레지 출차 -> 피트 레인 주행 -> 트랙 합류 및 폴 포지션(1번 슬롯) 정렬
+    if (progress < 0.30) {
+      const p1 = progress / 0.30;
+      const ease1 = p1 * p1;
+      curLocalX = THREE.MathUtils.lerp(-(halfW + 8.2), -(halfW + 5.5), ease1);
+      curLocalZ = THREE.MathUtils.lerp(-38.0, -26.0, p1);
+      headingOffset = THREE.MathUtils.lerp(0.32, 0.0, ease1);
+      vehicle.speed = 9.0;
+    } else if (progress < 0.65) {
+      const p2 = (progress - 0.30) / 0.35;
+      curLocalX = -(halfW + 5.5);
+      curLocalZ = THREE.MathUtils.lerp(-26.0, -16.0, p2);
+      headingOffset = 0.0;
+      vehicle.speed = 10.0;
     } else if (progress < 0.88) {
-      const p2 = (progress - 0.45) / 0.43;
-      const ease = 0.5 - 0.5 * Math.cos(p2 * Math.PI);
-      vehicle.position.x = THREE.MathUtils.lerp(pitLaneX, grid0.position.x, ease);
-      vehicle.position.z = THREE.MathUtils.lerp(-12.0, grid0.position.z, ease);
-      vehicle.heading = grid0.heading + Math.sin(p2 * Math.PI) * 0.18;
-      vehicle.speed = THREE.MathUtils.lerp(11.0, 3.0, ease);
+      const p3 = (progress - 0.65) / 0.23;
+      const ease3 = 0.5 - 0.5 * Math.cos(p3 * Math.PI);
+      curLocalX = THREE.MathUtils.lerp(-(halfW + 5.5), -2.2, ease3);
+      curLocalZ = THREE.MathUtils.lerp(-16.0, -4.5, ease3);
+      headingOffset = Math.sin(p3 * Math.PI) * 0.18;
+      vehicle.speed = THREE.MathUtils.lerp(10.0, 3.0, ease3);
     } else {
-      const p3 = (progress - 0.88) / 0.12;
-      vehicle.position.x = grid0.position.x;
-      vehicle.position.z = grid0.position.z;
-      vehicle.heading = grid0.heading;
-      vehicle.speed = THREE.MathUtils.lerp(3.0, 0, p3);
+      const p4 = (progress - 0.88) / 0.12;
+      curLocalX = -2.2;
+      curLocalZ = -4.5;
+      headingOffset = 0.0;
+      vehicle.speed = THREE.MathUtils.lerp(3.0, 0, p4);
     }
 
+    // 트랙 3D 월드 좌표 및 각도로 변환
+    const worldState = this.track.getStartStraightWorldPosition(curLocalX, curLocalZ);
+    vehicle.position.copy(worldState.position);
+    vehicle.heading = worldState.heading + headingOffset;
     vehicle.mesh.position.copy(vehicle.position);
     vehicle.mesh.rotation.set(0, vehicle.heading, 0);
 
@@ -385,9 +397,7 @@ export class Game {
     vehicle.rearRightWheel.rotation.x += wheelRot;
 
     // 조향 각도 (피트 탈출 시 조향 휠 꺾임)
-    const steerAngle = (progress >= 0.45 && progress < 0.88)
-      ? -Math.sin(((progress - 0.45) / 0.43) * Math.PI) * 0.25
-      : 0;
+    const steerAngle = -headingOffset * 1.5;
     vehicle.frontLeftWheel.rotation.y = steerAngle;
     vehicle.frontRightWheel.rotation.y = steerAngle;
 
@@ -467,8 +477,10 @@ export class Game {
     this.updateNameTags();
 
     // 고속 주행 시각화 효과 (100km/h & 200km/h 속도선 및 방사형 환경 블러)
+    // 컷씬(START_CUTSCENE 및 FINISHED) 중에는 속도선을 꺼서 차량 및 배경 시야 완벽 확보
     const focusedVehicle = this.getFocusedVehicle();
-    const currentSpeed = focusedVehicle ? focusedVehicle.getSpeedKmh() : 0;
+    const isCutscene = this.raceState === 'START_CUTSCENE' || this.raceState === 'FINISHED';
+    const currentSpeed = (focusedVehicle && !isCutscene) ? focusedVehicle.getSpeedKmh() : 0;
     this.speedFX.update(delta, currentSpeed, focusedVehicle);
 
     // 미니맵 드로잉
@@ -513,15 +525,23 @@ export class Game {
     }
 
     const isRunning = this.raceState === 'RUNNING';
+    const isFinished = this.raceState === 'FINISHED';
 
     // 트랙 이탈 감지 (오프로드 마찰 저항)
     const distFromCenter = this.track.getDistanceFromCenter(this.playerVehicle.position);
     const isOffroad = distFromCenter > (this.track.trackWidth / 2 + 1.2);
 
-    // 레이스 시작 전에는 스로틀 입력 락 (엔진 공회전 RPM만 가능)
-    const activeThrottle = isRunning ? this.input.throttle : 0;
-    const activeBrake = isRunning ? this.input.brake : 0;
-    const activeSteer = isRunning ? this.input.steer : 0;
+    // 레이스 시작 전에는 스로틀 입력 락 (엔진 공회전 RPM만 가능), 완주 시에는 쿨다운 순항
+    let activeThrottle = isRunning ? this.input.throttle : 0;
+    let activeBrake = isRunning ? this.input.brake : 0;
+    let activeSteer = isRunning ? this.input.steer : 0;
+
+    if (isFinished) {
+      // 완주 컷씬: 결승선 통과 후 쿨다운 랩 자동 순항 (약 65 km/h)
+      activeThrottle = this.playerVehicle.speed < 18.0 ? 0.35 : 0;
+      activeBrake = this.playerVehicle.speed > 21.0 ? 0.2 : 0;
+      activeSteer = 0;
+    }
 
     // 차량 물리 업데이트
     this.playerVehicle.update(
@@ -529,12 +549,12 @@ export class Game {
       activeThrottle,
       activeBrake,
       activeSteer,
-      this.input.handbrake,
+      isFinished ? false : this.input.handbrake,
       isOffroad
     );
 
-    // 라이벌 AI 차량 업데이트 (3대 그리드 경쟁)
-    this.aiManager.update(delta, isRunning);
+    // 라이벌 AI 차량 업데이트 (3대 그리드 경쟁 및 완주 후 쿨다운 주행)
+    this.aiManager.update(delta, isRunning || isFinished);
 
     // 활성 차량 수집 (플레이어 + 라이벌 AI)
     const activeCars = [
@@ -610,7 +630,8 @@ export class Game {
 
   private updateDemo(delta: number, deltaMs: number): void {
     const isRunning = this.raceState === 'RUNNING';
-    this.aiManager.update(delta, isRunning);
+    const isFinished = this.raceState === 'FINISHED';
+    this.aiManager.update(delta, isRunning || isFinished);
 
     // 처음에 설정한 플레이어 차량(슬롯 0)을 타겟으로 고정 추적
     const playerAgent = this.aiManager.agents[0];

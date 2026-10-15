@@ -97,7 +97,9 @@ export class CameraController {
   }
 
   /**
-   * 레이스 완주 컷씬 카메라: 1등 차량을 화면 좌측에 배치하여 우측 결과 모달과 겹치지 않도록 구도 연출
+   * 레이스 완주 컷씬 카메라:
+   * - 사용자 요청: 차량을 정면(FRONT)에서 마주보며 촬영
+   * - 1등 차량을 화면 좌측에 정확히 배치하여 우측 결과 모달과 겹치지 않도록 연출
    */
   public updateFinishCutscene(delta: number, winnerVehicle: Vehicle): void {
     const heading = winnerVehicle.heading;
@@ -107,25 +109,27 @@ export class CameraController {
     const rightX = cosH;
     const rightZ = -sinH;
 
-    // 카메라는 차량 뒤쪽 살짝 우측에 위치하여 전방을 주시
+    // 카메라는 차량 전방(+6.0m) 살짝 좌측(-0.8m)에 위치하여 정면을 마주봄
     const targetCamPos = new THREE.Vector3(
-      winnerVehicle.position.x - sinH * 7.5 + rightX * 2.2,
-      winnerVehicle.position.y + 2.2,
-      winnerVehicle.position.z - cosH * 7.5 + rightZ * 2.2
+      winnerVehicle.position.x + sinH * 6.0 - rightX * 0.8,
+      winnerVehicle.position.y + 1.25,
+      winnerVehicle.position.z + cosH * 6.0 - rightZ * 0.8
     );
 
-    this.camera.position.lerp(targetCamPos, Math.min(1.0, 5.0 * delta));
-
-    // 시선 중심(Target)을 차량 우측(+3.6m)으로 오프셋 -> 화면에서 1등 차량이 완벽하게 좌측에 배치됨!
-    this.cameraLookTarget.set(
-      winnerVehicle.position.x + sinH * 6.0 + rightX * 3.6,
-      winnerVehicle.position.y + 1.1,
-      winnerVehicle.position.z + cosH * 6.0 + rightZ * 3.6
+    // 시선 중심(Target)을 차량 우측(+2.2m)으로 오프셋 -> 화면에서 차량 전면이 완벽하게 좌측에 배치됨!
+    const targetLook = new THREE.Vector3(
+      winnerVehicle.position.x + rightX * 2.2,
+      winnerVehicle.position.y + 0.9,
+      winnerVehicle.position.z + rightZ * 2.2
     );
+
+    // 주행 중인 차량을 놓치지 않도록 밀착 추적
+    this.camera.position.lerp(targetCamPos, Math.min(1.0, 12.0 * delta));
+    this.cameraLookTarget.lerp(targetLook, Math.min(1.0, 12.0 * delta));
     this.camera.lookAt(this.cameraLookTarget);
 
-    if (this.camera.fov !== 60) {
-      this.camera.fov = 60;
+    if (this.camera.fov !== 55) {
+      this.camera.fov = 55;
       this.camera.updateProjectionMatrix();
     }
   }
@@ -140,24 +144,48 @@ export class CameraController {
     const rightX = cosH;
     const rightZ = -sinH;
 
-    // 진행률 0.0~0.5: 피트 출구 로우앵글 트래킹 -> 0.5~1.0: 차량 후방 체이스 카메라로 부드럽게 전환
-    const camDist = 5.0 + (1.0 - progress) * 3.5;
-    const camHeight = 1.4 + progress * 2.5;
-    const sideOffset = (1.0 - progress) * 2.8;
+    // 0.0 ~ 0.35: 피트 출차 전면/측면 로우앵글 -> 0.35 ~ 1.0: 후방 체이스 카메라로 자연스럽게 스윙 전환
+    let targetCamPos: THREE.Vector3;
+    let targetLook: THREE.Vector3;
 
-    const targetCamPos = new THREE.Vector3(
-      car.position.x - sinH * camDist + rightX * sideOffset,
-      car.position.y + camHeight,
-      car.position.z - cosH * camDist + rightZ * sideOffset
-    );
+    if (progress < 0.35) {
+      const p = progress / 0.35;
+      const frontDist = 5.6 - p * 1.2;
+      const sideDist = 3.2 - p * 1.2;
+      targetCamPos = new THREE.Vector3(
+        car.position.x + sinH * frontDist + rightX * sideDist,
+        car.position.y + 1.2 + p * 0.3,
+        car.position.z + cosH * frontDist + rightZ * sideDist
+      );
+      targetLook = new THREE.Vector3(
+        car.position.x,
+        car.position.y + 0.8,
+        car.position.z
+      );
+    } else {
+      const p = (progress - 0.35) / 0.65;
+      const ease = 0.5 - 0.5 * Math.cos(p * Math.PI);
+      const camDist = 5.2 + ease * 1.8;
+      const sideOffset = (1.0 - ease) * 1.8;
+      targetCamPos = new THREE.Vector3(
+        car.position.x - sinH * camDist + rightX * sideOffset,
+        car.position.y + 1.5 + ease * 0.9,
+        car.position.z - cosH * camDist + rightZ * sideOffset
+      );
+      targetLook = new THREE.Vector3(
+        car.position.x + sinH * 4.0,
+        car.position.y + 0.9,
+        car.position.z + cosH * 4.0
+      );
+    }
 
-    this.camera.position.lerp(targetCamPos, Math.min(1.0, 6.0 * delta));
-
-    this.cameraLookTarget.set(
-      car.position.x + sinH * 3.0,
-      car.position.y + 1.0,
-      car.position.z + cosH * 3.0
-    );
+    this.camera.position.lerp(targetCamPos, Math.min(1.0, 10.0 * delta));
+    this.cameraLookTarget.lerp(targetLook, Math.min(1.0, 10.0 * delta));
     this.camera.lookAt(this.cameraLookTarget);
+
+    if (this.camera.fov !== 60) {
+      this.camera.fov = 60;
+      this.camera.updateProjectionMatrix();
+    }
   }
 }

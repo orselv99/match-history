@@ -23,6 +23,7 @@ export class HUDController {
   private driftStaminaBar: HTMLElement | null;
   private driftStaminaValue: HTMLElement | null;
   private cutsceneSkipPrompt: HTMLElement | null;
+  private cinematicBars: HTMLElement | null;
 
   private lapCounter: HTMLElement | null;
   private currentLapTime: HTMLElement | null;
@@ -49,6 +50,7 @@ export class HUDController {
     this.driftStaminaBar = document.getElementById('drift-stamina-bar');
     this.driftStaminaValue = document.getElementById('drift-stamina-value');
     this.cutsceneSkipPrompt = document.getElementById('cutscene-skip-prompt');
+    this.cinematicBars = document.getElementById('cinematic-bars');
 
     this.lapCounter = document.getElementById('lap-counter');
     this.currentLapTime = document.getElementById('current-lap-time');
@@ -188,6 +190,13 @@ export class HUDController {
 
     if (this.cutsceneSkipPrompt) {
       this.cutsceneSkipPrompt.classList.toggle('visible', state.raceState === 'START_CUTSCENE');
+    }
+
+    // 컷씬 (시작 컷씬 및 도착 컷씬) 시네마틱 블랙 레터박스 연출
+    if (this.cinematicBars) {
+      const isCutscene = state.gameMode !== 'TITLE' &&
+        (state.raceState === 'START_CUTSCENE' || state.raceState === 'FINISHED');
+      this.cinematicBars.classList.toggle('active', isCutscene);
     }
 
     // 로비 또는 준비 상태 진입 시 섹터 텍스트 초기화

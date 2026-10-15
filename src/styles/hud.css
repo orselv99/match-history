@@ -690,3 +690,37 @@
   100% { transform: scale(1.0); opacity: 1.0; }
 }
 
+/* =====================================================================
+   시네마틱 레터박스 (Cutscene Cinematic Letterbox Bars)
+   - 시작 컷씬 및 도착 컷씬 시 영화 와이드스크린 효과 연출
+   ===================================================================== */
+.cinematic-bars {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.cinematic-bar {
+  width: 100%;
+  height: 0;
+  background: #000000;
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.85);
+  transition: height 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cinematic-bars.active .cinematic-bar {
+  height: 60px;
+}
+
+@media (max-height: 600px) {
+  .cinematic-bars.active .cinematic-bar {
+    height: 36px;
+  }
+}

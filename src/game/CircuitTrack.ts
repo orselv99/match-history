@@ -286,6 +286,24 @@ export class CircuitTrack {
     return { position, heading };
   }
 
+  /**
+   * 스타트/피니시 라인 기준 로컬 좌표계 (localX: 횡방향, localZ: 종방향)를 3D 월드 좌표로 정확히 변환
+   */
+  public getStartStraightWorldPosition(localX: number, localZ: number): { position: THREE.Vector3; heading: number } {
+    const startPt = this.trackCurve.getPointAt(0);
+    const tangent = this.trackCurve.getTangentAt(0).normalize();
+    const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+    const heading = Math.atan2(tangent.x, tangent.z);
+
+    const position = new THREE.Vector3()
+      .copy(startPt)
+      .addScaledVector(tangent, localZ)
+      .addScaledVector(right, localX);
+    position.y = 0.055;
+
+    return { position, heading };
+  }
+
   private buildCurbs(points: THREE.Vector3[], halfWidth: number): void {
     const curbWidth = 1.3;
     const curbHeight = 0.16;

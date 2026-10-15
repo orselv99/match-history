@@ -29,12 +29,25 @@ export class EnvironmentManager {
   private isFoggy: boolean = false;
   private readonly FOG_PARTICLE_COUNT = 1200;
 
+  // 천체(해/달/별) 및 절차적 3D 구름 시스템
+  private sunGroup!: THREE.Group;
+  private sunCore!: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
+  private sunCorona?: THREE.Sprite;
+  private moonGroup!: THREE.Group;
+  private moonCore!: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
+  private moonCorona?: THREE.Sprite;
+  private starPoints!: THREE.Points;
+  private cloudGroup!: THREE.Group;
+  private clouds: THREE.Group[] = [];
+  private cloudMaterial!: THREE.MeshStandardMaterial;
+
   public currentTimeOfDay: TimeOfDay = 'noon';
   public currentWeatherId: WeatherType = 'clear';
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     this.setupLighting();
+    this.initCelestialAndClouds();
     this.initRainSystem();
     this.initFogSystem();
   }
@@ -72,6 +85,128 @@ export class EnvironmentManager {
         this.dirLight.shadow.map = null as any;
       }
     }
+  }
+
+  private createGlowTexture(innerAlpha: number = 1.0, outerAlpha: number = 0.0): THREE.CanvasTexture | null {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    const grad = ctx.createRadialGradient(64, 64, 4, 64, 64, 64);
+    grad.addColorStop(0, `rgba(255, 255, 255, ${innerAlpha})`);
+    grad.addColorStop(0.35, `rgba(255, 255, 255, ${innerAlpha * 0.5})`);
+    grad.addColorStop(0.7, `rgba(255, 255, 255, ${innerAlpha * 0.15})`);
+    grad.addColorStop(1, `rgba(255, 255, 255, ${outerAlpha})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(canvas);
+  }
+
+  private initCelestialAndClouds(): void {
+    const glowTex = this.createGlowTexture();
+
+    // 1. 태양 (Sun)
+    this.sunGroup = new THREE.Group();
+    const sunGeom = new THREE.SphereGeometry(14, 16, 16);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    this.sunCore = new THREE.Mesh(sunGeom, sunMat);
+    this.sunGroup.add(this.sunCore);
+
+    if (glowTex) {
+      const coronaMat = new THREE.SpriteMaterial({
+        map: glowTex,
+        color: 0xffedd5,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+      });
+      this.sunCorona = new THREE.Sprite(coronaMat);
+      this.sunCorona.scale.set(70, 70, 1);
+      this.sunGroup.add(this.sunCorona);
+    }
+    this.scene.add(this.sunGroup);
+
+    // 2. 달 (Moon)
+    this.moonGroup = new THREE.Group();
+    const moonGeom = new THREE.SphereGeometry(10, 16, 16);
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe });
+    this.moonCore = new THREE.Mesh(moonGeom, moonMat);
+    this.moonGroup.add(this.moonCore);
+
+    if (glowTex) {
+      const moonCoronaMat = new THREE.SpriteMaterial({
+        map: glowTex,
+        color: 0x93c5fd,
+        transparent: true,
+        opacity: 0.65,
+        blending: THREE.AdditiveBlending,
+      });
+      this.moonCorona = new THREE.Sprite(moonCoronaMat);
+      this.moonCorona.scale.set(45, 45, 1);
+      this.moonGroup.add(this.moonCorona);
+    }
+    this.scene.add(this.moonGroup);
+
+    // 3. 야간 별자리 (Stars)
+    const starCount = 450;
+    const starGeom = new THREE.BufferGeometry();
+    const starPositions = new Float32Array(starCount * 3);
+    for (let i = 0; i < starCount; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.random() * (Math.PI * 0.42);
+      const r = 260 + Math.random() * 20;
+      starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+      starPositions[i * 3 + 1] = r * Math.cos(phi) + 20;
+      starPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+    }
+    starGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starMat = new THREE.PointsMaterial({
+      color: 0xffffff,
+      size: 1.6,
+      transparent: true,
+      opacity: 0.85,
+    });
+    this.starPoints = new THREE.Points(starGeom, starMat);
+    this.starPoints.visible = false;
+    this.scene.add(this.starPoints);
+
+    // 4. 구름 (Clouds)
+    this.cloudGroup = new THREE.Group();
+    this.cloudMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.9,
+      metalness: 0.05,
+      flatShading: true,
+    });
+
+    const cloudClusterCount = 20;
+    for (let i = 0; i < cloudClusterCount; i++) {
+      const cluster = new THREE.Group();
+      const x = (Math.random() - 0.5) * 480;
+      const y = 80 + Math.random() * 35;
+      const z = (Math.random() - 0.5) * 480;
+      cluster.position.set(x, y, z);
+
+      const puffCount = 4 + Math.floor(Math.random() * 3);
+      for (let p = 0; p < puffCount; p++) {
+        const radius = 9 + Math.random() * 11;
+        const puffGeom = new THREE.SphereGeometry(radius, 7, 6);
+        const puff = new THREE.Mesh(puffGeom, this.cloudMaterial);
+        puff.position.set(
+          (Math.random() - 0.5) * 24,
+          (Math.random() - 0.5) * 6,
+          (Math.random() - 0.5) * 18
+        );
+        puff.scale.set(1.4, 0.75, 1.2);
+        cluster.add(puff);
+      }
+
+      this.cloudGroup.add(cluster);
+      this.clouds.push(cluster);
+    }
+    this.scene.add(this.cloudGroup);
   }
 
   private initRainSystem(): void {
@@ -146,6 +281,24 @@ export class EnvironmentManager {
     this.fogParticles.frustumCulled = false;
     this.fogParticles.visible = false;
     this.scene.add(this.fogParticles);
+  }
+
+  public update(delta: number, focusPos: THREE.Vector3): void {
+    // 1. 구름 천천히 바람 타고 이동 (Seamless Looping)
+    if (this.clouds.length > 0) {
+      const windX = (this.currentWeatherId === 'wind_fog' ? 16.0 : 4.5) * delta;
+      const windZ = 1.2 * delta;
+      for (let i = 0; i < this.clouds.length; i++) {
+        const c = this.clouds[i];
+        c.position.x += windX;
+        c.position.z += windZ;
+        if (c.position.x > 260) c.position.x = -260;
+        if (c.position.z > 260) c.position.z = -260;
+      }
+    }
+
+    // 2. 비 및 안개 파티클 시스템 업데이트
+    this.updateRain(delta, focusPos);
   }
 
   public updateRain(delta: number, focusPos: THREE.Vector3): void {
@@ -371,6 +524,59 @@ export class EnvironmentManager {
     if (this.hemiLight) {
       this.hemiLight.color.setHex(hemiSky);
       this.hemiLight.groundColor.setHex(hemiGround);
+    }
+
+    // 4. 천체(해/달/별) 및 3D 구름 외형 동기화
+    if (timeOfDay === 'morning') {
+      if (this.sunGroup) {
+        this.sunGroup.position.set(220, 55, 75);
+        this.sunCore.material.color.setHex(0xfde047);
+        if (this.sunCorona) this.sunCorona.material.color.setHex(0xfbbf24);
+        this.sunGroup.visible = weather !== 'rain' && weather !== 'wind_fog';
+      }
+      if (this.moonGroup) this.moonGroup.visible = false;
+      if (this.starPoints) this.starPoints.visible = false;
+      if (this.cloudMaterial) this.cloudMaterial.color.setHex(weather === 'rain' ? 0x475569 : 0xfef08a);
+    } else if (timeOfDay === 'noon') {
+      if (this.sunGroup) {
+        this.sunGroup.position.set(80, 240, 70);
+        this.sunCore.material.color.setHex(0xffffff);
+        if (this.sunCorona) this.sunCorona.material.color.setHex(0xffedd5);
+        this.sunGroup.visible = weather !== 'rain' && weather !== 'wind_fog';
+      }
+      if (this.moonGroup) this.moonGroup.visible = false;
+      if (this.starPoints) this.starPoints.visible = false;
+      if (this.cloudMaterial) this.cloudMaterial.color.setHex(weather === 'rain' ? 0x334155 : 0xffffff);
+    } else if (timeOfDay === 'sunset') {
+      if (this.sunGroup) {
+        this.sunGroup.position.set(230, 34, 110);
+        this.sunCore.material.color.setHex(0xf97316);
+        if (this.sunCorona) this.sunCorona.material.color.setHex(0xea580c);
+        this.sunGroup.visible = weather !== 'rain';
+      }
+      if (this.moonGroup) this.moonGroup.visible = false;
+      if (this.starPoints) this.starPoints.visible = false;
+      if (this.cloudMaterial) this.cloudMaterial.color.setHex(weather === 'rain' ? 0x334155 : 0xfb923c);
+    } else if (timeOfDay === 'night') {
+      if (this.sunGroup) this.sunGroup.visible = false;
+      if (this.moonGroup) {
+        this.moonGroup.position.set(70, 160, 50);
+        this.moonGroup.visible = weather !== 'rain';
+      }
+      if (this.starPoints) this.starPoints.visible = weather === 'clear';
+      if (this.cloudMaterial) this.cloudMaterial.color.setHex(0x1e293b);
+    }
+
+    if (weather === 'rain') {
+      if (this.sunGroup) this.sunGroup.visible = false;
+      if (this.moonGroup) this.moonGroup.visible = false;
+      if (this.starPoints) this.starPoints.visible = false;
+      if (this.cloudMaterial) this.cloudMaterial.color.setHex(0x334155);
+    } else if (weather === 'wind_fog') {
+      if (this.sunGroup) this.sunGroup.visible = false;
+      if (this.moonGroup) this.moonGroup.visible = false;
+      if (this.starPoints) this.starPoints.visible = false;
+      if (this.cloudMaterial) this.cloudMaterial.color.setHex(0x94a3b8);
     }
   }
 

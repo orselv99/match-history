@@ -428,8 +428,8 @@ export class Game {
     // 드리프트 스키드마크(검은 고무 자국) 및 타이어 연기 업데이트
     this.skidMarkManager.update(delta, activeCars);
 
-    // 비 날씨 파티클 업데이트
-    this.environmentManager.updateRain(delta, this.playerVehicle.position);
+    // 환경 효과(구름 이동, 비/안개 파티클) 업데이트
+    this.environmentManager.update(delta, this.playerVehicle.position);
 
     if (isRunning) {
       // 랩 타이머 & 체크포인트 판정
@@ -496,8 +496,8 @@ export class Game {
     // 드리프트 스키드마크 및 연기 업데이트
     this.skidMarkManager.update(delta, activeCars);
 
-    // 비 날씨 파티클 업데이트 (플레이어 차량 기준)
-    this.environmentManager.updateRain(delta, targetVehicle.position);
+    // 환경 효과(구름 이동, 비/안개 파티클) 업데이트
+    this.environmentManager.update(delta, targetVehicle.position);
 
     // 데모 중 주행 리플레이 데이터 레코딩 및 플레이어 차량 랩 타이머 갱신
     if (isRunning && playerAgent) {

@@ -18,7 +18,7 @@ import { SpeedFX } from '../game/SpeedFX.ts';
 import { GraphicsSettings, graphicsSettingsManager } from './GraphicsSettingsManager.ts';
 
 export type GameMode = 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO';
-export type RaceState = 'READY' | 'COUNTDOWN' | 'RUNNING' | 'FINISHED';
+export type RaceState = 'READY' | 'START_CUTSCENE' | 'COUNTDOWN' | 'RUNNING' | 'FINISHED';
 
 export interface KeyInputState {
   throttle: boolean;
@@ -38,6 +38,8 @@ export interface GameUIState {
   bestLapTimeStr: string;
   sectorsMs: number[];
   isDrifting: boolean;
+  driftStamina: number;
+  isSpinningOut: boolean;
   gameMode: GameMode;
   raceState: RaceState;
   countdownText?: string;
@@ -76,6 +78,10 @@ export class Game {
   // 카운트다운 타이머
   private countdownTimer: number = 3.0;
   private lastBeepNumber: number = -1;
+
+  // 시작 컷씬 (피트 출차 -> 출발선 정렬)
+  private startCutsceneTimer: number = 0;
+  private readonly startCutsceneDuration: number = 3.6;
 
   // 카메라 & 환경 전담 매니저
   public cameraController!: CameraController;
@@ -185,7 +191,7 @@ export class Game {
     // 초기 모드 설정 (로비 씬 대기)
     this.setMode('TITLE');
 
-    // 키보드/클릭 이벤트 시 오디오 활성화 및 레이스 시작
+    // 키보드/클릭 이벤트 시 오디오 활성화 및 레이스 시작 / 컷씬 건너뛰기
     window.addEventListener('click', (e) => {
       this.audio.init();
       if (this.isPaused) return;
@@ -193,16 +199,24 @@ export class Game {
       if (target?.closest('.modal-overlay') || target?.closest('.title-scene-overlay') || target?.closest('.interactive')) {
         return;
       }
+      if (this.raceState === 'START_CUTSCENE') {
+        this.skipStartCutscene();
+        return;
+      }
       if (this.mode === 'DRIVING' && this.raceState === 'READY') {
-        this.startCountdown();
+        this.startRace(true);
       }
     });
 
     window.addEventListener('keydown', (e) => {
       this.audio.init();
       if (this.isPaused) return;
+      if (this.raceState === 'START_CUTSCENE' && (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyW' || e.code === 'ArrowUp')) {
+        this.skipStartCutscene();
+        return;
+      }
       if (this.mode === 'DRIVING' && this.raceState === 'READY' && e.code !== 'KeyR' && e.code !== 'KeyO' && e.code !== 'Escape') {
-        this.startCountdown();
+        this.startRace(true);
       }
     });
 
@@ -296,8 +310,111 @@ export class Game {
     this.replayPlayer.pause();
   }
 
+  public startRace(withCutscene: boolean = true): void {
+    if (withCutscene) {
+      this.setupStartCutscene();
+    } else {
+      this.resetCarToStart();
+      this.startCountdown();
+    }
+  }
+
+  public setupStartCutscene(): void {
+    this.raceState = 'START_CUTSCENE';
+    this.startCutsceneTimer = 0;
+
+    const grid0 = this.track.getGridPosition(0);
+    const halfW = this.track.trackWidth / 2;
+    const pitLaneX = -(halfW + 5.5);
+
+    // 슬롯 0 차량(플레이어 또는 데모 차량)을 피트 출구(-24.0m) 위치에 배치
+    const vehicle = this.mode === 'DEMO' ? (this.aiManager.agents[0]?.vehicle || this.playerVehicle) : this.playerVehicle;
+    vehicle.reset(new THREE.Vector3(pitLaneX, 0.055, -24.0), 0);
+    vehicle.speed = 11.0;
+
+    if (this.mode === 'DRIVING') {
+      this.aiManager.resetToGrids(true);
+    } else if (this.mode === 'DEMO') {
+      for (let i = 1; i < this.aiManager.agents.length; i++) {
+        const gridPos = this.track.getGridPosition(i);
+        this.aiManager.agents[i].vehicle.reset(gridPos.position, gridPos.heading);
+      }
+    }
+
+    this.cameraController.updateStartCutscene(0.016, vehicle, 0);
+  }
+
+  public updateStartCutscene(delta: number): void {
+    this.startCutsceneTimer += delta;
+    const progress = Math.min(1.0, this.startCutsceneTimer / this.startCutsceneDuration);
+    const vehicle = this.mode === 'DEMO' ? (this.aiManager.agents[0]?.vehicle || this.playerVehicle) : this.playerVehicle;
+    const grid0 = this.track.getGridPosition(0);
+    const halfW = this.track.trackWidth / 2;
+    const pitLaneX = -(halfW + 5.5);
+
+    // 1. 피트 레인 직진 -> 트랙 진입 및 그리드 1번 슬롯 정렬 궤적 연산
+    if (progress < 0.45) {
+      const p1 = progress / 0.45;
+      vehicle.position.x = pitLaneX;
+      vehicle.position.z = THREE.MathUtils.lerp(-24.0, -12.0, p1);
+      vehicle.heading = grid0.heading;
+      vehicle.speed = 11.0;
+    } else if (progress < 0.88) {
+      const p2 = (progress - 0.45) / 0.43;
+      const ease = 0.5 - 0.5 * Math.cos(p2 * Math.PI);
+      vehicle.position.x = THREE.MathUtils.lerp(pitLaneX, grid0.position.x, ease);
+      vehicle.position.z = THREE.MathUtils.lerp(-12.0, grid0.position.z, ease);
+      vehicle.heading = grid0.heading + Math.sin(p2 * Math.PI) * 0.18;
+      vehicle.speed = THREE.MathUtils.lerp(11.0, 3.0, ease);
+    } else {
+      const p3 = (progress - 0.88) / 0.12;
+      vehicle.position.x = grid0.position.x;
+      vehicle.position.z = grid0.position.z;
+      vehicle.heading = grid0.heading;
+      vehicle.speed = THREE.MathUtils.lerp(3.0, 0, p3);
+    }
+
+    vehicle.mesh.position.copy(vehicle.position);
+    vehicle.mesh.rotation.set(0, vehicle.heading, 0);
+
+    // 바퀴 회전
+    const wheelRot = (vehicle.speed / 0.38) * delta;
+    vehicle.frontLeftWheel.rotation.x += wheelRot;
+    vehicle.frontRightWheel.rotation.x += wheelRot;
+    vehicle.rearLeftWheel.rotation.x += wheelRot;
+    vehicle.rearRightWheel.rotation.x += wheelRot;
+
+    // 조향 각도 (피트 탈출 시 조향 휠 꺾임)
+    const steerAngle = (progress >= 0.45 && progress < 0.88)
+      ? -Math.sin(((progress - 0.45) / 0.43) * Math.PI) * 0.25
+      : 0;
+    vehicle.frontLeftWheel.rotation.y = steerAngle;
+    vehicle.frontRightWheel.rotation.y = steerAngle;
+
+    // 카메라 컷씬 트래킹
+    this.cameraController.updateStartCutscene(delta, vehicle, progress);
+
+    // 환경 효과 & 오디오 업데이트
+    this.environmentManager.update(delta, vehicle.position);
+    this.audio.update(vehicle.getSpeedKmh(), false, 0.4);
+    this.emitUIState();
+
+    if (progress >= 1.0) {
+      this.skipStartCutscene();
+    }
+  }
+
+  public skipStartCutscene(): void {
+    if (this.raceState !== 'START_CUTSCENE') return;
+    const grid0 = this.track.getGridPosition(0);
+    const vehicle = this.mode === 'DEMO' ? (this.aiManager.agents[0]?.vehicle || this.playerVehicle) : this.playerVehicle;
+    vehicle.reset(grid0.position, grid0.heading);
+    this.cameraController.updateChase(0.016, vehicle);
+    this.startCountdown();
+  }
+
   public startCountdown(): void {
-    if (this.raceState !== 'READY') return;
+    if (this.raceState === 'COUNTDOWN' || this.raceState === 'RUNNING') return;
     this.raceState = 'COUNTDOWN';
     this.countdownTimer = 3.0;
     this.lastBeepNumber = -1;
@@ -329,17 +446,21 @@ export class Game {
       }
     }
 
-    // 카운트다운 타이머 처리
-    if (this.raceState === 'COUNTDOWN') {
-      this.updateCountdown(delta);
-    }
+    // 시작 컷씬 또는 카운트다운 타이머 처리
+    if (this.raceState === 'START_CUTSCENE') {
+      this.updateStartCutscene(delta);
+    } else {
+      if (this.raceState === 'COUNTDOWN') {
+        this.updateCountdown(delta);
+      }
 
-    if (this.mode === 'DRIVING') {
-      this.updateDriving(delta, deltaMs);
-    } else if (this.mode === 'REPLAY') {
-      this.updateReplay(delta, deltaMs);
-    } else if (this.mode === 'DEMO') {
-      this.updateDemo(delta, deltaMs);
+      if (this.mode === 'DRIVING') {
+        this.updateDriving(delta, deltaMs);
+      } else if (this.mode === 'REPLAY') {
+        this.updateReplay(delta, deltaMs);
+      } else if (this.mode === 'DEMO') {
+        this.updateDemo(delta, deltaMs);
+      }
     }
 
     // 포커싱 차량을 제외한 나머지 차량 상단에 이름 표시
@@ -470,8 +591,15 @@ export class Game {
       this.audio.update(this.playerVehicle.getSpeedKmh(), this.playerVehicle.isDrifting, this.input.throttle);
     }
 
-    // 카메라 추적 (체이스 카메라 & 충돌 쉐이크)
-    this.cameraController.updateChase(delta, this.playerVehicle);
+    // 카메라 추적 (체이스 카메라 & 충돌 쉐이크 / 완주 컷씬)
+    if (this.raceState === 'FINISHED') {
+      const winner = this.lapTimer.isFinished
+        ? this.playerVehicle
+        : (this.aiManager.agents.find(a => a.isFinished)?.vehicle || this.playerVehicle);
+      this.cameraController.updateFinishCutscene(delta, winner);
+    } else {
+      this.cameraController.updateChase(delta, this.playerVehicle);
+    }
 
     // 후방 추격 차량 감지 및 백미러 업데이트
     this.updateRearviewMirrors(this.playerVehicle);
@@ -522,8 +650,14 @@ export class Game {
       }
     }
 
-    // 처음 설정한 플레이어 차량을 일관되게 고정 추적 (순위가 바뀌어도 카메라 전환 없음)
-    this.cameraController.updateChase(delta, targetVehicle);
+    // 완주 컷씬 카메라 (1등 차량을 화면 좌측에 배치) 또는 일반 주행 체이스 카메라
+    if (this.raceState === 'FINISHED') {
+      const winner = this.aiManager.agents[0]?.vehicle || targetVehicle;
+      this.cameraController.updateFinishCutscene(delta, winner);
+    } else {
+      // 처음 설정한 플레이어 차량을 일관되게 고정 추적 (순위가 바뀌어도 카메라 전환 없음)
+      this.cameraController.updateChase(delta, targetVehicle);
+    }
 
     // 후방 추격 차량 감지 및 백미러 업데이트
     this.updateRearviewMirrors(targetVehicle);
@@ -615,10 +749,7 @@ export class Game {
     } else {
       this.resetCarToStart();
       this.recorder.clear();
-      this.raceState = 'READY';
-      this.countdownTimer = 3.0;
-      this.lastBeepNumber = -1;
-      this.startCountdown();
+      this.startRace(true);
     }
   }
 
@@ -664,12 +795,9 @@ export class Game {
       this.skidMarkManager.reset();
       this.collisionManager.reset();
       this.lapTimer.reset();
-      this.raceState = 'READY';
-      this.countdownTimer = 3.0;
-      this.lastBeepNumber = -1;
       this.recorder.clear();
-      // 데모 선택 시 자동으로 카운트다운 시작
-      this.startCountdown();
+      // 데모 선택 시 피트 출차 시작 컷씬 개시
+      this.startRace(true);
     } else { // DRIVING
       this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = true;
@@ -787,6 +915,11 @@ export class Game {
       inputState = { throttle: false, brake: false, steerLeft: false, steerRight: false, handbrake: false };
     }
 
+    const focusedVehicle = this.getFocusedVehicle();
+    const isDrifting = focusedVehicle ? focusedVehicle.isDrifting : false;
+    const driftStamina = focusedVehicle ? focusedVehicle.driftStamina : 100.0;
+    const isSpinningOut = focusedVehicle ? focusedVehicle.isSpinningOut : false;
+
     this.onStateUpdate({
       speedKmh: Math.round(speed),
       gear,
@@ -798,9 +931,9 @@ export class Game {
         : this.formatTime(this.lapTimer.currentLapTimeMs),
       bestLapTimeStr: this.lapTimer.bestLapMs !== Infinity ? this.formatTime(this.lapTimer.bestLapMs) : '--:--.---',
       sectorsMs: this.lapTimer.currentSectorTimes,
-      isDrifting: this.mode === 'DRIVING'
-        ? this.playerVehicle.isDrifting
-        : (this.mode === 'DEMO' ? (this.aiManager.agents[0]?.vehicle.isDrifting ?? false) : false),
+      isDrifting,
+      driftStamina,
+      isSpinningOut,
       gameMode: this.mode,
       raceState: this.raceState,
       countdownText,

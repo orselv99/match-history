@@ -1,13 +1,43 @@
 /* =====================================================================
    완주 모달 & 리플레이 컨트롤 스타일 (Finish Modal & Replay Benchmarks)
    ===================================================================== */
-.finish-modal-card {
-  max-width: 620px;
+#finish-modal.modal-overlay {
+  background: rgba(8, 12, 18, 0.32); /* 낮은 dimmed 농도로 좌측 주행 1위 차량 완벽 시야 확보 */
+  backdrop-filter: blur(4px);
+  justify-content: flex-end;
+  align-items: center;
+  padding-right: 48px;
+  pointer-events: none;
+}
+
+#finish-modal .finish-modal-card {
+  pointer-events: auto;
+  max-width: 520px;
   width: 90%;
-  height: 100%;
-  max-height: 100%;
+  margin-left: auto;
+  margin-right: 0;
+  height: auto;
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
+  background: rgba(18, 22, 30, 0.92);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  box-shadow: -15px 0 45px rgba(0, 0, 0, 0.65), 0 0 1px 1px var(--border-subtle);
+  border-left: 3px solid var(--accent-cyan);
+}
+
+@media (max-width: 768px) {
+  #finish-modal.modal-overlay {
+    padding-right: 12px;
+    padding-left: 12px;
+    justify-content: center;
+    background: rgba(8, 12, 18, 0.65);
+  }
+  #finish-modal .finish-modal-card {
+    max-width: 100%;
+    margin-right: auto;
+  }
 }
 
 .stats-grid {

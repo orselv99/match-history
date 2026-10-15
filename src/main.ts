@@ -93,7 +93,7 @@ window.addEventListener('DOMContentLoaded', () => {
       if (trackMeta) hud.setCircuitTitle(trackMeta.title);
 
       setModeUI(config.isAutoDrive ? 'DEMO' : 'DRIVING');
-      game.startCountdown();
+      game.startRace(true);
     },
   });
 

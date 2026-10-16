@@ -27,9 +27,8 @@
   pointer-events: auto;
 }
 
-/* 2. 인게임 스크린샷 배경화면 컨테이너 (추후 실제 스크린샷 에셋 삽입용) */
-.loading-bg-wrapper,
-.title-bg-placeholder {
+/* 2. 인게임 스크린샷 배경화면 컨테이너 */
+.loading-bg-wrapper {
   position: absolute;
   top: 0;
   left: 0;
@@ -37,6 +36,28 @@
   height: 100%;
   z-index: 0;
   background: radial-gradient(circle at 60% 40%, #171c26 0%, #0d1017 60%, #06070a 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* 로비 배경 컨테이너: public/lobby-bg.png 또는 public/lobby-bg.jpg가 존재하면 자동 적용 */
+.title-bg-placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  background-color: #080a0f;
+  background-image:
+    url('/lobby-bg.png'),
+    url('/lobby-bg.jpg'),
+    radial-gradient(circle at 65% 45%, #161c28 0%, #0d1017 60%, #06070a 100%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   display: flex;
   justify-content: center;
   align-items: center;

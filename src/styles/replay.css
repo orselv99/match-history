@@ -2,12 +2,66 @@
    완주 모달 & 리플레이 컨트롤 스타일 (Finish Modal & Replay Benchmarks)
    ===================================================================== */
 #finish-modal.modal-overlay {
-  background: rgba(8, 12, 18, 0.32); /* 낮은 dimmed 농도로 좌측 주행 1위 차량 완벽 시야 확보 */
-  backdrop-filter: blur(4px);
+  background: rgba(8, 12, 18, 0.22); /* 3D 차량과 서킷 시야 확보 */
+  backdrop-filter: none; /* 오버레이 전체 블러를 제거하여 배경 3D 차량 선명도 100% 보존 */
   justify-content: flex-end;
   align-items: center;
   padding-right: 48px;
   pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+/* 포토 모드 활성화 시 전체 UI 및 레터박스 완전 숨김 */
+body.in-photo-mode #finish-modal,
+body.in-photo-mode #cinematic-bars,
+body.in-photo-mode #ui-overlay {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+.finish-photo-btn {
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid var(--accent-spec);
+  color: var(--accent-spec);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 3px 9px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.finish-photo-btn:hover {
+  background: var(--accent-spec);
+  color: #0b0d13;
+}
+
+.photo-mode-hint {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: rgba(12, 16, 22, 0.85);
+  border: 1px solid var(--accent-spec);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 8px 20px;
+  border-radius: 20px;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  transition: opacity 0.3s ease;
+}
+
+body.in-photo-mode .photo-mode-hint {
+  opacity: 0.9;
 }
 
 #finish-modal .finish-modal-card {

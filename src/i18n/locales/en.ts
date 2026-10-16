@@ -283,5 +283,8 @@ export const en = {
     replay: 'Replay',
     retry: 'Retry',
     titleMenu: 'Main Menu',
+    photoMode: '📷 Photo Mode [H]',
+    capture: '📷 Save Capture',
+    photoModeHint: 'Press [H] or Click to restore UI',
   },
 };

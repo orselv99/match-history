@@ -2,6 +2,7 @@ import { BaseModal } from './BaseModal.ts';
 import type { MatchSummaryMetadata, RaceResultEntry } from '../replay/ReplayTypes.ts';
 import type { CircuitId } from '../data/circuits.ts';
 import { t } from '../i18n/I18nManager.ts';
+import { showToast } from './Toast.ts';
 
 export interface FinishModalCallbacks {
   onReplay: () => void;
@@ -52,6 +53,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
   private serverStatusTag: HTMLElement | null;
 
   private latestMetadata: MatchSummaryMetadata | null = null;
+  private isPhotoMode: boolean = false;
 
   constructor(callbacks: FinishModalCallbacks) {
     super('finish-modal');
@@ -61,9 +63,21 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
     this.serverTop5Tbody = document.getElementById('finish-server-top5-tbody');
     this.serverStatusTag = document.getElementById('finish-server-status-tag');
 
+    const btnPhoto = document.getElementById('modal-btn-photo');
+    const btnCapture = document.getElementById('modal-btn-capture');
     const btnReplay = document.getElementById('modal-btn-replay');
     const btnRestart = document.getElementById('modal-btn-restart');
     const btnTitle = document.getElementById('modal-btn-title');
+
+    btnPhoto?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.togglePhotoMode();
+    });
+
+    btnCapture?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.captureScreenshot();
+    });
 
     btnReplay?.addEventListener('click', () => {
       this.close();
@@ -79,6 +93,57 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
       this.close();
       callbacks.onTitle();
     });
+
+    // H 키 단축키로 포토 모드(UI 숨김) 토글 및 복귀 리스너
+    window.addEventListener('keydown', (e) => {
+      if (!this.isOpen()) return;
+
+      if (e.code === 'KeyH') {
+        e.preventDefault();
+        this.togglePhotoMode();
+      } else if (this.isPhotoMode) {
+        // 포토 모드 중 아무 키(ESC, Space 등)나 누르면 UI 복귀
+        this.setPhotoMode(false);
+      }
+    });
+
+    // 포토 모드 중 화면 클릭 시 UI 복귀
+    window.addEventListener('click', () => {
+      if (this.isOpen() && this.isPhotoMode) {
+        this.setPhotoMode(false);
+      }
+    });
+  }
+
+  public togglePhotoMode(): void {
+    this.setPhotoMode(!this.isPhotoMode);
+  }
+
+  public setPhotoMode(enabled: boolean): void {
+    this.isPhotoMode = enabled;
+    document.body.classList.toggle('in-photo-mode', enabled);
+  }
+
+  public captureScreenshot(): void {
+    const canvas = document.querySelector<HTMLCanvasElement>('#game-container canvas');
+    if (!canvas) return;
+
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      const circuitName = this.latestMetadata?.circuitId || 'circuit';
+      a.download = `apex-finish-${circuitName}.png`;
+      a.click();
+      showToast('📷 3D 컷씬 스크린샷이 저장되었습니다! (보정 후 로비 배경 등으로 활용해보세요)');
+    } catch (e) {
+      console.warn('Screenshot capture failed', e);
+    }
+  }
+
+  public override close(): void {
+    this.setPhotoMode(false);
+    super.close();
   }
 
   public open(metadata?: MatchSummaryMetadata): void {

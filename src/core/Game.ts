@@ -419,6 +419,9 @@ export class Game {
     // 컷씬(START_CUTSCENE 및 FINISHED) 중에는 속도선을 꺼서 차량 및 배경 시야 완벽 확보
     const focusedVehicle = this.getFocusedVehicle();
     const isCutscene = this.raceState === 'START_CUTSCENE' || this.raceState === 'FINISHED';
+    if (this.raceState === 'FINISHED') {
+      this.speedFX.clear();
+    }
     const currentSpeed = (focusedVehicle && !isCutscene) ? focusedVehicle.getSpeedKmh() : 0;
     this.speedFX.update(delta, currentSpeed, focusedVehicle);
 
@@ -558,6 +561,7 @@ export class Game {
       // 완주 판정 시
       if (this.lapTimer.isFinished && this.recorder.getTickCount() > 0) {
         this.raceState = 'FINISHED';
+        this.speedFX.clear();
         this.cameraController.snapFinishCutscene(this.playerVehicle);
         this.handleFinish(this.playerVehicle, 'driver_kr_01', 'Apex Hunter');
       }
@@ -631,6 +635,7 @@ export class Game {
       // 플레이어 차량 또는 상대 전체 완주 판정
       if ((playerAgent.isFinished || this.opponentManager.isAllFinished || this.lapTimer.isFinished) && this.raceState === 'RUNNING') {
         this.raceState = 'FINISHED';
+        this.speedFX.clear();
         this.cameraController.snapFinishCutscene(targetVehicle);
         this.handleFinish(targetVehicle, 'player_demo', playerAgent.driverName);
       }
@@ -694,6 +699,7 @@ export class Game {
 
   public handleReplayFinish(): void {
     this.raceState = 'FINISHED';
+    this.speedFX.clear();
     this.replayPlayer.pause();
     this.audio.playFinishFanfare();
     this.audio.duckBgm(true, 0.2);

@@ -53,14 +53,9 @@
 
   <!-- 0. 로비 씬 오버레이 (Title Scene & Main Menu) -->
   <div id="title-scene-overlay" class="title-scene-overlay active">
-    <!-- 로비 화면 배경 스크린샷 플레이스홀더 (임시 배경화면) -->
+    <!-- 로비 화면 배경 시네마틱 비네팅 / 유저 보정 이미지 컨테이너 -->
     <div class="title-bg-placeholder">
       <div class="loading-bg-grid"></div>
-      <div class="screenshot-placeholder-badge">
-        <span class="badge-icon">📷</span>
-        <span class="badge-text">[ IN-GAME SCREENSHOT // BACKGROUND PLACEHOLDER ]</span>
-        <span class="badge-sub">CIRCUIT HIGHLIGHT SHOT · MONACO GP HARBOR TURN</span>
-      </div>
     </div>
 
     <div class="title-scrim-left">
@@ -122,6 +117,9 @@
       </footer>
     </div>
   </div>
+
+  <!-- 포토 모드 복귀 안내 힌트 토스트 -->
+  <div id="photo-mode-hint" class="photo-mode-hint" data-i18n="finish.photoModeHint">[H] 또는 화면 클릭 시 UI 다시 표시</div>
 
   <!-- 컷씬 전용 시네마틱 레터박스 (위아래 블랙 바) -->
   <div id="cinematic-bars" class="cinematic-bars">
@@ -274,7 +272,10 @@
     <div class="modal-card finish-modal-card">
       <header class="modal-header-strip">
         <span class="modal-title" data-i18n="finish.title">경기 결과</span>
-        <span id="modal-circuit-code" class="modal-code-tag">CIRCUIT // MONACO</span>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button id="modal-btn-photo" class="finish-photo-btn" title="포토 모드 [H]: UI를 숨기고 선명한 3D 컷씬을 직접 캡처합니다" data-i18n="finish.photoMode">📷 포토 모드 [H]</button>
+          <span id="modal-circuit-code" class="modal-code-tag">CIRCUIT // MONACO</span>
+        </div>
       </header>
 
       <div class="modal-content-body">
@@ -321,6 +322,7 @@
 
       <!-- 액션 버튼 ('3d 재생 및 바이너리 내보내기' 제거 -> '다시보기' 추가) -->
       <footer class="modal-actions">
+        <button id="modal-btn-capture" class="secondary-btn" title="3D 캔버스 고화질 스크린샷 즉시 다운로드" data-i18n="finish.capture">📷 캡처 저장</button>
         <button id="modal-btn-replay" class="primary-btn" data-i18n="finish.replay">다시보기</button>
         <button id="modal-btn-restart" class="secondary-btn" data-i18n="finish.retry">다시 주행</button>
         <button id="modal-btn-title" class="secondary-btn" style="border-left: 1px solid var(--border-strong);" data-i18n="finish.titleMenu">메인 메뉴</button>

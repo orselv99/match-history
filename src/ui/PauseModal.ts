@@ -8,7 +8,7 @@ export interface PauseModalCallbacks {
 }
 
 export interface PauseModalInfo {
-  trackTitle: string;
+  circuitTitle: string;
   vehicleTitle: string;
   lapStr: string;
   timeStr: string;
@@ -23,7 +23,7 @@ export class PauseModal extends BaseModal<PauseModalInfo> {
   private btnSettings: HTMLElement | null;
   private btnExit: HTMLElement | null;
 
-  private infoTrack: HTMLElement | null;
+  private infoCircuit: HTMLElement | null;
   private infoCar: HTMLElement | null;
   private infoLap: HTMLElement | null;
   private infoTime: HTMLElement | null;
@@ -36,7 +36,7 @@ export class PauseModal extends BaseModal<PauseModalInfo> {
     this.btnSettings = document.getElementById('pause-btn-settings');
     this.btnExit = document.getElementById('pause-btn-exit');
 
-    this.infoTrack = document.getElementById('pause-info-track');
+    this.infoCircuit = document.getElementById('pause-info-track');
     this.infoCar = document.getElementById('pause-info-car');
     this.infoLap = document.getElementById('pause-info-lap');
     this.infoTime = document.getElementById('pause-info-time');
@@ -63,7 +63,7 @@ export class PauseModal extends BaseModal<PauseModalInfo> {
 
   public open(info?: PauseModalInfo): void {
     if (info) {
-      if (this.infoTrack) this.infoTrack.textContent = info.trackTitle;
+      if (this.infoCircuit) this.infoCircuit.textContent = info.circuitTitle;
       if (this.infoCar) this.infoCar.textContent = info.vehicleTitle;
       if (this.infoLap) this.infoLap.textContent = info.lapStr;
       if (this.infoTime) this.infoTime.textContent = info.timeStr;

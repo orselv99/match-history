@@ -1,7 +1,7 @@
 import { BaseModal } from './BaseModal.ts';
 import { appDB } from '../storage/AppDatabase.ts';
 import type { CachedReplayRecord } from '../storage/schema.ts';
-import { TRACK_DEFINITIONS } from '../data/circuitTracks.ts';
+import { CIRCUIT_DEFINITIONS } from '../data/circuits.ts';
 import { showToast } from './Toast.ts';
 
 export interface MatchHistoryModalCallbacks {
@@ -27,7 +27,7 @@ export class MatchHistoryModal extends BaseModal {
   private statCount: HTMLElement | null;
 
   private allRecords: CachedReplayRecord[] = [];
-  private currentTrackFilter: string = 'all';
+  private currentCircuitFilter: string = 'all';
   private searchQuery: string = '';
   private sortMode: 'best_lap' | 'recent' | 'top_speed' = 'best_lap';
 
@@ -59,12 +59,12 @@ export class MatchHistoryModal extends BaseModal {
     this.btnClose?.addEventListener('click', close);
     this.btnCloseBottom?.addEventListener('click', close);
 
-    // 트랙 탭 필터링
+    // 서킷 탭 필터링
     this.tabBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         this.tabBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        this.currentTrackFilter = btn.getAttribute('data-track') || 'all';
+        this.currentCircuitFilter = btn.getAttribute('data-circuit') || btn.getAttribute('data-track') || 'all';
         this.renderTable();
       });
     });
@@ -194,16 +194,17 @@ export class MatchHistoryModal extends BaseModal {
   private renderTable(): void {
     if (!this.tableTbody) return;
 
-    // 1. 트랙 및 검색어 필터링
+    // 1. 서킷 및 검색어 필터링
     let filtered = this.allRecords.filter(r => {
-      if (this.currentTrackFilter !== 'all' && r.metadata?.trackId !== this.currentTrackFilter) {
+      const recCircuitId = r.metadata?.circuitId || (r.metadata as any)?.trackId;
+      if (this.currentCircuitFilter !== 'all' && recCircuitId !== this.currentCircuitFilter) {
         return false;
       }
       if (this.searchQuery) {
         const nickname = (r.metadata?.userNickname || '').toLowerCase();
         const code = (r.matchCode || '').toLowerCase();
-        const trackTitle = (TRACK_DEFINITIONS[r.metadata?.trackId]?.title || '').toLowerCase();
-        if (!nickname.includes(this.searchQuery) && !code.includes(this.searchQuery) && !trackTitle.includes(this.searchQuery)) {
+        const circuitTitle = (CIRCUIT_DEFINITIONS[recCircuitId]?.title || '').toLowerCase();
+        if (!nickname.includes(this.searchQuery) && !code.includes(this.searchQuery) && !circuitTitle.includes(this.searchQuery)) {
           return false;
         }
       }
@@ -248,7 +249,8 @@ export class MatchHistoryModal extends BaseModal {
 
       const driverName = this.escapeHtml(meta?.userNickname || 'Driver');
       const machineBadge = this.getMachineBadge(meta?.vehicleId || 'gt_turbo');
-      const trackTitle = this.getTrackTitle(meta?.trackId || 'circuit_monaco');
+      const recCircuitId = meta?.circuitId || (meta as any)?.trackId || 'circuit_monaco';
+      const circuitTitle = this.getCircuitTitle(recCircuitId);
       const lapTime = meta?.bestLapMs ? this.formatTime(meta.bestLapMs) : '--:--.---';
       const topSpeed = meta?.topSpeedKmh ? `${meta.topSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
       const dateStr = this.formatDate(rec.savedAt || rec.createdAt);
@@ -258,7 +260,7 @@ export class MatchHistoryModal extends BaseModal {
           <td class="col-rank">${rankBadgeHtml}</td>
           <td class="col-driver"><strong class="driver-name-text">${driverName}</strong></td>
           <td class="col-machine">${machineBadge}</td>
-          <td class="col-track">${trackTitle}</td>
+          <td class="col-track">${circuitTitle}</td>
           <td class="col-lap"><span class="lap-highlight ${rankNum === 1 ? 'gold' : ''}">${lapTime}</span></td>
           <td class="col-speed">${topSpeed}</td>
           <td class="col-date">${dateStr}</td>
@@ -282,13 +284,13 @@ export class MatchHistoryModal extends BaseModal {
     return `<span class="machine-badge gt">GT-86 Turbo</span>`;
   }
 
-  private getTrackTitle(trackId: string): string {
-    const meta = TRACK_DEFINITIONS[trackId];
+  private getCircuitTitle(circuitId: string): string {
+    const meta = CIRCUIT_DEFINITIONS[circuitId];
     if (meta?.title) return meta.title;
-    if (trackId === 'circuit_monaco') return 'Monaco GP';
-    if (trackId === 'circuit_monza') return 'Monza GP';
-    if (trackId === 'circuit_spa') return 'Spa-Francorchamps';
-    return trackId;
+    if (circuitId === 'circuit_monaco') return 'Monaco GP';
+    if (circuitId === 'circuit_monza') return 'Monza GP';
+    if (circuitId === 'circuit_spa') return 'Spa-Francorchamps';
+    return circuitId;
   }
 
   private formatTime(ms: number): string {

@@ -2,7 +2,7 @@ import { Game, GameUIState, GameMode } from './core/Game.ts';
 import { MatchSummaryMetadata } from './replay/ReplayTypes.ts';
 import { ReplayCodec } from './replay/ReplayCodec.ts';
 import { LoadingScreen } from './ui/LoadingScreen.ts';
-import { TRACK_DEFINITIONS } from './data/circuitTracks.ts';
+import { CIRCUIT_DEFINITIONS } from './data/circuits.ts';
 import { VEHICLE_MODELS } from './data/vehicles.ts';
 import { INGAME_BGM_TRACKS, BgmTrack } from './data/audio.ts';
 import { keyBindingManager } from './core/KeyBindingManager.ts';
@@ -73,11 +73,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const matchHistoryModal = new MatchHistoryModal({
     onPlayReplay: (record) => {
-      // 1. 다른 서킷일 경우 트랙 로드
-      if (record.metadata.trackId && record.metadata.trackId !== game.currentTrackId) {
-        game.loadTrack(record.metadata.trackId);
-        const trackMeta = TRACK_DEFINITIONS[record.metadata.trackId];
-        if (trackMeta) hud.setCircuitTitle(trackMeta.title);
+      // 1. 다른 서킷일 경우 서킷 로드
+      const recCircuitId = record.metadata.circuitId || (record.metadata as any).trackId;
+      if (recCircuitId && recCircuitId !== game.currentCircuitId) {
+        game.loadCircuit(recCircuitId);
+        const circuitMeta = CIRCUIT_DEFINITIONS[recCircuitId];
+        if (circuitMeta) hud.setCircuitTitle(circuitMeta.title);
       }
 
       // 2. 플레이어 머신 스펙/컬러/이름 복원
@@ -112,7 +113,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 3. 게임 설정 위저드 모달 (Step 1~4)
   let currentConfig: RaceSetupConfig = {
-    trackId: 'circuit_monaco',
+    circuitId: 'circuit_monaco',
     modelId: 'gt_turbo',
     color: '#ef4444',
     timeOfDay: 'noon',
@@ -124,14 +125,14 @@ window.addEventListener('DOMContentLoaded', () => {
   const wizard = new GameSetupWizard({
     onStartRace: (config) => {
       currentConfig = config;
-      game.loadTrack(config.trackId);
+      game.loadCircuit(config.circuitId);
       game.playerVehicle.setModel(config.modelId);
       game.playerVehicle.setColor(parseInt(config.color.replace('#', '0x'), 16));
       game.setDriverName(config.driverName);
       game.setEnvironment(config.timeOfDay, config.weather);
 
-      const trackMeta = TRACK_DEFINITIONS[config.trackId];
-      if (trackMeta) hud.setCircuitTitle(trackMeta.title);
+      const circuitMeta = CIRCUIT_DEFINITIONS[config.circuitId];
+      if (circuitMeta) hud.setCircuitTitle(circuitMeta.title);
 
       setModeUI(config.isAutoDrive ? 'DEMO' : 'DRIVING');
       game.startRace(true);
@@ -221,11 +222,11 @@ window.addEventListener('DOMContentLoaded', () => {
   const openPauseDialog = () => {
     if (game.mode !== 'DRIVING' && game.mode !== 'DEMO' && game.mode !== 'REPLAY') return;
     game.pause();
-    const trackTitle = TRACK_DEFINITIONS[currentConfig.trackId]?.title || game.currentTrackId;
+    const circuitTitle = CIRCUIT_DEFINITIONS[currentConfig.circuitId]?.title || game.currentCircuitId;
     const vehicleTitle = VEHICLE_MODELS[currentConfig.modelId]?.title || game.playerVehicle.currentModelId;
     const lapStr = `LAP ${game.lapTimer.currentLap.toString().padStart(2, '0')} / ${game.lapTimer.totalLaps.toString().padStart(2, '0')}`;
     const timeStr = `${(game.lapTimer.currentLapTimeMs / 1000).toFixed(3)}s`;
-    pauseModal.show({ trackTitle, vehicleTitle, lapStr, timeStr });
+    pauseModal.show({ circuitTitle, vehicleTitle, lapStr, timeStr });
   };
 
   // 6. 실시간 게임 상태 구독 -> HUD 및 리플레이 타임라인 동기화

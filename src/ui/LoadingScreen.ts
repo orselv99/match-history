@@ -307,10 +307,10 @@ export class LoadingScreen {
   /**
    * 2. 인게임 진입(레이스 시작) 전 실행되는 로딩 시퀀스 (Dual-purpose: Pre-Race Setup)
    */
-  public async runPreRaceLoad(trackTitle: string, vehicleTitle: string, inGameTrackId?: string): Promise<void> {
-    this.show(`PREPARING RACE // ${trackTitle.toUpperCase()}`);
+  public async runPreRaceLoad(circuitTitle: string, vehicleTitle: string, inGameTrackId?: string): Promise<void> {
+    this.show(`PREPARING RACE // ${circuitTitle.toUpperCase()}`);
 
-    await this.animateTo(22, `서킷 지오메트리 & 섹터 체크포인트 로드 중... [${trackTitle}]`, 220);
+    await this.animateTo(22, `서킷 지오메트리 & 섹터 체크포인트 로드 중... [${circuitTitle}]`, 220);
     await this.animateTo(46, `머신 에어로다이내믹스 & 섀시 튜닝 적용 중... [${vehicleTitle}]`, 240);
     await this.animateTo(66, '환경 조명, 비/안개 날씨 파티클 및 노면 반사 컴파일 중...', 240);
 

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CircuitTrack } from '../game/CircuitTrack.ts';
+import { Circuit } from '../game/Circuit.ts';
 import { Vehicle } from '../game/Vehicle.ts';
 import { InputManager } from './InputManager.ts';
 import { AudioManager } from './AudioManager.ts';
@@ -56,7 +56,7 @@ export class Game {
   public camera: THREE.PerspectiveCamera;
   public renderer: THREE.WebGLRenderer;
 
-  public track: CircuitTrack;
+  public circuit: Circuit;
   public playerVehicle: Vehicle;
   public replayPlayer: ReplayPlayer;
   public aiManager: AICarManager;
@@ -96,7 +96,7 @@ export class Game {
 
   // 게임 세션 설정 메타데이터
   public currentDriverName: string = 'Apex Hunter';
-  public currentTrackId: string = 'circuit_monaco';
+  public currentCircuitId: string = 'circuit_monaco';
   public currentWeatherId: string = 'clear';
   public currentReplayMetadata?: MatchSummaryMetadata | null;
 
@@ -140,8 +140,8 @@ export class Game {
     this.environmentManager = new EnvironmentManager(this.scene);
 
     // 5. 모듈 초기화
-    this.track = new CircuitTrack();
-    this.scene.add(this.track.group);
+    this.circuit = new Circuit();
+    this.scene.add(this.circuit.group);
 
     this.playerVehicle = new Vehicle(false);
     this.scene.add(this.playerVehicle.mesh);
@@ -153,7 +153,7 @@ export class Game {
     this.scene.add(this.replayPlayer.ghostVehicle.mesh);
     this.replayPlayer.opponentVehicles.forEach(v => this.scene.add(v.mesh));
 
-    this.aiManager = new AICarManager(this.track);
+    this.aiManager = new AICarManager(this.circuit);
     this.aiManager.onSectorPassed = (name, sectorName, timeMs) => {
       if (this.onSectorPassed) {
         this.onSectorPassed(name, sectorName, timeMs);
@@ -252,7 +252,7 @@ export class Game {
     this.environmentManager.setEnvironment(
       timeOfDay,
       weather,
-      this.track?.roadMaterial,
+      this.circuit?.roadMaterial,
       this.playerVehicle,
       this.aiManager,
       this.audio
@@ -262,7 +262,7 @@ export class Game {
   public setWeather(weatherId: 'clear' | 'sunset' | 'night' | 'rain'): void {
     this.environmentManager.setWeather(
       weatherId,
-      this.track?.roadMaterial,
+      this.circuit?.roadMaterial,
       this.playerVehicle,
       this.aiManager,
       this.audio
@@ -283,18 +283,18 @@ export class Game {
   }
 
   /**
-   * 선택된 서킷(Monaco, Silverstone, Nürburgring)을 인게임에 실시간 적용 및 재배치
+   * 선택된 서킷(Monaco, Monza, Spa-Francorchamps)을 인게임에 실시간 적용 및 재배치
    */
-  public loadTrack(trackId: string): void {
-    this.currentTrackId = trackId;
-    this.track.loadTrack(trackId);
+  public loadCircuit(circuitId: string): void {
+    this.currentCircuitId = circuitId;
+    this.circuit.loadCircuit(circuitId);
     this.resetCarToStart();
     this.drawMinimap();
   }
 
   public resetCarToStart(): void {
     // 플레이어 차량을 스타팅 그리드 1번 슬롯(Pole Position, Y: 0.055m 노면 밀착)에 정렬!
-    const gridPos = this.track.getGridPosition(0);
+    const gridPos = this.circuit.getGridPosition(0);
     this.playerVehicle.reset(gridPos.position, gridPos.heading);
 
     // 주행 모드일 경우 라이벌 AI 차량들도 1, 2, 3번 슬롯에 정렬
@@ -404,7 +404,7 @@ export class Game {
     this.recorder.stop();
     this.recorder.clear();
 
-    const halfW = this.track.trackWidth / 2;
+    const halfW = this.circuit.circuitWidth / 2;
 
     if (this.mode === 'DRIVING') {
       this.aiManager.resetToGrids(true);
@@ -417,7 +417,7 @@ export class Game {
       const v = this.getVehicleForSlot(i);
       if (!v) continue;
       const startState = this.computePitRolloutState(i, 0, halfW);
-      const worldPos = this.track.getStartStraightWorldPosition(startState.x, startState.z);
+      const worldPos = this.circuit.getStartStraightWorldPosition(startState.x, startState.z);
       v.reset(worldPos.position, worldPos.heading + startState.headingOffset);
       v.speed = (i === 0 && this.mode === 'DRIVING') ? 4.0 : startState.speed;
     }
@@ -427,8 +427,8 @@ export class Game {
   }
 
   public updateStartCutscene(delta: number): void {
-    const halfW = this.track.trackWidth / 2;
-    const grid0 = this.track.getGridPosition(0);
+    const halfW = this.circuit.circuitWidth / 2;
+    const grid0 = this.circuit.getGridPosition(0);
 
     // 1. 유저 직접 운전 감지 (W/A/S/D 키 입력 시 피트 출차 직접 운전 모드로 즉시 전환)
     if (this.mode === 'DRIVING') {
@@ -462,7 +462,7 @@ export class Game {
       } else {
         // 롤아웃 주행 (피트 베이 -> 피트 레인 -> 피트 출구 -> 지정 그리드 슬롯 안착)
         const state = this.computePitRolloutState(i, progress, halfW);
-        const world = this.track.getStartStraightWorldPosition(state.x, state.z);
+        const world = this.circuit.getStartStraightWorldPosition(state.x, state.z);
 
         v.position.copy(world.position);
         v.heading = world.heading + state.headingOffset;
@@ -520,7 +520,7 @@ export class Game {
     for (let i = 0; i < 4; i++) {
       const v = this.getVehicleForSlot(i);
       if (!v) continue;
-      const grid = this.track.getGridPosition(i);
+      const grid = this.circuit.getGridPosition(i);
       v.reset(grid.position, grid.heading);
       v.speed = 0;
     }
@@ -634,9 +634,9 @@ export class Game {
     const isRunning = this.raceState === 'RUNNING';
     const isFinished = this.raceState === 'FINISHED';
 
-    // 트랙 3D 표면 정보 조회 (고도, 종방향 경사율, 노면 피치 각도, 중심선 이탈 거리)
-    const surface = this.track.getTrackSurfaceInfo(this.playerVehicle.position, this.playerVehicle.heading);
-    const isOffroad = surface.distFromCenter > (this.track.trackWidth / 2 + 1.2);
+    // 서킷 3D 표면 정보 조회 (고도, 종방향 경사율, 노면 피치 각도, 중심선 이탈 거리)
+    const surface = this.circuit.getCircuitSurfaceInfo(this.playerVehicle.position, this.playerVehicle.heading);
+    const isOffroad = surface.distFromCenter > (this.circuit.circuitWidth / 2 + 1.2);
 
     // 레이스 시작 전에는 스로틀 입력 락 (엔진 공회전 RPM만 가능), 완주 시에는 쿨다운 순항
     let activeThrottle = isRunning ? this.input.throttle : 0;
@@ -696,7 +696,7 @@ export class Game {
       this.lapTimer.update(
         deltaMs,
         this.playerVehicle.position,
-        this.track.checkpoints,
+        this.circuit.checkpoints,
         (cpId, sectorTimeMs) => {
           this.audio.playCheckpointBeep();
           const sectorName = cpId === 1 ? 'S1' : cpId === 2 ? 'S2' : '도착선';
@@ -780,7 +780,7 @@ export class Game {
       this.lapTimer.update(
         deltaMs,
         targetVehicle.position,
-        this.track.checkpoints,
+        this.circuit.checkpoints,
         () => this.audio.playCheckpointBeep()
       );
 
@@ -835,7 +835,7 @@ export class Game {
       if (leadVehicle.speed > 0) {
         leadVehicle.speed = Math.max(0, leadVehicle.speed - 10.0 * delta);
       }
-      const leadSurf = this.track.getTrackSurfaceInfo(leadVehicle.position, leadVehicle.heading);
+      const leadSurf = this.circuit.getCircuitSurfaceInfo(leadVehicle.position, leadVehicle.heading);
       leadVehicle.update(delta, 0, 0, 0, false, false, leadSurf.groundY, leadSurf.slopeSin, leadSurf.roadPitch);
 
       this.replayPlayer.opponentVehicles.forEach(opp => {
@@ -843,7 +843,7 @@ export class Game {
           if (opp.speed > 0) {
             opp.speed = Math.max(0, opp.speed - 9.0 * delta);
           }
-          const oppSurf = this.track.getTrackSurfaceInfo(opp.position, opp.heading);
+          const oppSurf = this.circuit.getCircuitSurfaceInfo(opp.position, opp.heading);
           opp.update(delta, 0, 0, 0, false, false, oppSurf.groundY, oppSurf.slopeSin, oppSurf.roadPitch);
         }
       });
@@ -883,7 +883,7 @@ export class Game {
   public computeRaceResults(): RaceResultEntry[] {
     const rawList: { name: string; timeMs: number; isPlayer: boolean; colorHex?: number }[] = [];
     const totalLaps = this.lapTimer.totalLaps;
-    const trackLen = this.track.trackCurve.getLength();
+    const circuitLen = this.circuit.circuitCurve.getLength();
 
     if (this.mode === 'DRIVING') {
       const playerTimeMs = Math.round(this.lapTimer.totalTimeMs);
@@ -903,7 +903,7 @@ export class Game {
         } else {
           // 완주선 통과 전 차량: 남은 거리 및 평균 속도 기반 완주 시간 계산
           const remainingLaps = Math.max(0, totalLaps - agent.currentLap);
-          const remainingDist = remainingLaps * trackLen + Math.max(0, 1.0 - agent.t) * trackLen;
+          const remainingDist = remainingLaps * circuitLen + Math.max(0, 1.0 - agent.t) * circuitLen;
           const speedMs = Math.max(25.0, agent.speedMs || agent.baseSpeedMs);
           const estRemainingMs = (remainingDist / speedMs) * 1000;
           aiTimeMs = Math.round(Math.max(playerTimeMs + 650, this.aiManager.raceTimeMs + estRemainingMs));
@@ -925,7 +925,7 @@ export class Game {
           aiTimeMs = Math.round(agent.finishTimeMs);
         } else {
           const remainingLaps = Math.max(0, totalLaps - agent.currentLap);
-          const remainingDist = remainingLaps * trackLen + Math.max(0, 1.0 - agent.t) * trackLen;
+          const remainingDist = remainingLaps * circuitLen + Math.max(0, 1.0 - agent.t) * circuitLen;
           const speedMs = Math.max(25.0, agent.speedMs || agent.baseSpeedMs);
           const estRemainingMs = (remainingDist / speedMs) * 1000;
           aiTimeMs = Math.round(this.aiManager.raceTimeMs + estRemainingMs);
@@ -983,7 +983,7 @@ export class Game {
       matchCode: `RACE-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
       userId,
       userNickname: this.currentDriverName || nickname,
-      trackId: this.currentTrackId,
+      circuitId: this.currentCircuitId,
       vehicleId: this.playerVehicle.currentModelId,
       playerColorHex: this.playerVehicle.bodyColorHex,
       opponentConfigs,
@@ -1186,12 +1186,12 @@ export class Game {
         handbrake: this.input.handbrake,
       };
     } else if (this.mode === 'DEMO') {
-      // shortcut: 트랙 탄젠트 각도 및 차선 변경량으로 AI 조작 키 추정, AI 컨트롤러에 가상 입력 축이 통합되면 직접 바인딩
+      // shortcut: 서킷 탄젠트 각도 및 차선 변경량으로 AI 조작 키 추정, AI 컨트롤러에 가상 입력 축이 통합되면 직접 바인딩
       const playerAgent = this.aiManager.agents[0];
       if (playerAgent && this.raceState === 'RUNNING') {
         const futureT = (playerAgent.t + 0.02) % 1.0;
-        const currTangent = this.track.trackCurve.getTangentAt(playerAgent.t);
-        const futureTangent = this.track.trackCurve.getTangentAt(futureT);
+        const currTangent = this.circuit.circuitCurve.getTangentAt(playerAgent.t);
+        const futureTangent = this.circuit.circuitCurve.getTangentAt(futureT);
         const crossY = currTangent.x * futureTangent.z - currTangent.z * futureTangent.x;
         const laneDelta = playerAgent.targetLaneOffset - playerAgent.laneOffset;
         const steerVal = crossY * 8.0 + laneDelta * 0.4;
@@ -1288,7 +1288,7 @@ export class Game {
     MinimapRenderer.draw({
       canvas: this.minimapCanvas,
       ctx: this.minimapCtx,
-      track: this.track,
+      circuit: this.circuit,
       targetVehicle,
       aiManager: this.aiManager,
       replayPlayer: this.replayPlayer,

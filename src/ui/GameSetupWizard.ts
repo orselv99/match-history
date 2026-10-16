@@ -1,18 +1,18 @@
 import { BaseModal } from './BaseModal.ts';
 import { VehiclePreview } from './VehiclePreview.ts';
 import { HoneycombPicker } from './HoneycombPicker.ts';
-import { TRACK_DEFINITIONS, getCircuitSvgData } from '../data/circuitTracks.ts';
+import { CIRCUIT_DEFINITIONS, getCircuitSvgData, type CircuitId } from '../data/circuits.ts';
 import { VEHICLE_MODELS } from '../data/vehicles.ts';
 import { RANDOM_DRIVER_NAMES } from '../data/gameConstants.ts';
 import { i18nManager, t } from '../i18n/I18nManager.ts';
 
-export type TrackId = 'circuit_monaco' | 'circuit_monza' | 'circuit_spa';
+export type { CircuitId };
 export type VehicleModelId = 'gt_turbo' | 'formula_aero' | 'cyber_speedster';
 export type TimeOfDay = 'morning' | 'noon' | 'sunset' | 'night';
 export type WeatherType = 'clear' | 'rain' | 'wind_fog';
 
 export interface RaceSetupConfig {
-  trackId: TrackId;
+  circuitId: CircuitId;
   modelId: VehicleModelId;
   color: string;
   timeOfDay: TimeOfDay;
@@ -29,7 +29,7 @@ export interface GameSetupWizardCallbacks {
 }
 
 /**
- * 4단계 게임 설정 위저드(트랙, 차량, 환경, 드라이버) 전담 컨트롤러
+ * 4단계 게임 설정 위저드(서킷, 차량, 환경, 드라이버) 전담 컨트롤러
  */
 export class GameSetupWizard extends BaseModal {
   private btnClose: HTMLElement | null;
@@ -44,17 +44,17 @@ export class GameSetupWizard extends BaseModal {
   private stepPanels: NodeListOf<HTMLElement>;
 
   // Step 1: 서킷 선택
-  private trackCards: NodeListOf<HTMLElement>;
-  private trackSvgMonaco: HTMLElement | null;
-  private trackSvgMonza: HTMLElement | null;
-  private trackSvgSpa: HTMLElement | null;
-  private trackShowcaseTitle: HTMLElement | null;
-  private trackShowcaseBadge: HTMLElement | null;
-  private trackShowcaseDesc: HTMLElement | null;
-  private trackSpecLen: HTMLElement | null;
-  private trackSpecCorners: HTMLElement | null;
-  private trackSpecRecord: HTMLElement | null;
-  private trackSpecType: HTMLElement | null;
+  private circuitCards: NodeListOf<HTMLElement>;
+  private circuitSvgMonaco: HTMLElement | null;
+  private circuitSvgMonza: HTMLElement | null;
+  private circuitSvgSpa: HTMLElement | null;
+  private circuitShowcaseTitle: HTMLElement | null;
+  private circuitShowcaseBadge: HTMLElement | null;
+  private circuitShowcaseDesc: HTMLElement | null;
+  private circuitSpecLen: HTMLElement | null;
+  private circuitSpecCorners: HTMLElement | null;
+  private circuitSpecRecord: HTMLElement | null;
+  private circuitSpecType: HTMLElement | null;
 
   // Step 2: 머신 & 컬러
   private modelCards: NodeListOf<HTMLElement>;
@@ -76,7 +76,7 @@ export class GameSetupWizard extends BaseModal {
   private driverNameInput: HTMLInputElement | null;
   private btnRandomName: HTMLElement | null;
   private chkAutodrive: HTMLInputElement | null;
-  private briefingTrack: HTMLElement | null;
+  private briefingCircuit: HTMLElement | null;
   private briefingModel: HTMLElement | null;
   private briefingColorDot: HTMLElement | null;
   private briefingEnv: HTMLElement | null;
@@ -84,7 +84,7 @@ export class GameSetupWizard extends BaseModal {
 
   // 내부 상태
   private currentStep: 1 | 2 | 3 | 4 = 1;
-  public selectedTrack: TrackId = 'circuit_monaco';
+  public selectedCircuit: CircuitId = 'circuit_monaco';
   public selectedModel: VehicleModelId = 'gt_turbo';
   public selectedColor: string = '#ef4444';
   public selectedTime: TimeOfDay = 'noon';
@@ -111,17 +111,17 @@ export class GameSetupWizard extends BaseModal {
     this.stepPanels = document.querySelectorAll<HTMLElement>('.wizard-step-panel');
 
     // Step 1
-    this.trackCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-track]');
-    this.trackSvgMonaco = document.getElementById('track-svg-monaco');
-    this.trackSvgMonza = document.getElementById('track-svg-monza');
-    this.trackSvgSpa = document.getElementById('track-svg-spa');
-    this.trackShowcaseTitle = document.getElementById('track-showcase-title');
-    this.trackShowcaseBadge = document.getElementById('track-showcase-badge');
-    this.trackShowcaseDesc = document.getElementById('track-showcase-desc');
-    this.trackSpecLen = document.getElementById('track-spec-len');
-    this.trackSpecCorners = document.getElementById('track-spec-corners');
-    this.trackSpecRecord = document.getElementById('track-spec-record');
-    this.trackSpecType = document.getElementById('track-spec-type');
+    this.circuitCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-circuit], .wizard-choice-card[data-track]');
+    this.circuitSvgMonaco = document.getElementById('track-svg-monaco');
+    this.circuitSvgMonza = document.getElementById('track-svg-monza');
+    this.circuitSvgSpa = document.getElementById('track-svg-spa');
+    this.circuitShowcaseTitle = document.getElementById('track-showcase-title');
+    this.circuitShowcaseBadge = document.getElementById('track-showcase-badge');
+    this.circuitShowcaseDesc = document.getElementById('track-showcase-desc');
+    this.circuitSpecLen = document.getElementById('track-spec-len');
+    this.circuitSpecCorners = document.getElementById('track-spec-corners');
+    this.circuitSpecRecord = document.getElementById('track-spec-record');
+    this.circuitSpecType = document.getElementById('track-spec-type');
 
     // Step 2
     this.modelCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-model]');
@@ -141,14 +141,14 @@ export class GameSetupWizard extends BaseModal {
     this.driverNameInput = document.getElementById('wizard-driver-name') as HTMLInputElement | null;
     this.btnRandomName = document.getElementById('wizard-btn-random-name');
     this.chkAutodrive = document.getElementById('wizard-chk-autodrive') as HTMLInputElement | null;
-    this.briefingTrack = document.getElementById('briefing-track');
+    this.briefingCircuit = document.getElementById('briefing-track');
     this.briefingModel = document.getElementById('briefing-model');
     this.briefingColorDot = document.getElementById('briefing-color-dot');
     this.briefingEnv = document.getElementById('briefing-env');
     this.briefingDriver = document.getElementById('briefing-driver');
 
     this.initTurntableAndPicker();
-    this.initTrackSvgs();
+    this.initCircuitSvgs();
     this.bindEvents();
     this.pickRandomName();
   }
@@ -175,11 +175,11 @@ export class GameSetupWizard extends BaseModal {
     }
   }
 
-  private initTrackSvgs(): void {
-    const list: Array<{ id: TrackId; el: HTMLElement | null }> = [
-      { id: 'circuit_monaco', el: this.trackSvgMonaco },
-      { id: 'circuit_monza', el: this.trackSvgMonza },
-      { id: 'circuit_spa', el: this.trackSvgSpa },
+  private initCircuitSvgs(): void {
+    const list: Array<{ id: CircuitId; el: HTMLElement | null }> = [
+      { id: 'circuit_monaco', el: this.circuitSvgMonaco },
+      { id: 'circuit_monza', el: this.circuitSvgMonza },
+      { id: 'circuit_spa', el: this.circuitSvgSpa },
     ];
 
     list.forEach(({ id, el }) => {
@@ -227,17 +227,17 @@ export class GameSetupWizard extends BaseModal {
       if (this.currentStepTitle) {
         this.currentStepTitle.textContent = this.getStepTitle(this.currentStep);
       }
-      this.updateTrackShowcase();
+      this.updateCircuitShowcase();
       this.updateModelShowcase();
       this.updateEnvironmentShowcase();
       this.updateBriefingCard();
     });
 
     // Step 1: 서킷 카드
-    this.trackCards.forEach(card => {
+    this.circuitCards.forEach(card => {
       card.addEventListener('click', () => {
-        this.selectedTrack = (card.dataset.track as TrackId) || 'circuit_monaco';
-        this.updateTrackShowcase();
+        this.selectedCircuit = ((card.dataset.circuit || card.dataset.track) as CircuitId) || 'circuit_monaco';
+        this.updateCircuitShowcase();
       });
     });
 
@@ -301,7 +301,7 @@ export class GameSetupWizard extends BaseModal {
     // 레이스 시작 버튼
     this.btnStart?.addEventListener('click', () => {
       const config: RaceSetupConfig = {
-        trackId: this.selectedTrack,
+        circuitId: this.selectedCircuit,
         modelId: this.selectedModel,
         color: this.selectedColor,
         timeOfDay: this.selectedTime,
@@ -338,7 +338,7 @@ export class GameSetupWizard extends BaseModal {
     if (this.btnPrev) this.btnPrev.disabled = (step === 1);
 
     if (step === 1) {
-      this.updateTrackShowcase();
+      this.updateCircuitShowcase();
     } else if (step === 2) {
       this.updateModelShowcase();
       this.vehiclePreview?.start();
@@ -362,29 +362,30 @@ export class GameSetupWizard extends BaseModal {
     }
   }
 
-  public updateTrackShowcase(): void {
-    this.trackCards.forEach(c => {
-      c.classList.toggle('active', c.dataset.track === this.selectedTrack);
+  public updateCircuitShowcase(): void {
+    this.circuitCards.forEach(c => {
+      const cardId = c.dataset.circuit || c.dataset.track;
+      c.classList.toggle('active', cardId === this.selectedCircuit);
     });
 
-    this.trackSvgMonaco?.classList.toggle('active', this.selectedTrack === 'circuit_monaco');
-    this.trackSvgMonza?.classList.toggle('active', this.selectedTrack === 'circuit_monza');
-    this.trackSvgSpa?.classList.toggle('active', this.selectedTrack === 'circuit_spa');
+    this.circuitSvgMonaco?.classList.toggle('active', this.selectedCircuit === 'circuit_monaco');
+    this.circuitSvgMonza?.classList.toggle('active', this.selectedCircuit === 'circuit_monza');
+    this.circuitSvgSpa?.classList.toggle('active', this.selectedCircuit === 'circuit_spa');
 
-    const meta = TRACK_DEFINITIONS[this.selectedTrack];
+    const meta = CIRCUIT_DEFINITIONS[this.selectedCircuit];
     if (meta) {
-      if (this.trackShowcaseTitle) this.trackShowcaseTitle.textContent = meta.title;
-      if (this.trackShowcaseBadge) {
-        this.trackShowcaseBadge.textContent = meta.badge;
-        this.trackShowcaseBadge.className = `choice-card-badge ${meta.badgeClass}`;
+      if (this.circuitShowcaseTitle) this.circuitShowcaseTitle.textContent = meta.title;
+      if (this.circuitShowcaseBadge) {
+        this.circuitShowcaseBadge.textContent = meta.badge;
+        this.circuitShowcaseBadge.className = `choice-card-badge ${meta.badgeClass}`;
       }
-      if (this.trackShowcaseDesc) this.trackShowcaseDesc.textContent = meta.desc;
-      if (this.trackSpecLen) this.trackSpecLen.textContent = meta.len;
-      if (this.trackSpecCorners) this.trackSpecCorners.textContent = meta.corners;
-      if (this.trackSpecRecord) this.trackSpecRecord.textContent = meta.record;
-      if (this.trackSpecType) this.trackSpecType.textContent = meta.type;
+      if (this.circuitShowcaseDesc) this.circuitShowcaseDesc.textContent = meta.desc;
+      if (this.circuitSpecLen) this.circuitSpecLen.textContent = meta.len;
+      if (this.circuitSpecCorners) this.circuitSpecCorners.textContent = meta.corners;
+      if (this.circuitSpecRecord) this.circuitSpecRecord.textContent = meta.record;
+      if (this.circuitSpecType) this.circuitSpecType.textContent = meta.type;
     }
-    if (this.briefingTrack) this.briefingTrack.textContent = meta?.title || this.selectedTrack;
+    if (this.briefingCircuit) this.briefingCircuit.textContent = meta?.title || this.selectedCircuit;
   }
 
   public updateModelShowcase(): void {
@@ -437,7 +438,7 @@ export class GameSetupWizard extends BaseModal {
   }
 
   public updateBriefingCard(): void {
-    if (this.briefingTrack) this.briefingTrack.textContent = TRACK_DEFINITIONS[this.selectedTrack]?.title || this.selectedTrack;
+    if (this.briefingCircuit) this.briefingCircuit.textContent = CIRCUIT_DEFINITIONS[this.selectedCircuit]?.title || this.selectedCircuit;
     if (this.briefingModel) this.briefingModel.textContent = VEHICLE_MODELS[this.selectedModel]?.title || this.selectedModel;
     if (this.briefingColorDot) this.briefingColorDot.style.backgroundColor = this.selectedColor;
 
@@ -464,9 +465,9 @@ export class GameSetupWizard extends BaseModal {
   public randomizeAll(): void {
     this.pickRandomName();
 
-    const tracks: TrackId[] = ['circuit_monaco', 'circuit_monza', 'circuit_spa'];
-    this.selectedTrack = tracks[Math.floor(Math.random() * tracks.length)];
-    this.updateTrackShowcase();
+    const circuits: CircuitId[] = ['circuit_monaco', 'circuit_monza', 'circuit_spa'];
+    this.selectedCircuit = circuits[Math.floor(Math.random() * circuits.length)];
+    this.updateCircuitShowcase();
 
     const models: VehicleModelId[] = ['gt_turbo', 'formula_aero', 'cyber_speedster'];
     this.selectedModel = models[Math.floor(Math.random() * models.length)];
@@ -488,7 +489,7 @@ export class GameSetupWizard extends BaseModal {
   }
 
   public resetDefaults(): void {
-    this.selectedTrack = 'circuit_monaco';
+    this.selectedCircuit = 'circuit_monaco';
     this.selectedModel = 'gt_turbo';
     this.selectedColor = '#ef4444';
     this.selectedTime = 'noon';
@@ -502,7 +503,7 @@ export class GameSetupWizard extends BaseModal {
       this.btnRandomName.style.opacity = '1';
     }
 
-    this.updateTrackShowcase();
+    this.updateCircuitShowcase();
     this.updateModelShowcase();
     this.updateColor('#ef4444', true);
     this.updateEnvironmentShowcase();
@@ -514,7 +515,7 @@ export class GameSetupWizard extends BaseModal {
 
   public open(): void {
     this.showModal();
-    this.updateTrackShowcase();
+    this.updateCircuitShowcase();
     this.updateModelShowcase();
     this.updateEnvironmentShowcase();
     this.updateBriefingCard();

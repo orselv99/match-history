@@ -1,4 +1,4 @@
-import { CircuitTrack } from './CircuitTrack.ts';
+import { Circuit } from './Circuit.ts';
 import { Vehicle } from './Vehicle.ts';
 import { AICarManager } from './AICarManager.ts';
 import { ReplayPlayer } from '../replay/ReplayPlayer.ts';
@@ -7,7 +7,7 @@ import { t } from '../i18n/I18nManager.ts';
 export interface MinimapRenderParams {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D | null;
-  track: CircuitTrack;
+  circuit: Circuit;
   targetVehicle: Vehicle;
   aiManager: AICarManager;
   replayPlayer: ReplayPlayer;
@@ -21,7 +21,7 @@ export interface MinimapRenderParams {
  */
 export class MinimapRenderer {
   public static draw(params: MinimapRenderParams): void {
-    const { canvas, ctx, track, targetVehicle, aiManager, replayPlayer, mode } = params;
+    const { canvas, ctx, circuit, targetVehicle, aiManager, replayPlayer, mode } = params;
     if (!ctx) return;
 
     const w = canvas.width;
@@ -50,15 +50,15 @@ export class MinimapRenderer {
     ctx.moveTo(0, h / 2); ctx.lineTo(w, h / 2);
     ctx.stroke();
 
-    // 3. 서킷 트랙 도로 렌더링 (아스팔트 베이스 + 경계선)
-    if (track.trackPoints2D && track.trackPoints2D.length > 0) {
+    // 3. 서킷 도로 렌더링 (아스팔트 베이스 + 경계선)
+    if (circuit.circuitPoints2D && circuit.circuitPoints2D.length > 0) {
       // 아스팔트 베이스 (두꺼운 진한 도로)
       ctx.beginPath();
       ctx.lineWidth = 8;
       ctx.strokeStyle = '#232630';
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      track.trackPoints2D.forEach((p, idx) => {
+      circuit.circuitPoints2D.forEach((p, idx) => {
         const cx = p.x * scale + offsetX;
         const cy = p.z * scale + offsetY;
         if (idx === 0) ctx.moveTo(cx, cy);
@@ -67,11 +67,11 @@ export class MinimapRenderer {
       ctx.closePath();
       ctx.stroke();
 
-      // 트랙 주행 중심선
+      // 서킷 주행 중심선
       ctx.beginPath();
       ctx.lineWidth = 3;
       ctx.strokeStyle = '#383d49';
-      track.trackPoints2D.forEach((p, idx) => {
+      circuit.circuitPoints2D.forEach((p, idx) => {
         const cx = p.x * scale + offsetX;
         const cy = p.z * scale + offsetY;
         if (idx === 0) ctx.moveTo(cx, cy);
@@ -81,7 +81,7 @@ export class MinimapRenderer {
       ctx.stroke();
 
       // 스타트 / 피니시 라인 (화이트 마커)
-      const startP = track.trackPoints2D[0];
+      const startP = circuit.circuitPoints2D[0];
       const sX = startP.x * scale + offsetX;
       const sY = startP.z * scale + offsetY;
       ctx.fillStyle = '#ffffff';
@@ -91,9 +91,9 @@ export class MinimapRenderer {
     }
 
     // 4. 체크포인트 마커
-    if (track.checkpoints) {
+    if (circuit.checkpoints) {
       ctx.fillStyle = '#475569';
-      track.checkpoints.forEach(cp => {
+      circuit.checkpoints.forEach(cp => {
         const cX = cp.position.x * scale + offsetX;
         const cY = cp.position.z * scale + offsetY;
         ctx.beginPath();

@@ -85,7 +85,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
       this.latestMetadata = metadata;
 
       if (this.circuitCodeTag) {
-        const circuitName = (metadata.trackId || 'circuit_monaco').replace('circuit_', '').toUpperCase();
+        const circuitName = (metadata.circuitId || 'circuit_monaco').replace('circuit_', '').toUpperCase();
         this.circuitCodeTag.textContent = `CIRCUIT // ${circuitName}`;
       }
 
@@ -93,7 +93,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
       this.renderRaceResults(metadata.raceResults || []);
 
       // 2. 서버 서킷 상위 5위 랭킹 비동기 조회 (Fallback 지원)
-      this.loadServerTop5(metadata.trackId);
+      this.loadServerTop5(metadata.circuitId);
     }
 
     this.showModal();
@@ -128,7 +128,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
   /**
    * 서버에서 현재 서킷 기준 상위 5개 기록 조회, 실패 시 fallback 데이터 표시
    */
-  private async loadServerTop5(trackId: string): Promise<void> {
+  private async loadServerTop5(circuitId: string): Promise<void> {
     if (!this.serverTop5Tbody) return;
 
     this.serverTop5Tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 10px;">${t('finish.loading')}</td></tr>`;
@@ -140,7 +140,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000);
-      const res = await fetch(`https://match-history-api.orsel.workers.dev/api/leaderboards/${trackId}?limit=5`, {
+      const res = await fetch(`https://match-history-api.orsel.workers.dev/api/leaderboards/${circuitId}?limit=5`, {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -160,7 +160,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
       // 서버 미응답 또는 엔드포인트 미구현 시 Fallback으로 부드럽게 전환
     }
 
-    const fallbackList = FALLBACK_LEADERBOARDS[trackId] || FALLBACK_LEADERBOARDS['circuit_monaco'] || [];
+    const fallbackList = FALLBACK_LEADERBOARDS[circuitId] || FALLBACK_LEADERBOARDS['circuit_monaco'] || [];
     this.renderServerTop5(fallbackList, true);
   }
 

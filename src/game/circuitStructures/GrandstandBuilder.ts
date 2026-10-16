@@ -7,9 +7,9 @@ import type { StructureMaterials } from './types.ts';
  * - 5단 계단식 스탠드 & 레드/블루 교차 시트
  * - 트랙 방향 캔틸레버 에어로 루프 차양막 & 후방 지지 강철 기둥
  */
-export function buildGrandstand(materials: StructureMaterials, trackWidth: number): THREE.Group {
+export function buildGrandstand(materials: StructureMaterials, circuitWidth: number): THREE.Group {
   const grandstand = new THREE.Group();
-  const halfW = trackWidth / 2;
+  const halfW = circuitWidth / 2;
   const gsBaseX = halfW + 4.5;
   const gsLength = 52.0;
   const gsZ = -30.0; // Z: -56.0 ~ -4.0 (출발선 이전 구간)

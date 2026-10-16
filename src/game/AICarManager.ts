@@ -1,18 +1,18 @@
 import * as THREE from 'three';
 import { Vehicle } from './Vehicle.ts';
-import { CircuitTrack } from './CircuitTrack.ts';
+import { Circuit } from './Circuit.ts';
 import { AI_CAR_CONFIGS } from '../data/vehicles.ts';
 
 export interface AICarAgent {
   id: number;
   name: string;
   vehicle: Vehicle;
-  t: number;             // 트랙 곡선 진행도 (0.0 ~ 1.0)
+  t: number;             // 서킷 곡선 진행도 (0.0 ~ 1.0)
   prevT: number;
   speedMs: number;       // 현재 시속 m/s
   baseSpeedMs: number;   // 기본 크루징 속도 m/s
   maxSpeedMs: number;    // 최고 속도 m/s
-  laneOffset: number;    // 트랙 중심선으로부터의 좌우 레인 오프셋 (m)
+  laneOffset: number;    // 서킷 중심선으로부터의 좌우 레인 오프셋 (m)
   targetLaneOffset: number;
   color: number;
   currentLap: number;
@@ -46,10 +46,10 @@ export class AICarManager {
   public isRivalsMode: boolean = false;
   public onSectorPassed?: (name: string, sectorName: string, timeMs: number) => void;
 
-  private track: CircuitTrack;
+  private circuit: Circuit;
 
-  constructor(track: CircuitTrack) {
-    this.track = track;
+  constructor(circuit: Circuit) {
+    this.circuit = circuit;
 
     const defaultModels: Array<'gt_turbo' | 'formula_aero' | 'cyber_speedster'> = [
       'gt_turbo',
@@ -125,7 +125,7 @@ export class AICarManager {
     this.group.visible = true;
     this.isAllFinished = false;
 
-    const trackLength = this.track.trackCurve.getLength();
+    const circuitLength = this.circuit.circuitCurve.getLength();
     const slotDistances = [4.5, 11.5, 18.5, 25.5];
     const slotLanes = [-2.2, 2.2, -2.2, 2.2];
 
@@ -142,7 +142,7 @@ export class AICarManager {
       const distBehind = slotDistances[idx];
       const lane = slotLanes[idx];
 
-      agent.t = (1.0 - (distBehind / trackLength)) % 1.0;
+      agent.t = (1.0 - (distBehind / circuitLength)) % 1.0;
       agent.prevT = agent.t;
       agent.speedMs = 0;
       agent.laneOffset = lane;
@@ -160,7 +160,7 @@ export class AICarManager {
       agent.steerDir = 0;
 
       // 그리드 박스 위치에 차량 스폰 (Y: 0.055m 지면 밀착)
-      const gridPos = this.track.getGridPosition(idx);
+      const gridPos = this.circuit.getGridPosition(idx);
       agent.vehicle.reset(gridPos.position, gridPos.heading);
     });
   }
@@ -191,8 +191,8 @@ export class AICarManager {
     this.agents.forEach((agent) => {
       if (!agent.vehicle.mesh.visible || agent.isFinished) return;
 
-      const pt = this.track.trackCurve.getPointAt(agent.t);
-      const tangent = this.track.trackCurve.getTangentAt(agent.t).normalize();
+      const pt = this.circuit.circuitCurve.getPointAt(agent.t);
+      const tangent = this.circuit.circuitCurve.getTangentAt(agent.t).normalize();
       const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
       // 충돌 물리 엔진이 이동시킨 위치로부터 실제 레인 오프셋 재계산
@@ -200,7 +200,7 @@ export class AICarManager {
       diff.y = 0;
       const actualOffset = diff.dot(right);
 
-      // 트랙 아스팔트 폭 내로 안전하게 클램핑 동기화
+      // 서킷 아스팔트 폭 내로 안전하게 클램핑 동기화
       agent.laneOffset = THREE.MathUtils.clamp(actualOffset, -5.2, 5.2);
       agent.targetLaneOffset = agent.laneOffset;
 
@@ -221,16 +221,16 @@ export class AICarManager {
 
     this.raceTimeMs += delta * 1000;
 
-    const trackLength = this.track.trackCurve.getLength();
+    const circuitLength = this.circuit.circuitCurve.getLength();
     const leader = this.getLeaderAgent();
 
     this.agents.forEach((agent, idx) => {
       if (!agent.vehicle.mesh.visible) return;
 
-      // 트랙 코너 곡률 및 선회 방향 사전 계산 (추월 라인 선정 및 드리프트 판단)
+      // 서킷 코너 곡률 및 선회 방향 사전 계산 (추월 라인 선정 및 드리프트 판단)
       const futureT = (agent.t + 0.016) % 1.0;
-      const currTangent = this.track.trackCurve.getTangentAt(agent.t);
-      const futureTangent = this.track.trackCurve.getTangentAt(futureT);
+      const currTangent = this.circuit.circuitCurve.getTangentAt(agent.t);
+      const futureTangent = this.circuit.circuitCurve.getTangentAt(futureT);
       const curveAngle = currTangent.angleTo(futureTangent);
       const turnCrossY = currTangent.x * futureTangent.z - currTangent.z * futureTangent.x;
       const turnDir = turnCrossY > 0.001 ? 1 : (turnCrossY < -0.001 ? -1 : 0);
@@ -249,7 +249,7 @@ export class AICarManager {
           if (other === agent || !other.vehicle.mesh.visible || other.isFinished) continue;
           let dt = other.t - agent.t;
           if (dt < 0) dt += 1.0;
-          const dist = dt * trackLength;
+          const dist = dt * circuitLength;
           if (dist > 0.3 && dist < 60.0 && dist < nearestAheadDist) {
             nearestAheadDist = dist;
             carAhead = other;
@@ -305,7 +305,7 @@ export class AICarManager {
             if (other === agent || !other.vehicle.mesh.visible || other.isFinished) continue;
             let dt = agent.t - other.t;
             if (dt < 0) dt += 1.0;
-            const dist = dt * trackLength;
+            const dist = dt * circuitLength;
             if (dist < distBehindLeader) distBehindLeader = dist;
           }
           if (distBehindLeader > 8.0 && distBehindLeader < 250.0) {
@@ -315,7 +315,7 @@ export class AICarManager {
         } else {
           let distToLeader = leader.t - agent.t;
           if (distToLeader < 0) distToLeader += 1.0;
-          const mToLeader = distToLeader * trackLength;
+          const mToLeader = distToLeader * circuitLength;
           if (mToLeader > 8.0) {
             // 후미 차량 팩 합류 캐치업 부스트
             dynamicBonus += Math.min(6.5, (mToLeader - 8.0) * 0.22);
@@ -382,7 +382,7 @@ export class AICarManager {
       // 5. 진행률 t 전진
       agent.prevT = agent.t;
       const distTraveled = agent.speedMs * delta;
-      agent.t = (agent.t + (distTraveled / trackLength)) % 1.0;
+      agent.t = (agent.t + (distTraveled / circuitLength)) % 1.0;
 
       // 6. 스타트/피니시 라인 및 섹터(S1, S2, 도착선) 통과 감지
       const isEligible = this.isRivalsMode ? (idx !== 0) : true;
@@ -410,7 +410,7 @@ export class AICarManager {
           }
         }
       } else if (agent.hasPassedStartLine && isEligible && this.onSectorPassed) {
-        // shortcut: 트랙 정규화 t 비율(0.33, 0.66) 기반 섹터 체크, 트랙별 개별 체크포인트 3D 볼륨 충돌 매니저로 통합 시 업그레이드
+        // shortcut: 서킷 정규화 t 비율(0.33, 0.66) 기반 섹터 체크, 서킷별 개별 체크포인트 3D 볼륨 충돌 매니저로 통합 시 업그레이드
         if (agent.currentSectorIndex === 0 && agent.prevT < 0.33 && agent.t >= 0.33) {
           const timeAtSector = Math.round(this.raceTimeMs - agent.lastSectorTimeMs);
           agent.currentSectorIndex = 1;
@@ -435,8 +435,8 @@ export class AICarManager {
   }
 
   private updateAgentPosition(agent: AICarAgent, delta: number, curveAngle: number): void {
-    const pt = this.track.trackCurve.getPointAt(agent.t);
-    const tangent = this.track.trackCurve.getTangentAt(agent.t).normalize();
+    const pt = this.circuit.circuitCurve.getPointAt(agent.t);
+    const tangent = this.circuit.circuitCurve.getTangentAt(agent.t).normalize();
     const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
     const carPos = new THREE.Vector3()

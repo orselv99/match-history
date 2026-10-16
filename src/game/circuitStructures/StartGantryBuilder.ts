@@ -7,9 +7,9 @@ import type { StructureMaterials } from './types.ts';
  * - 5구 레드 스타팅 라이트
  * - 트랙 폭 맞춤 상단 START / FINISH 사이니지
  */
-export function buildStartGantry(materials: StructureMaterials, trackWidth: number): THREE.Group {
+export function buildStartGantry(materials: StructureMaterials, circuitWidth: number): THREE.Group {
   const gantry = new THREE.Group();
-  const halfW = trackWidth / 2;
+  const halfW = circuitWidth / 2;
   const postX = halfW + 1.4;
 
   // 좌우 기둥
@@ -39,7 +39,7 @@ export function buildStartGantry(materials: StructureMaterials, trackWidth: numb
   }
 
   // 상단 "START / FINISH" 전광판
-  const signGeom = new THREE.BoxGeometry(Math.min(12.0, trackWidth), 0.75, 0.2);
+  const signGeom = new THREE.BoxGeometry(Math.min(12.0, circuitWidth), 0.75, 0.2);
   const sign = new THREE.Mesh(signGeom, materials.emissiveCyanMat);
   sign.position.set(0, 7.8, -0.65);
 

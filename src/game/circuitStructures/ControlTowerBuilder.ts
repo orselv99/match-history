@@ -8,9 +8,9 @@ import type { StructureMaterials } from './types.ts';
  * - 통신 안테나 스파이어
  * - 트랙 방향 실시간 레이스 타이밍 전광판 (Live Timing LED Board)
  */
-export function buildControlTower(materials: StructureMaterials, trackWidth: number): THREE.Group {
+export function buildControlTower(materials: StructureMaterials, circuitWidth: number): THREE.Group {
   const towerGroup = new THREE.Group();
-  const halfW = trackWidth / 2;
+  const halfW = circuitWidth / 2;
   const towerX = -(halfW + 10.5);
   const towerZ = -2.5; // 출발선 바로 직전 (Z <= 0)
 

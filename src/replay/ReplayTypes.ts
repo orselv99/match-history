@@ -44,7 +44,7 @@ export interface MatchSummaryMetadata {
   matchCode: string;
   userId: string;
   userNickname: string;
-  trackId: string;
+  circuitId: string;
   vehicleId: string;
   playerColorHex?: number;
   opponentConfigs?: Array<{ modelId?: string; colorHex?: number; name?: string }>;

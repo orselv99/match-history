@@ -9,9 +9,9 @@ import type { StructureMaterials } from './types.ts';
  * - 6개 레이싱팀 정비 가레지 베이 도어 & 상단 사이니지
  * - 2층 VIP 패독 라운지 파노라마 틴티드 글래스 창문
  */
-export function buildPitComplex(materials: StructureMaterials, trackWidth: number): THREE.Group {
+export function buildPitComplex(materials: StructureMaterials, circuitWidth: number): THREE.Group {
   const pitGroup = new THREE.Group();
-  const halfW = trackWidth / 2;
+  const halfW = circuitWidth / 2;
   const pitBaseX = -(halfW + 3.0);
   const pitLength = 52.0;
   const pitZ = -30.0; // Z: -56.0 ~ -4.0 (출발선 이전 구간 완벽 일치)

@@ -10,9 +10,9 @@ export class ReplayCodec {
   /**
    * RawReplayTick 배열을 20바이트 고정 바이너리 버퍼로 인코딩
    */
-  public static encode(ticks: RawReplayTick[], trackId: string = 'circuit_monaco'): ArrayBuffer {
+  public static encode(ticks: RawReplayTick[], circuitId: string = 'circuit_monaco'): ArrayBuffer {
     const totalTicks = ticks.length;
-    // 헤더 크기: Magic(4) + Version(2) + TotalTicks(4) + TrackId(16 ASCII) = 26 bytes
+    // 헤더 크기: Magic(4) + Version(2) + TotalTicks(4) + CircuitId(16 ASCII) = 26 bytes
     const HEADER_SIZE = 26;
     const totalBytes = HEADER_SIZE + totalTicks * REPLAY_PACKET.TICK_BYTES;
 
@@ -24,10 +24,10 @@ export class ReplayCodec {
     view.setUint16(4, REPLAY_PACKET.VERSION, true);       // Version 1 Little-Endian
     view.setUint32(6, totalTicks, true);                     // Total Ticks Little-Endian
 
-    // Track ID (16바이트 고정 길이 문자열 패딩)
+    // Circuit ID (16바이트 고정 길이 문자열 패딩)
     const encoder = new TextEncoder();
-    const trackBytes = encoder.encode(trackId.slice(0, 16).padEnd(16, ' '));
-    new Uint8Array(buffer, 10, 16).set(trackBytes);
+    const circuitBytes = encoder.encode(circuitId.slice(0, 16).padEnd(16, ' '));
+    new Uint8Array(buffer, 10, 16).set(circuitBytes);
 
     // 2. 틱 데이터 패킹 (20바이트씩)
     let offset = HEADER_SIZE;
@@ -92,7 +92,7 @@ export class ReplayCodec {
   /**
    * 바이너리 버퍼를 RawReplayTick 배열로 디코딩
    */
-  public static decode(buffer: ArrayBuffer): { ticks: RawReplayTick[]; trackId: string } {
+  public static decode(buffer: ArrayBuffer): { ticks: RawReplayTick[]; circuitId: string } {
     const view = new DataView(buffer);
     const magic = view.getUint32(0, false);
     if (magic !== REPLAY_PACKET.HEADER_MAGIC) {
@@ -103,8 +103,8 @@ export class ReplayCodec {
     const totalTicks = view.getUint32(6, true);
 
     const decoder = new TextDecoder();
-    const trackIdBytes = new Uint8Array(buffer, 10, 16);
-    const trackId = decoder.decode(trackIdBytes).trim();
+    const circuitIdBytes = new Uint8Array(buffer, 10, 16);
+    const circuitId = decoder.decode(circuitIdBytes).trim();
 
     const HEADER_SIZE = 26;
     const ticks: RawReplayTick[] = [];
@@ -149,7 +149,7 @@ export class ReplayCodec {
       offset += REPLAY_PACKET.TICK_BYTES;
     }
 
-    return { ticks, trackId };
+    return { ticks, circuitId };
   }
 
   /**

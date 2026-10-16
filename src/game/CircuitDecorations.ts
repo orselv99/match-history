@@ -9,7 +9,6 @@ import {
   buildArchGate,
 } from './circuitStructures/index.ts';
 
-
 /**
  * 3D 서킷 환경 조형물 및 노면 마킹 생성 전담 빌더
  * - 적백 연석(Curbs) 절차적 메시
@@ -17,22 +16,21 @@ import {
  * - 네온 듀얼빔 체크포인트 아치 게이트(ArchGate)
  * - 600m x 600m 다크 매트 그라운드 플레인 & 테크니컬 그리드 라인
  */
-export class TrackDecorations {
+export class CircuitDecorations {
   /**
    * 스타팅 그리드 체커보드 라인 및 4대 머신 주차 그리드 슬롯 마킹 생성
    */
-  public static buildStartingGrids(trackCurve: THREE.CatmullRomCurve3, trackWidth: number): THREE.Group {
+  public static buildStartingGrids(circuitCurve: THREE.CatmullRomCurve3, circuitWidth: number): THREE.Group {
     const group = new THREE.Group();
-    const trackLength = trackCurve.getLength();
     const whiteMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc, side: THREE.DoubleSide, depthWrite: true });
     const blackMat = new THREE.MeshBasicMaterial({ color: 0x121316, side: THREE.DoubleSide, depthWrite: true });
 
     // 1) 결승선 체커 라인 (가로로 반듯하게 정렬된 2행 체커보드 스트립)
-    const startPt = trackCurve.getPointAt(0);
-    const startTangent = trackCurve.getTangentAt(0).normalize();
+    const startPt = circuitCurve.getPointAt(0);
+    const startTangent = circuitCurve.getTangentAt(0).normalize();
     const startRight = new THREE.Vector3(-startTangent.z, 0, startTangent.x).normalize();
 
-    const checkerTotalW = trackWidth - 2 * (0.15 + 0.35 + 0.05);
+    const checkerTotalW = circuitWidth - 2 * (0.15 + 0.35 + 0.05);
     const cols = 18;
     const rows = 2;
     const blockW = checkerTotalW / cols;
@@ -300,11 +298,11 @@ export class TrackDecorations {
    * - 2층 피트 빌딩 & 피트 월 & 피트 레인 (Pit Complex & Pit Wall)
    * - 4층 레이스 컨트롤 타워 & 대형 전광판 (Race Control Tower & Live Timing Board)
    */
-  public static buildCircuitStructures(trackCurve: THREE.CatmullRomCurve3, trackWidth: number): THREE.Group {
+  public static buildCircuitStructures(circuitCurve: THREE.CatmullRomCurve3, circuitWidth: number): THREE.Group {
     const group = new THREE.Group();
 
-    const startPt = trackCurve.getPointAt(0);
-    const startTangent = trackCurve.getTangentAt(0).normalize();
+    const startPt = circuitCurve.getPointAt(0);
+    const startTangent = circuitCurve.getTangentAt(0).normalize();
     const heading = Math.atan2(startTangent.x, startTangent.z);
 
     group.position.copy(startPt);
@@ -314,16 +312,16 @@ export class TrackDecorations {
     const materials = createStructureMaterials();
 
     // 1. 출발선 갠트리 (F1 Start Lights & Race Gantry)
-    group.add(buildStartGantry(materials, trackWidth));
+    group.add(buildStartGantry(materials, circuitWidth));
 
     // 2. 그랜드스탠드 (Grandstand - 출발선 이전 Z <= 0 구간)
-    group.add(buildGrandstand(materials, trackWidth));
+    group.add(buildGrandstand(materials, circuitWidth));
 
     // 3. 피트 콤플렉스 (Pit Building & Pit Wall & Pit Lane - 출발선 이전 Z <= 0 구간)
-    group.add(buildPitComplex(materials, trackWidth));
+    group.add(buildPitComplex(materials, circuitWidth));
 
     // 4. 레이스 컨트롤 타워 (Race Control Tower & Timing Board - Z <= 0 구간)
-    group.add(buildControlTower(materials, trackWidth));
+    group.add(buildControlTower(materials, circuitWidth));
 
     return group;
   }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { TRACK_DEFINITIONS, type TrackMetadata } from '../data/circuitTracks.ts';
-import { TrackDecorations } from './TrackDecorations.ts';
+import { CIRCUIT_DEFINITIONS, type CircuitMetadata } from '../data/circuits.ts';
+import { CircuitDecorations } from './CircuitDecorations.ts';
 
 export interface CheckpointTrigger {
   id: number;
@@ -10,7 +10,7 @@ export interface CheckpointTrigger {
   isPassed: boolean;
 }
 
-export interface TrackSurfaceInfo {
+export interface CircuitSurfaceInfo {
   distFromCenter: number;
   groundY: number;
   slopeSin: number;
@@ -18,32 +18,32 @@ export interface TrackSurfaceInfo {
 }
 
 /**
- * Three.js 폐루프 서킷 트랙 (Circuit Track)
+ * Three.js 폐루프 서킷 (Circuit)
  * - 3D 고저차(Elevation) 아스팔트 노면 + 양측 적백 연석(Curbs) + 성토 옹벽 + 3개 섹터 체크포인트
  * - CatmullRomCurve3 기반의 3D 중심선 궤적 및 실시간 노면 고도/경사도(Pitch) 샘플링
  */
-export class CircuitTrack {
+export class Circuit {
   public group: THREE.Group = new THREE.Group();
-  public trackCurve!: THREE.CatmullRomCurve3;
-  public trackWidth: number = 14; // 도로 폭
+  public circuitCurve!: THREE.CatmullRomCurve3;
+  public circuitWidth: number = 14; // 도로 폭
   public checkpoints: CheckpointTrigger[] = [];
-  public trackPoints2D: { x: number; z: number }[] = [];
-  public currentTrackId: string = 'circuit_monaco';
+  public circuitPoints2D: { x: number; z: number }[] = [];
+  public currentCircuitId: string = 'circuit_monaco';
 
   private samplePoints: THREE.Vector3[] = [];
   private sampleTangents: THREE.Vector3[] = [];
   private readonly SAMPLE_COUNT = 240;
 
-  constructor(trackId: string = 'circuit_monaco') {
-    this.loadTrack(trackId);
+  constructor(circuitId: string = 'circuit_monaco') {
+    this.loadCircuit(circuitId);
   }
 
   /**
-   * 지정된 서킷 ID로 트랙 지오메트리, 연석, 마킹 및 체크포인트를 실시간으로 완전 재구축
+   * 지정된 서킷 ID로 서킷 지오메트리, 연석, 마킹 및 체크포인트를 실시간으로 완전 재구축
    */
-  public loadTrack(trackId: string): TrackMetadata {
-    this.currentTrackId = trackId;
-    const def = TRACK_DEFINITIONS[trackId] || TRACK_DEFINITIONS['circuit_monaco'];
+  public loadCircuit(circuitId: string): CircuitMetadata {
+    this.currentCircuitId = circuitId;
+    const def = CIRCUIT_DEFINITIONS[circuitId] || CIRCUIT_DEFINITIONS['circuit_monaco'];
 
     // 1. 기존 그룹 내 모든 하위 3D 객체 및 지오메트리 해제
     while (this.group.children.length > 0) {
@@ -58,25 +58,25 @@ export class CircuitTrack {
 
     // 2. 새 서킷 파라미터 적용
     this.checkpoints = [];
-    this.trackWidth = def.trackWidth;
-    this.trackCurve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
+    this.circuitWidth = def.circuitWidth;
+    this.circuitCurve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
 
     // 3. 미니맵용 2D 샘플 점 및 물리 고도/경사 조회용 3D 샘플 캐싱
-    const miniPoints = this.trackCurve.getPoints(200);
-    this.trackPoints2D = miniPoints.map(p => ({ x: p.x, z: p.z }));
+    const miniPoints = this.circuitCurve.getPoints(200);
+    this.circuitPoints2D = miniPoints.map(p => ({ x: p.x, z: p.z }));
 
     this.samplePoints = [];
     this.sampleTangents = [];
     for (let i = 0; i < this.SAMPLE_COUNT; i++) {
       const t = i / this.SAMPLE_COUNT;
-      this.samplePoints.push(this.trackCurve.getPointAt(t));
-      this.sampleTangents.push(this.trackCurve.getTangentAt(t).normalize());
+      this.samplePoints.push(this.circuitCurve.getPointAt(t));
+      this.sampleTangents.push(this.circuitCurve.getTangentAt(t).normalize());
     }
 
     // 4. 지오메트리 및 환경 재빌드
-    this.buildTrackMesh(def.bridgeSpan);
-    this.group.add(TrackDecorations.buildGround());
-    this.group.add(TrackDecorations.buildCircuitStructures(this.trackCurve, this.trackWidth));
+    this.buildCircuitMesh(def.bridgeSpan);
+    this.group.add(CircuitDecorations.buildGround());
+    this.group.add(CircuitDecorations.buildCircuitStructures(this.circuitCurve, this.circuitWidth));
     this.setupCheckpoints();
 
     return def;
@@ -88,9 +88,9 @@ export class CircuitTrack {
     metalness: 0.16,
   });
 
-  private buildTrackMesh(bridgeSpan?: [number, number]): void {
+  private buildCircuitMesh(bridgeSpan?: [number, number]): void {
     const segments = 300;
-    const rawPoints = this.trackCurve.getSpacedPoints(segments);
+    const rawPoints = this.circuitCurve.getSpacedPoints(segments);
     const roadPoints = rawPoints.slice(0, segments);
 
     // 아스팔트 리본 메시 지오메트리 생성
@@ -99,7 +99,7 @@ export class CircuitTrack {
     const uvs: number[] = [];
     const indices: number[] = [];
 
-    const halfWidth = this.trackWidth / 2;
+    const halfWidth = this.circuitWidth / 2;
 
     for (let i = 0; i <= segments; i++) {
       const idx = i % segments;
@@ -139,8 +139,8 @@ export class CircuitTrack {
     roadMesh.receiveShadow = true;
     this.group.add(roadMesh);
 
-    // 연석(Curbs), 성토 옹벽, 입체 고가 다리(Overpass Bridge) 및 트랙 도로 마킹 추가
-    this.group.add(TrackDecorations.buildCurbs(roadPoints, halfWidth, bridgeSpan));
+    // 연석(Curbs), 성토 옹벽, 입체 고가 다리(Overpass Bridge) 및 서킷 도로 마킹 추가
+    this.group.add(CircuitDecorations.buildCurbs(roadPoints, halfWidth, bridgeSpan));
     this.buildRoadMarkings(roadPoints, halfWidth);
   }
 
@@ -277,7 +277,7 @@ export class CircuitTrack {
     this.group.add(centerLine);
 
     // 4. 스타팅 그리드 마킹 & 체커 라인
-    this.group.add(TrackDecorations.buildStartingGrids(this.trackCurve, this.trackWidth));
+    this.group.add(CircuitDecorations.buildStartingGrids(this.circuitCurve, this.circuitWidth));
   }
 
   /**
@@ -297,8 +297,8 @@ export class CircuitTrack {
    * 스타트/피니시 라인 기준 로컬 좌표계 (localX: 횡방향, localZ: 종방향)를 3D 월드 좌표로 정확히 변환
    */
   public getStartStraightWorldPosition(localX: number, localZ: number): { position: THREE.Vector3; heading: number } {
-    const startPt = this.trackCurve.getPointAt(0);
-    const tangent = this.trackCurve.getTangentAt(0).normalize();
+    const startPt = this.circuitCurve.getPointAt(0);
+    const tangent = this.circuitCurve.getTangentAt(0).normalize();
     const localXDir = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
     const heading = Math.atan2(tangent.x, tangent.z);
 
@@ -319,27 +319,27 @@ export class CircuitTrack {
     ];
 
     cpConfigs.forEach(cfg => {
-      const pos = this.trackCurve.getPointAt(cfg.t);
-      const tangent = this.trackCurve.getTangentAt(cfg.t);
+      const pos = this.circuitCurve.getPointAt(cfg.t);
+      const tangent = this.circuitCurve.getTangentAt(cfg.t);
 
       this.checkpoints.push({
         id: cfg.id,
         position: pos,
         direction: tangent,
-        radius: this.trackWidth * 0.9,
+        radius: this.circuitWidth * 0.9,
         isPassed: false,
       });
 
       if (cfg.id !== 0) {
-        this.group.add(TrackDecorations.buildArchGate(pos, tangent, false, this.trackWidth));
+        this.group.add(CircuitDecorations.buildArchGate(pos, tangent, false, this.circuitWidth));
       }
     });
   }
 
   /**
-   * 임의의 차량 3D 위치 및 진행 방향(heading)에 대한 트랙 중심선 거리, 노면 고도(groundY), 경사도(slopeSin, roadPitch) 반환
+   * 임의의 차량 3D 위치 및 진행 방향(heading)에 대한 서킷 중심선 거리, 노면 고도(groundY), 경사도(slopeSin, roadPitch) 반환
    */
-  public getTrackSurfaceInfo(pos: THREE.Vector3, heading: number = 0): TrackSurfaceInfo {
+  public getCircuitSurfaceInfo(pos: THREE.Vector3, heading: number = 0): CircuitSurfaceInfo {
     const n = this.samplePoints.length;
     if (n === 0) {
       return { distFromCenter: 0, groundY: 0.055, slopeSin: 0, roadPitch: 0 };
@@ -372,25 +372,21 @@ export class CircuitTrack {
     let segStartIndex = bestIdx;
     let segEndIndex = nextIdx;
     let alpha = segNext.alpha;
-    let closestX = segNext.x;
     let closestY = segNext.y;
-    let closestZ = segNext.z;
     let distSq = segNext.distSq;
 
     if (segPrev.distSq < segNext.distSq) {
       segStartIndex = prevIdx;
       segEndIndex = bestIdx;
       alpha = segPrev.alpha;
-      closestX = segPrev.x;
       closestY = segPrev.y;
-      closestZ = segPrev.z;
       distSq = segPrev.distSq;
     }
 
     const distFromCenter = Math.sqrt(distSq);
-    const halfWidth = this.trackWidth * 0.5;
+    const halfWidth = this.circuitWidth * 0.5;
 
-    // 트랙 3D 접선 보간
+    // 서킷 3D 접선 보간
     const tStart = this.sampleTangents[segStartIndex];
     const tEnd = this.sampleTangents[segEndIndex];
     const tx = tStart.x + (tEnd.x - tStart.x) * alpha;
@@ -401,14 +397,14 @@ export class CircuitTrack {
     const normTy = ty / tLen;
     const normTz = tz / tLen;
 
-    // 트랙 연석 바깥(오프로드 성토 사면)으로 벗어날 경우 지면(0m)으로 부드럽게 고도 감쇠
+    // 서킷 연석 바깥(오프로드 성토 사면)으로 벗어날 경우 지면(0m)으로 부드럽게 고도 감쇠
     const roadEdge = halfWidth + 1.3;
     const offroadBlend = THREE.MathUtils.clamp((distFromCenter - roadEdge) / 2.2, 0, 1);
 
-    const onTrackY = Math.max(0, closestY) + 0.055;
-    const groundY = THREE.MathUtils.lerp(onTrackY, 0.02, offroadBlend);
+    const onCircuitY = Math.max(0, closestY) + 0.055;
+    const groundY = THREE.MathUtils.lerp(onCircuitY, 0.02, offroadBlend);
 
-    // 차량 진행 방향과 트랙 수평 접선의 정렬도에 따른 실제 체감 경사(sin θ) 계산
+    // 차량 진행 방향과 서킷 수평 접선의 정렬도에 따른 실제 체감 경사(sin θ) 계산
     const horizLen = Math.hypot(normTx, normTz) || 1;
     const fwdX = Math.sin(heading);
     const fwdZ = Math.cos(heading);
@@ -446,9 +442,9 @@ export class CircuitTrack {
   }
 
   /**
-   * 차량 위치가 트랙 중심선으로부터 얼마나 벗어났는지 확인 (오프로드/잔디 감지)
+   * 차량 위치가 서킷 중심선으로부터 얼마나 벗어났는지 확인 (오프로드/잔디 감지)
    */
   public getDistanceFromCenter(pos: THREE.Vector3): number {
-    return this.getTrackSurfaceInfo(pos, 0).distFromCenter;
+    return this.getCircuitSurfaceInfo(pos, 0).distFromCenter;
   }
 }

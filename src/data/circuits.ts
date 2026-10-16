@@ -1,8 +1,10 @@
 import * as THREE from 'three';
 import { t } from '../i18n/I18nManager.ts';
 
-export interface TrackMetadata {
-  id: string;
+export type CircuitId = 'circuit_monaco' | 'circuit_monza' | 'circuit_spa';
+
+export interface CircuitMetadata {
+  id: CircuitId;
   title: string;
   badge: string;
   badgeClass: string;
@@ -11,7 +13,7 @@ export interface TrackMetadata {
   corners: string;
   record: string;
   type: string;
-  trackWidth: number;
+  circuitWidth: number;
   bridgeSpan?: [number, number];
   controlPoints: THREE.Vector3[];
 }
@@ -22,7 +24,7 @@ export interface TrackMetadata {
  * 2. Autodromo Nazionale Monza (초고속 스피드의 신전 GP 서킷)
  * 3. Circuit de Spa-Francorchamps (아르덴의 전설적인 롤러코스터 서킷)
  */
-export const TRACK_DEFINITIONS: Record<string, TrackMetadata> = {
+export const CIRCUIT_DEFINITIONS: Record<string, CircuitMetadata> = {
   circuit_monaco: {
     id: 'circuit_monaco',
     title: 'Circuit de Monaco',
@@ -35,7 +37,7 @@ export const TRACK_DEFINITIONS: Record<string, TrackMetadata> = {
     corners: '19 CORNERS',
     record: '01:14.260',
     type: 'TECHNICAL STREET',
-    trackWidth: 13.5,
+    circuitWidth: 13.5,
     controlPoints: [
       new THREE.Vector3(0, 0, 0),          // 스타트/피니시 라인 (평지 0m)
       new THREE.Vector3(80, 0, 0),         // 메인 스트레이트
@@ -66,7 +68,7 @@ export const TRACK_DEFINITIONS: Record<string, TrackMetadata> = {
     corners: '11 CORNERS',
     record: '01:21.046',
     type: 'TEMPLE OF SPEED',
-    trackWidth: 15.0,
+    circuitWidth: 15.0,
     controlPoints: [
       new THREE.Vector3(40, 0, 90),        // Start / Finish Line (Rettifilo Tribune, 0m)
       new THREE.Vector3(-20, 0, 90),       // Main straight acceleration (0m)
@@ -114,7 +116,7 @@ export const TRACK_DEFINITIONS: Record<string, TrackMetadata> = {
     corners: '20 CORNERS',
     record: '01:41.252',
     type: 'ARDENNES ROLLERCOASTER',
-    trackWidth: 14.5,
+    circuitWidth: 14.5,
     bridgeSpan: [0.135, 0.275],            // 하부 도로(t≈0.98) 위를 가로지르는 상부 고가 대교(Overpass Viaduct) 구간
     controlPoints: [
       new THREE.Vector3(-105, 0, 75),      // Start / Finish Line (Pit Straight, 0m)
@@ -161,8 +163,8 @@ export interface CircuitSvgData {
 /**
  * CatmullRom 3D 제어점 스플라인 곡선으로부터 위저드 쇼케이스용 2D SVG 패스 및 스타트 핀 좌표를 정밀 산출
  */
-export function getCircuitSvgData(trackId: string, width = 400, height = 240, padding = 34): CircuitSvgData {
-  const def = TRACK_DEFINITIONS[trackId] || TRACK_DEFINITIONS.circuit_monaco;
+export function getCircuitSvgData(circuitId: string, width = 400, height = 240, padding = 34): CircuitSvgData {
+  const def = CIRCUIT_DEFINITIONS[circuitId] || CIRCUIT_DEFINITIONS.circuit_monaco;
   const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
   const points = curve.getPoints(140);
 

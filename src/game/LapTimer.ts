@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { CheckpointTrigger } from './CircuitTrack.ts';
+import type { CheckpointTrigger } from './Circuit.ts';
 
 export interface LapResult {
   lap: number;

@@ -7,13 +7,13 @@ export function buildArchGate(
   pos: THREE.Vector3,
   tangent: THREE.Vector3,
   isFinish: boolean,
-  trackWidth: number
+  circuitWidth: number
 ): THREE.Group {
   const archGroup = new THREE.Group();
   archGroup.position.copy(pos);
 
   const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-  const halfW = trackWidth / 2 + 1.5;
+  const halfW = circuitWidth / 2 + 1.5;
 
   // 기둥 2개
   const pillarGeom = new THREE.BoxGeometry(0.6, 6, 0.6);
@@ -28,7 +28,7 @@ export function buildArchGate(
   rightPillar.position.y = 3;
 
   // 상단 듀얼 빔 (y=4.9, y=5.8): 피니시는 로즈(0xc45a72), 일반 섹터는 스카이블루(0x7dd3fc)
-  const beamGeom = new THREE.BoxGeometry(trackWidth + 4, 0.35, 0.75);
+  const beamGeom = new THREE.BoxGeometry(circuitWidth + 4, 0.35, 0.75);
   const beamColor = isFinish ? 0xc45a72 : 0x7dd3fc;
   const beamEmissive = isFinish ? 0xc45a72 : 0x38bdf8;
 

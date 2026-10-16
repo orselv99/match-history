@@ -34,14 +34,14 @@ export class CameraController {
 
     if (isFirstPerson) {
       this.camera.position.set(
-        targetVehicle.position.x + sinH * 0.75,
-        targetVehicle.position.y + 0.98,
-        targetVehicle.position.z + cosH * 0.75
+        targetVehicle.position.x + sinH * 1.35,
+        targetVehicle.position.y + 0.96,
+        targetVehicle.position.z + cosH * 1.35
       );
       this.cameraLookTarget.set(
-        targetVehicle.position.x + sinH * 28.0,
-        targetVehicle.position.y + 0.95 + pitchLookOffset,
-        targetVehicle.position.z + cosH * 28.0
+        targetVehicle.position.x + sinH * 32.0,
+        targetVehicle.position.y + 0.90 + pitchLookOffset,
+        targetVehicle.position.z + cosH * 32.0
       );
     } else {
       this.camera.position.set(
@@ -67,9 +67,9 @@ export class CameraController {
 
     const targetCamPos = isFirstPerson
       ? new THREE.Vector3(
-          targetVehicle.position.x + sinH * 0.75,
-          targetVehicle.position.y + 0.98,
-          targetVehicle.position.z + cosH * 0.75
+          targetVehicle.position.x + sinH * 1.35,
+          targetVehicle.position.y + 0.96,
+          targetVehicle.position.z + cosH * 1.35
         )
       : new THREE.Vector3(
           targetVehicle.position.x - sinH * 8.5,
@@ -80,8 +80,8 @@ export class CameraController {
     const lerpRate = isFirstPerson ? 24.0 : 9.0;
     this.camera.position.lerp(targetCamPos, Math.min(1.0, lerpRate * delta));
 
-    const lookAhead = isFirstPerson ? 28.0 : 4.0;
-    const lookHeight = isFirstPerson ? 0.95 : 1.2;
+    const lookAhead = isFirstPerson ? 32.0 : 4.0;
+    const lookHeight = isFirstPerson ? 0.90 : 1.2;
     this.cameraLookTarget.set(
       targetVehicle.position.x + sinH * lookAhead,
       targetVehicle.position.y + lookHeight + pitchLookOffset,

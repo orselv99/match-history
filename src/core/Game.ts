@@ -296,11 +296,13 @@ export class Game {
 
   public toggleCameraView(): CameraViewMode {
     const mode = this.cameraController.toggleViewMode();
+    const is1P = mode === 'FIRST_PERSON';
+    this.playerVehicle.setFirstPersonView(is1P);
     const btn = document.getElementById('camera-view-label');
     if (btn) {
-      btn.textContent = mode === 'FIRST_PERSON' ? '1P' : '3P';
+      btn.textContent = is1P ? '1P' : '3P';
     }
-    showToast(mode === 'FIRST_PERSON' ? '🎥 1인칭 본넷/콕핏 뷰' : '🎥 3인칭 체이스 뷰', 1600);
+    showToast(is1P ? '🎥 1인칭 본넷 뷰' : '🎥 3인칭 체이스 뷰', 1600);
     return mode;
   }
 

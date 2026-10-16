@@ -372,16 +372,30 @@ export class Vehicle {
     }
   }
 
+  public isFirstPersonView: boolean = false;
+
+  public setFirstPersonView(is1P: boolean): void {
+    this.isFirstPersonView = is1P;
+    this.updateHeadlightVisibility();
+  }
+
   public setHeadlights(enabled: boolean): void {
     this.headlightsEnabled = enabled;
-    const spotIntensity = enabled ? 55.0 : 0;
+    this.updateHeadlightVisibility();
+  }
+
+  private updateHeadlightVisibility(): void {
+    const spotIntensity = this.headlightsEnabled ? 55.0 : 0;
     if (this.headSpotLight) this.headSpotLight.intensity = spotIntensity;
-    if (this.leftLensGlow) this.leftLensGlow.visible = enabled;
-    if (this.rightLensGlow) this.rightLensGlow.visible = enabled;
-    if (this.groundBeamMesh) this.groundBeamMesh.visible = enabled;
     if (this.headLightMaterial) {
-      this.headLightMaterial.emissiveIntensity = enabled ? 4.5 : 0.4;
+      this.headLightMaterial.emissiveIntensity = this.headlightsEnabled ? 4.5 : 0.4;
     }
+    // 1인칭 시점에서는 운전자 시야를 정면에서 가리는 렌즈 플레어(Sprite)와 전면 애디티브 지면 빔 메시를 숨김
+    const showFlares = this.headlightsEnabled && !this.isFirstPersonView;
+    if (this.leftLensGlow) this.leftLensGlow.visible = showFlares;
+    if (this.rightLensGlow) this.rightLensGlow.visible = showFlares;
+    if (this.groundBeamMesh) this.groundBeamMesh.visible = showFlares;
+
     // 후방 레드 포인트 라이트는 브레이크/드리프트 전용이므로 평소에는 0 유지!
     const tailIntensity = this.isDrifting ? 3.0 : 0;
     if (this.leftTailPointLight) {

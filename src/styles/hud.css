@@ -902,22 +902,43 @@
   color: #ffffff;
 }
 
-/* 윈드실드 와이퍼 어셈블리 */
+/* 듀얼 윈드실드 와이퍼 (운전석 & 조수석 연동 시스템) */
 .windshield-wiper-assembly {
   position: absolute;
-  bottom: -40px;
-  left: 28%;
+  inset: 0;
   pointer-events: none;
   z-index: 6;
   opacity: 0;
-  transform: rotate(-80deg);
-  transform-origin: bottom center;
   transition: opacity 0.5s ease;
+  overflow: hidden;
 }
 
 .weather-screen-overlay.is-raining .windshield-wiper-assembly {
   opacity: 0.95;
-  animation: wiperSweepMotion 2.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.wiper-unit {
+  position: absolute;
+  bottom: -45px;
+  transform-origin: bottom center;
+}
+
+.wiper-unit.wiper-driver {
+  left: 20%;
+  transform: rotate(-78deg);
+}
+
+.wiper-unit.wiper-passenger {
+  left: 54%;
+  transform: rotate(-80deg);
+}
+
+.weather-screen-overlay.is-raining .wiper-unit.wiper-driver {
+  animation: wiperSweepMotionDriver 2.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+
+.weather-screen-overlay.is-raining .wiper-unit.wiper-passenger {
+  animation: wiperSweepMotionPassenger 2.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
 .wiper-pivot {
@@ -954,12 +975,20 @@
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
 }
 
-@keyframes wiperSweepMotion {
+@keyframes wiperSweepMotionDriver {
   0% { transform: rotate(-78deg); }
-  46% { transform: rotate(26deg); }
-  52% { transform: rotate(26deg); }
+  46% { transform: rotate(28deg); }
+  52% { transform: rotate(28deg); }
   94% { transform: rotate(-78deg); }
   100% { transform: rotate(-78deg); }
+}
+
+@keyframes wiperSweepMotionPassenger {
+  0% { transform: rotate(-80deg); }
+  46% { transform: rotate(26deg); }
+  52% { transform: rotate(26deg); }
+  94% { transform: rotate(-80deg); }
+  100% { transform: rotate(-80deg); }
 }
 
 /* 슬립스트림 기류선 오버레이 (후미 슬립스트림 흡입 시) */

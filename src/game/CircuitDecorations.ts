@@ -386,7 +386,7 @@ export class CircuitDecorations {
       const gsGroup = new THREE.Group();
       gsGroup.position.copy(pt);
       gsGroup.rotation.y = h;
-      gsGroup.add(buildGrandstand(materials, circuitWidth, 52.0, 0.0, true));
+      gsGroup.add(buildGrandstand(materials, circuitWidth, 52.0, 0.0, false));
       root.add(gsGroup);
     }
 

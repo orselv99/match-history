@@ -164,17 +164,18 @@ export const CIRCUIT_DEFINITIONS: Record<string, CircuitMetadata> = {
     record: '01:27.097',
     type: 'HOME OF BRITISH MOTORSPORT',
     circuitWidth: 15.0,
+    bridgeSpan: [0.195, 0.315],            // 하부 해밀턴 스트레이트(t≈0.05) 위를 가로지르는 웰링턴 고가 대교(Overpass Bridge) 구간
     controlPoints: [
       new THREE.Vector3(0, 0, 0),          // Start / Finish Line (Hamilton Straight, 0m)
       new THREE.Vector3(0, 0, 50),         // Hamilton Straight acceleration (0m)
       new THREE.Vector3(35, 0, 105),       // Turn 1 (Abbey high-speed right, 0m)
       new THREE.Vector3(80, 0.5, 125),     // Turn 2 (Farm Curve flat out, +0.5m)
-      new THREE.Vector3(120, 1.2, 105),    // Turn 3 (Village Hairpin heavy braking, +1.2m)
-      new THREE.Vector3(100, 1.0, 70),     // Turn 4 (The Loop tight hairpin, +1.0m)
-      new THREE.Vector3(65, 0.5, 75),      // Turn 5 (Aintree acceleration, +0.5m)
-      new THREE.Vector3(0, 0, 70),         // Wellington Straight entry (0m)
-      new THREE.Vector3(-65, 0, 65),       // Wellington Straight mid section (0m)
-      new THREE.Vector3(-130, 0, 60),      // Wellington Straight braking zone (0m)
+      new THREE.Vector3(120, 2.0, 105),    // Turn 3 (Village Hairpin heavy braking, +2.0m)
+      new THREE.Vector3(100, 7.5, 70),     // Turn 4 (The Loop tight hairpin climb, +7.5m)
+      new THREE.Vector3(65, 11.0, 75),     // Turn 5 (Aintree acceleration onto Bridge Ramp, +11.0m)
+      new THREE.Vector3(0, 12.5, 70),      // Turn 5-6 (Wellington Overpass Bridge Center Span - 하부 해밀턴 스트레이트 위 12.5m 통과!)
+      new THREE.Vector3(-65, 9.0, 65),     // Wellington Overpass Bridge descent (+9.0m)
+      new THREE.Vector3(-130, 2.5, 60),    // Wellington Straight braking zone downhill (+2.5m)
       new THREE.Vector3(-175, 0.2, 30),    // Turn 6 (Brooklands sweeping left, +0.2m)
       new THREE.Vector3(-185, 0.6, -20),   // Turn 7 (Luffield double-apex summit, +0.6m)
       new THREE.Vector3(-160, 0.3, -60),   // Turn 8 (Woodcote fast exit, +0.3m)

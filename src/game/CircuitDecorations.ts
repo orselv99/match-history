@@ -418,8 +418,8 @@ export class CircuitDecorations {
       root.add(towerGroup);
     }
 
-    // 5. 서킷 중간 주요 섹터(S1, S2, 고속 코너) 외곽 그랜드스탠드 추가 (코스 횡함 해소 및 전광판 설치)
-    const intermediateTs = [0.28, 0.55, 0.82];
+    // 5. 서킷 중간 주요 섹터(S1, S2, 고속 코너) 외곽 그랜드스탠드 추가 (교량 구간 회피 및 지면 안정 배치)
+    const intermediateTs = [0.42, 0.65, 0.85];
     intermediateTs.forEach((t) => {
       const pt = circuitCurve.getPointAt(t);
       const tangent = circuitCurve.getTangentAt(t).normalize();

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Circuit } from '../game/Circuit.ts';
+import { type CircuitId } from '../data/circuits.ts';
 import { Vehicle } from '../game/Vehicle.ts';
 import { InputManager } from './InputManager.ts';
 import { AudioManager } from './AudioManager.ts';
@@ -90,7 +91,7 @@ export class Game {
 
   // 게임 세션 설정 메타데이터
   public currentDriverName: string = 'Apex Hunter';
-  public currentCircuitId: string = 'circuit_monaco';
+  public currentCircuitId: CircuitId = 'circuit_monaco';
   public currentTimeOfDay: TimeOfDay = 'noon';
   public currentWeather: WeatherType = 'clear';
   public currentReplayMetadata?: MatchSummaryMetadata | null;
@@ -269,7 +270,7 @@ export class Game {
   /**
    * 선택된 서킷(Monaco, Monza, Spa-Francorchamps)을 인게임에 실시간 적용 및 재배치
    */
-  public loadCircuit(circuitId: string): void {
+  public loadCircuit(circuitId: CircuitId): void {
     this.currentCircuitId = circuitId;
     this.circuit.loadCircuit(circuitId);
     this.resetVehicleToStart();

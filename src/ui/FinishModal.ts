@@ -1,5 +1,6 @@
 import { BaseModal } from './BaseModal.ts';
 import type { MatchSummaryMetadata, RaceResultEntry } from '../replay/ReplayTypes.ts';
+import type { CircuitId } from '../data/circuits.ts';
 import { t } from '../i18n/I18nManager.ts';
 
 export interface FinishModalCallbacks {
@@ -17,7 +18,7 @@ export interface CircuitLeaderboardEntry {
 /**
  * 서킷별 공식 벤치마크 역대 상위 5위 기록 (서버 연동 전/오프라인 Fallback)
  */
-export const FALLBACK_LEADERBOARDS: Record<string, CircuitLeaderboardEntry[]> = {
+export const FALLBACK_LEADERBOARDS: Record<CircuitId, CircuitLeaderboardEntry[]> = {
   circuit_monaco: [
     { rank: 1, driverName: 'Ayrton_M', timeFormatted: '01:14.260' },
     { rank: 2, driverName: 'Schumacher_M', timeFormatted: '01:14.890' },
@@ -128,7 +129,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
   /**
    * 서버에서 현재 서킷 기준 상위 5개 기록 조회, 실패 시 fallback 데이터 표시
    */
-  private async loadServerTop5(circuitId: string): Promise<void> {
+  private async loadServerTop5(circuitId: CircuitId): Promise<void> {
     if (!this.serverTop5Tbody) return;
 
     this.serverTop5Tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 10px;">${t('finish.loading')}</td></tr>`;

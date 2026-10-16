@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CIRCUIT_DEFINITIONS, type CircuitMetadata } from '../data/circuits.ts';
+import { CIRCUIT_DEFINITIONS, type CircuitId, type CircuitMetadata } from '../data/circuits.ts';
 import { CircuitDecorations } from './CircuitDecorations.ts';
 
 export interface CheckpointTrigger {
@@ -28,20 +28,20 @@ export class Circuit {
   public circuitWidth: number = 14; // 도로 폭
   public checkpoints: CheckpointTrigger[] = [];
   public circuitPoints2D: { x: number; z: number }[] = [];
-  public currentCircuitId: string = 'circuit_monaco';
+  public currentCircuitId: CircuitId = 'circuit_monaco';
 
   private samplePoints: THREE.Vector3[] = [];
   private sampleTangents: THREE.Vector3[] = [];
   private readonly SAMPLE_COUNT = 240;
 
-  constructor(circuitId: string = 'circuit_monaco') {
+  constructor(circuitId: CircuitId = 'circuit_monaco') {
     this.loadCircuit(circuitId);
   }
 
   /**
    * 지정된 서킷 ID로 서킷 지오메트리, 연석, 마킹 및 체크포인트를 실시간으로 완전 재구축
    */
-  public loadCircuit(circuitId: string): CircuitMetadata {
+  public loadCircuit(circuitId: CircuitId): CircuitMetadata {
     this.currentCircuitId = circuitId;
     const def = CIRCUIT_DEFINITIONS[circuitId] || CIRCUIT_DEFINITIONS['circuit_monaco'];
 

@@ -163,7 +163,7 @@ export interface CircuitSvgData {
 /**
  * CatmullRom 3D 제어점 스플라인 곡선으로부터 위저드 쇼케이스용 2D SVG 패스 및 스타트 핀 좌표를 정밀 산출
  */
-export function getCircuitSvgData(circuitId: string, width = 400, height = 240, padding = 34): CircuitSvgData {
+export function getCircuitSvgData(circuitId: CircuitId, width = 400, height = 240, padding = 34): CircuitSvgData {
   const def = CIRCUIT_DEFINITIONS[circuitId] || CIRCUIT_DEFINITIONS.circuit_monaco;
   const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
   const points = curve.getPoints(140);

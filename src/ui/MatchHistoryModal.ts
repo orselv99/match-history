@@ -1,7 +1,7 @@
 import { BaseModal } from './BaseModal.ts';
 import { appDB } from '../storage/AppDatabase.ts';
 import type { CachedReplayRecord } from '../storage/schema.ts';
-import { CIRCUIT_DEFINITIONS } from '../data/circuits.ts';
+import { CIRCUIT_DEFINITIONS, type CircuitId } from '../data/circuits.ts';
 import { showToast } from './Toast.ts';
 
 export interface MatchHistoryModalCallbacks {
@@ -284,7 +284,7 @@ export class MatchHistoryModal extends BaseModal {
     return `<span class="vehicle-badge gt">GT-86 Turbo</span>`;
   }
 
-  private getCircuitTitle(circuitId: string): string {
+  private getCircuitTitle(circuitId: CircuitId): string {
     const meta = CIRCUIT_DEFINITIONS[circuitId];
     if (meta?.title) return meta.title;
     if (circuitId === 'circuit_monaco') return 'Monaco GP';

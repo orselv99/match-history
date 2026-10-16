@@ -1,3 +1,5 @@
+import type { CircuitId } from '../data/circuits.ts';
+
 export interface ReplayOpponentState {
   x: number;
   y: number;
@@ -44,7 +46,7 @@ export interface MatchSummaryMetadata {
   matchCode: string;
   userId: string;
   driverName: string;
-  circuitId: string;
+  circuitId: CircuitId;
   vehicleModelId: string;
   color?: string;
   opponentConfigs?: Array<{ vehicleModelId?: string; color?: string; driverName?: string }>;

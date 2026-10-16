@@ -1,4 +1,5 @@
 import { RawReplayTick, REPLAY_PACKET } from './ReplayTypes.ts';
+import type { CircuitId } from '../data/circuits.ts';
 
 /**
  * 고주파 리플레이 데이터 직렬화/역직렬화 및 초압축 코덱
@@ -10,7 +11,7 @@ export class ReplayCodec {
   /**
    * RawReplayTick 배열을 20바이트 고정 바이너리 버퍼로 인코딩
    */
-  public static encode(ticks: RawReplayTick[], circuitId: string = 'circuit_monaco'): ArrayBuffer {
+  public static encode(ticks: RawReplayTick[], circuitId: CircuitId = 'circuit_monaco'): ArrayBuffer {
     const totalTicks = ticks.length;
     // 헤더 크기: Magic(4) + Version(2) + TotalTicks(4) + CircuitId(16 ASCII) = 26 bytes
     const HEADER_SIZE = 26;
@@ -92,7 +93,7 @@ export class ReplayCodec {
   /**
    * 바이너리 버퍼를 RawReplayTick 배열로 디코딩
    */
-  public static decode(buffer: ArrayBuffer): { ticks: RawReplayTick[]; circuitId: string } {
+  public static decode(buffer: ArrayBuffer): { ticks: RawReplayTick[]; circuitId: CircuitId } {
     const view = new DataView(buffer);
     const magic = view.getUint32(0, false);
     if (magic !== REPLAY_PACKET.HEADER_MAGIC) {
@@ -104,7 +105,7 @@ export class ReplayCodec {
 
     const decoder = new TextDecoder();
     const circuitIdBytes = new Uint8Array(buffer, 10, 16);
-    const circuitId = decoder.decode(circuitIdBytes).trim();
+    const circuitId = (decoder.decode(circuitIdBytes).trim() || 'circuit_monaco') as CircuitId;
 
     const HEADER_SIZE = 26;
     const ticks: RawReplayTick[] = [];

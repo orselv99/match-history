@@ -44,7 +44,9 @@ match-history/
 │   │   ├── EnvironmentManager.ts   # 시간대 및 날씨별 태양/안개/비/앰비언스 환경 시뮬레이션
 │   │   ├── LapTimer.ts             # 랩 타임 및 섹터 기록 측정기
 │   │   ├── MinimapRenderer.ts      # 2D 캔버스 실시간 미니맵 및 레이더 렌더러
-│   │   ├── OpponentManager.ts      # 상대 레이서(Opponent) 차량 에이전트 및 경로 추종
+│   │   ├── OpponentManager.ts      # 상대 레이서(Opponent) 차량 관리 및 순위/그리드 오케스트레이션
+│   │   ├── opponent/               # 상대 차량 AI 시뮬레이션 및 3D 트랜스폼/조명
+│   │   │   └── OpponentSimulation.ts # 슬립스트림/어택/러버밴딩 AI 및 제로GC 비주얼 갱신
 │   │   ├── SkidMarkManager.ts      # 실시간 드리프트 타이어 스키드마크 쿼드 및 타이어 연기
 │   │   ├── Vehicle.ts              # 레이싱 머신 3D 메시, 물리, 헤드라이트/조명 및 리버리 컬러
 │   │   └── vehicleModels/          # 세부 차량 모델 지오메트리 빌더

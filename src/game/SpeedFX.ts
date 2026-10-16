@@ -51,10 +51,10 @@ const RadialBlurShader = {
       vec2 maskVec = vec2(toCenter.x * 1.0, toCenter.y * 1.55);
       float maskDist = length(maskVec);
 
-      // 차량 영역(0.08 이내)은 100% 선명하게 보존, 외곽(0.38 이상)은 완전 블러 처리
-      float blurMask = smoothstep(0.08, 0.38, maskDist);
-      // 고속에서만 점진적으로 블러 강도 상승 (저속에서는 선명도 최우선)
-      float totalStrength = pow(uStrength, 1.35) * blurMask * 0.22;
+      // 차량 및 전방 주행 시야(중앙부 0.25 이내)는 100% 선명하게 보존, 외곽만 부드러운 블러 처리
+      float blurMask = smoothstep(0.24, 0.62, maskDist);
+      // 고속에서만 점진적으로 블러 강도 상승 (과도한 화면 왜곡 방지)
+      float totalStrength = pow(uStrength, 1.4) * blurMask * 0.14;
 
       float sampleCount = float(clamp(uSamples, 4, 16));
       vec2 stepVec = (toCenter / sampleCount) * totalStrength;
@@ -73,53 +73,43 @@ const RadialBlurShader = {
       }
       accumColor /= sampleCount;
 
-      // 2. 외곽부 색수차 (옵션 활성화 및 155km/h 이상 고속 시)
-      if (uEnableChrom > 0.5 && uStrength > 0.48) {
-        float chromFactor = (uStrength - 0.48) / 0.52;
-        float chromOffset = maskDist * chromFactor * 0.015 * blurMask;
+      // 2. 외곽부 미세 색수차 (170km/h 이상 초고속 시 테두리에만 은은하게 적용)
+      if (uEnableChrom > 0.5 && uStrength > 0.60) {
+        float chromFactor = (uStrength - 0.60) / 0.40;
+        float chromOffset = maskDist * chromFactor * 0.008 * blurMask;
         vec2 chromDir = normalize(toCenter + vec2(0.0001));
         float r = texture2D(tDiffuse, clamp(vUv + chromDir * chromOffset, 0.0, 1.0)).r;
         float b = texture2D(tDiffuse, clamp(vUv - chromDir * chromOffset, 0.0, 1.0)).b;
-        accumColor.r = mix(accumColor.r, r, 0.50);
-        accumColor.b = mix(accumColor.b, b, 0.50);
+        accumColor.r = mix(accumColor.r, r, 0.35);
+        accumColor.b = mix(accumColor.b, b, 0.35);
       }
 
-      // 3. 다단계 세분화된 방사형 가속선 (Multi-tier Granular Speed Lines)
+      // 3. 화면 최외곽 테두리(Periphery)에만 은은하게 흐르는 반투명 기류선 (중앙 주행 시야 침범 원천 차단)
+      float edgeStreakMask = smoothstep(0.42, 0.75, maskDist);
       float angle = atan(toCenter.y, toCenter.x);
-      
-      // [티어 1: 70~110 km/h] 얇고 섬세한 공기 기류선 (Soft Aero Stream)
-      float ray1 = fract(sin(floor(angle * 60.0) * 12.9898 + 45.1) * 43758.5453);
-      float travel1 = fract(maskDist * 2.0 - uTime * (4.2 + ray1 * 3.0));
-      float shape1 = smoothstep(0.0, 0.12, travel1) * smoothstep(0.70, 0.12, travel1);
-      float streak1 = smoothstep(0.82, 0.96, ray1) * shape1 * 2.2 * smoothstep(0.02, 0.22, uStrength);
 
-      // [티어 2: 110~160 km/h] 뚜렷하고 경쾌한 네온 가속선 (Crisp Dynamic Lines)
-      float ray2 = fract(sin(floor(angle * 105.0 + 19.0) * 78.233 + 12.3) * 23421.6312);
-      float travel2 = fract(maskDist * 2.7 - uTime * (5.8 + ray2 * 4.2));
-      float shape2 = smoothstep(0.0, 0.10, travel2) * smoothstep(0.60, 0.10, travel2);
-      float streak2 = smoothstep(0.78, 0.92, ray2) * shape2 * 3.4 * smoothstep(0.20, 0.52, uStrength);
+      float ray1 = fract(sin(floor(angle * 75.0) * 12.9898 + 45.1) * 43758.5453);
+      float travel1 = fract(maskDist * 2.2 - uTime * (4.5 + ray1 * 3.0));
+      float shape1 = smoothstep(0.0, 0.12, travel1) * smoothstep(0.55, 0.12, travel1);
+      float streak1 = smoothstep(0.91, 0.985, ray1) * shape1 * 0.18 * smoothstep(0.25, 0.65, uStrength);
 
-      // [티어 3: 160~220 km/h+] 초고속 하이퍼 코어 스트릭 (Intense Hyper Streak)
-      float ray3 = fract(sin(floor(angle * 165.0 + 51.0) * 45.312 + 89.1) * 31415.9265);
-      float travel3 = fract(maskDist * 3.4 - uTime * (7.6 + ray3 * 5.5));
-      float shape3 = smoothstep(0.0, 0.08, travel3) * smoothstep(0.50, 0.08, travel3);
-      float streak3 = smoothstep(0.74, 0.88, ray3) * shape3 * 4.6 * smoothstep(0.50, 0.82, uStrength);
+      float ray2 = fract(sin(floor(angle * 120.0 + 19.0) * 78.233 + 12.3) * 23421.6312);
+      float travel2 = fract(maskDist * 2.8 - uTime * (6.2 + ray2 * 4.0));
+      float shape2 = smoothstep(0.0, 0.10, travel2) * smoothstep(0.45, 0.10, travel2);
+      float streak2 = smoothstep(0.90, 0.98, ray2) * shape2 * 0.25 * smoothstep(0.55, 0.92, uStrength);
 
-      float totalStreak = (streak1 + streak2 + streak3) * blurMask;
+      float totalStreak = (streak1 + streak2) * edgeStreakMask;
 
-      // 속도 단계별 색상 그라데이션 블렌딩 (스카이블루 -> 퓨어 시안 -> 하이퍼 크림슨)
-      vec3 colLow = vec3(0.68, 0.90, 1.0);
-      vec3 colMid = vec3(0.88, 0.97, 1.0);
-      vec3 colHigh = vec3(1.0, 0.32, 0.22);
-      vec3 streakColor = mix(colLow, colMid, smoothstep(0.18, 0.52, uStrength));
-      streakColor = mix(streakColor, colHigh, smoothstep(0.62, 0.92, uStrength));
+      vec3 colLow = vec3(0.75, 0.92, 1.0);
+      vec3 colHigh = vec3(1.0, 0.85, 0.75);
+      vec3 streakColor = mix(colLow, colHigh, smoothstep(0.55, 0.95, uStrength));
 
-      vec3 finalColor = accumColor.rgb + streakColor * totalStreak * (1.1 + uStrength * 0.7);
+      vec3 finalColor = accumColor.rgb + streakColor * totalStreak;
 
-      // 4. 주변부 고속 터널 비네트 (170km/h 이상에서 점진적 활성화)
-      float vignetteFactor = smoothstep(0.55, 0.95, uStrength);
-      float vignette = smoothstep(1.10, 0.40, maskDist * (0.8 + vignetteFactor * 0.45));
-      finalColor = mix(finalColor * (1.0 - vignetteFactor * 0.28), finalColor, vignette);
+      // 4. 주변부 고속 터널 비네트 (180km/h 이상에서 외곽만 은은하게 감싸기)
+      float vignetteFactor = smoothstep(0.65, 1.0, uStrength);
+      float vignette = smoothstep(1.15, 0.48, maskDist * (0.75 + vignetteFactor * 0.35));
+      finalColor = mix(finalColor * (1.0 - vignetteFactor * 0.18), finalColor, vignette);
 
       gl_FragColor = vec4(finalColor, 1.0);
     }

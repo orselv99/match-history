@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import { Vehicle } from './Vehicle.ts';
-import { AICarManager } from './AICarManager.ts';
-import { AudioManager } from '../core/AudioManager.ts';
+import type { Vehicle } from './Vehicle.ts';
+import type { AICarManager } from './AICarManager.ts';
+import type { AudioManager } from '../core/AudioManager.ts';
 
 export type TimeOfDay = 'morning' | 'noon' | 'sunset' | 'night';
 export type WeatherType = 'clear' | 'rain' | 'wind_fog';
@@ -29,10 +29,13 @@ export class EnvironmentManager {
   private isFoggy: boolean = false;
   private readonly FOG_PARTICLE_COUNT = 1200;
 
-  // 천체(해/달/별) 및 절차적 3D 구름 시스템
+  // 천체(해/달/별), 다중 그라데이션 스카이돔 및 절차적 3D 볼류메트릭 구름 시스템
+  private skyDome!: THREE.Mesh;
+  private skyDomeMat!: THREE.ShaderMaterial;
   private sunGroup!: THREE.Group;
   private sunCore!: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
   private sunCorona?: THREE.Sprite;
+  private sunHorizonHalo?: THREE.Sprite;
   private moonGroup!: THREE.Group;
   private moonCore!: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
   private moonCorona?: THREE.Sprite;
@@ -40,6 +43,7 @@ export class EnvironmentManager {
   private cloudGroup!: THREE.Group;
   private clouds: THREE.Group[] = [];
   private cloudMaterial!: THREE.MeshStandardMaterial;
+  private cloudShadowMaterial!: THREE.MeshStandardMaterial;
 
   public currentTimeOfDay: TimeOfDay = 'noon';
   public currentWeatherId: WeatherType = 'clear';
@@ -105,12 +109,68 @@ export class EnvironmentManager {
   }
 
   private initCelestialAndClouds(): void {
+    // 0. 다중 스톱 대기 산란 스카이돔 (4-Stop Gradient + Directional Sun Mie Glow)
+    const skyGeom = new THREE.SphereGeometry(440, 32, 24);
+    this.skyDomeMat = new THREE.ShaderMaterial({
+      uniforms: {
+        uTopColor: { value: new THREE.Color(0x1d4ed8) },
+        uUpperMidColor: { value: new THREE.Color(0x38bdf8) },
+        uLowerMidColor: { value: new THREE.Color(0x7dd3fc) },
+        uHorizonColor: { value: new THREE.Color(0xe0f2fe) },
+        uSunDir: { value: new THREE.Vector3(0.4, 0.8, 0.3).normalize() },
+        uSunGlowColor: { value: new THREE.Color(0xfffbeb) },
+        uSunGlowStrength: { value: 0.25 },
+      },
+      vertexShader: `
+        varying vec3 vWorldOffset;
+        void main() {
+          vWorldOffset = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 uTopColor;
+        uniform vec3 uUpperMidColor;
+        uniform vec3 uLowerMidColor;
+        uniform vec3 uHorizonColor;
+        uniform vec3 uSunDir;
+        uniform vec3 uSunGlowColor;
+        uniform float uSunGlowStrength;
+        varying vec3 vWorldOffset;
+
+        void main() {
+          vec3 dir = normalize(vWorldOffset);
+          float h = clamp(dir.y, 0.0, 1.0);
+
+          // 4단계 수직 대기 그라데이션 (지평선 -> 하단층 -> 중단층 -> 천정)
+          vec3 col = mix(uHorizonColor, uLowerMidColor, smoothstep(0.0, 0.14, h));
+          col = mix(col, uUpperMidColor, smoothstep(0.14, 0.38, h));
+          col = mix(col, uTopColor, smoothstep(0.38, 0.82, h));
+
+          // 태양 방향 대기 산란(Mie Scattering) 및 지평선 노을 글로우
+          float sunAmt = max(dot(dir, uSunDir), 0.0);
+          float horizonBand = (1.0 - smoothstep(0.0, 0.35, h)) * pow(sunAmt, 2.2);
+          float solarHalo = pow(sunAmt, 7.0) * 0.55 + horizonBand * 0.65;
+          col = mix(col, uSunGlowColor, clamp(solarHalo * uSunGlowStrength, 0.0, 0.85));
+
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `,
+      side: THREE.BackSide,
+      depthWrite: false,
+      fog: false,
+    });
+    this.skyDome = new THREE.Mesh(skyGeom, this.skyDomeMat);
+    this.skyDome.renderOrder = -10;
+    this.skyDome.frustumCulled = false;
+    this.scene.add(this.skyDome);
+
     const glowTex = this.createGlowTexture();
 
-    // 1. 태양 (Sun)
+    // 1. 태양 (Sun + 이중 코로나/지평선 헤일로)
     this.sunGroup = new THREE.Group();
-    const sunGeom = new THREE.SphereGeometry(14, 16, 16);
-    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const sunGeom = new THREE.SphereGeometry(14, 20, 20);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false });
     this.sunCore = new THREE.Mesh(sunGeom, sunMat);
     this.sunGroup.add(this.sunCore);
 
@@ -119,19 +179,34 @@ export class EnvironmentManager {
         map: glowTex,
         color: 0xffedd5,
         transparent: true,
-        opacity: 0.85,
+        opacity: 0.9,
         blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: false,
       });
       this.sunCorona = new THREE.Sprite(coronaMat);
-      this.sunCorona.scale.set(70, 70, 1);
+      this.sunCorona.scale.set(78, 78, 1);
       this.sunGroup.add(this.sunCorona);
+
+      const haloMat = new THREE.SpriteMaterial({
+        map: glowTex,
+        color: 0xf97316,
+        transparent: true,
+        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: false,
+      });
+      this.sunHorizonHalo = new THREE.Sprite(haloMat);
+      this.sunHorizonHalo.scale.set(220, 110, 1);
+      this.sunGroup.add(this.sunHorizonHalo);
     }
     this.scene.add(this.sunGroup);
 
     // 2. 달 (Moon)
     this.moonGroup = new THREE.Group();
     const moonGeom = new THREE.SphereGeometry(10, 16, 16);
-    const moonMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe });
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe, fog: false });
     this.moonCore = new THREE.Mesh(moonGeom, moonMat);
     this.moonGroup.add(this.moonCore);
 
@@ -142,6 +217,8 @@ export class EnvironmentManager {
         transparent: true,
         opacity: 0.65,
         blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        fog: false,
       });
       this.moonCorona = new THREE.Sprite(moonCoronaMat);
       this.moonCorona.scale.set(45, 45, 1);
@@ -149,7 +226,7 @@ export class EnvironmentManager {
     }
     this.scene.add(this.moonGroup);
 
-    // 3. 야간 별자리 (Stars)
+    // 3. 야간 및 석양 상공 별자리 (Stars)
     const starCount = 450;
     const starGeom = new THREE.BufferGeometry();
     const starPositions = new Float32Array(starCount * 3);
@@ -158,7 +235,7 @@ export class EnvironmentManager {
       const phi = Math.random() * (Math.PI * 0.42);
       const r = 260 + Math.random() * 20;
       starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      starPositions[i * 3 + 1] = r * Math.cos(phi) + 20;
+      starPositions[i * 3 + 1] = r * Math.cos(phi) + 25;
       starPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
     }
     starGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
@@ -167,39 +244,49 @@ export class EnvironmentManager {
       size: 1.6,
       transparent: true,
       opacity: 0.85,
+      fog: false,
     });
     this.starPoints = new THREE.Points(starGeom, starMat);
     this.starPoints.visible = false;
     this.scene.add(this.starPoints);
 
-    // 4. 구름 (Clouds)
+    // 4. 입체 투톤 볼류메트릭 구름 (안개에 지워지지 않도록 fog: false 및 상/하단 음영 분리)
     this.cloudGroup = new THREE.Group();
     this.cloudMaterial = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      roughness: 0.9,
-      metalness: 0.05,
+      roughness: 0.85,
+      metalness: 0.02,
       flatShading: true,
+      fog: false,
+    });
+    this.cloudShadowMaterial = new THREE.MeshStandardMaterial({
+      color: 0xcbd5e1,
+      roughness: 0.9,
+      metalness: 0.02,
+      flatShading: true,
+      fog: false,
     });
 
-    const cloudClusterCount = 20;
+    const cloudClusterCount = 28;
     for (let i = 0; i < cloudClusterCount; i++) {
       const cluster = new THREE.Group();
-      const x = (Math.random() - 0.5) * 480;
-      const y = 80 + Math.random() * 35;
-      const z = (Math.random() - 0.5) * 480;
+      const x = (Math.random() - 0.5) * 520;
+      const y = 58 + Math.random() * 42;
+      const z = (Math.random() - 0.5) * 520;
       cluster.position.set(x, y, z);
 
-      const puffCount = 4 + Math.floor(Math.random() * 3);
+      const puffCount = 5 + Math.floor(Math.random() * 4);
       for (let p = 0; p < puffCount; p++) {
-        const radius = 9 + Math.random() * 11;
+        const radius = 10 + Math.random() * 13;
         const puffGeom = new THREE.SphereGeometry(radius, 7, 6);
-        const puff = new THREE.Mesh(puffGeom, this.cloudMaterial);
+        const isLowerBelly = p < 2;
+        const puff = new THREE.Mesh(puffGeom, isLowerBelly ? this.cloudShadowMaterial : this.cloudMaterial);
         puff.position.set(
-          (Math.random() - 0.5) * 24,
-          (Math.random() - 0.5) * 6,
-          (Math.random() - 0.5) * 18
+          (Math.random() - 0.5) * 28,
+          isLowerBelly ? -2.5 - Math.random() * 2.5 : 1.5 + Math.random() * 4.5,
+          (Math.random() - 0.5) * 20
         );
-        puff.scale.set(1.4, 0.75, 1.2);
+        puff.scale.set(1.5, 0.68, 1.25);
         cluster.add(puff);
       }
 
@@ -283,8 +370,33 @@ export class EnvironmentManager {
     this.scene.add(this.fogParticles);
   }
 
+  private sunBaseOffset: THREE.Vector3 = new THREE.Vector3(230, 34, 110);
+  private moonBaseOffset: THREE.Vector3 = new THREE.Vector3(70, 160, 50);
+
   public update(delta: number, focusPos: THREE.Vector3): void {
-    // 1. 구름 천천히 바람 타고 이동 (Seamless Looping)
+    // 0. 스카이돔 및 천체(해/달/별)를 차량 기준 원경 좌표에 동기화하여 서킷 어디서든 일정한 시야각 유지
+    if (this.skyDome) {
+      this.skyDome.position.set(focusPos.x, 0, focusPos.z);
+    }
+    if (this.sunGroup && this.sunGroup.visible) {
+      this.sunGroup.position.set(
+        focusPos.x + this.sunBaseOffset.x,
+        this.sunBaseOffset.y,
+        focusPos.z + this.sunBaseOffset.z
+      );
+    }
+    if (this.moonGroup && this.moonGroup.visible) {
+      this.moonGroup.position.set(
+        focusPos.x + this.moonBaseOffset.x,
+        this.moonBaseOffset.y,
+        focusPos.z + this.moonBaseOffset.z
+      );
+    }
+    if (this.starPoints && this.starPoints.visible) {
+      this.starPoints.position.set(focusPos.x, 0, focusPos.z);
+    }
+
+    // 1. 구름이 바람을 타고 이동하며 차량 주변 520m 반경 내에 항상 분포하도록 Seamless 래핑
     if (this.clouds.length > 0) {
       const windX = (this.currentWeatherId === 'wind_fog' ? 16.0 : 4.5) * delta;
       const windZ = 1.2 * delta;
@@ -292,8 +404,10 @@ export class EnvironmentManager {
         const c = this.clouds[i];
         c.position.x += windX;
         c.position.z += windZ;
-        if (c.position.x > 260) c.position.x = -260;
-        if (c.position.z > 260) c.position.z = -260;
+        if (c.position.x - focusPos.x > 260) c.position.x -= 520;
+        if (c.position.x - focusPos.x < -260) c.position.x += 520;
+        if (c.position.z - focusPos.z > 260) c.position.z -= 520;
+        if (c.position.z - focusPos.z < -260) c.position.z += 520;
       }
     }
 
@@ -389,7 +503,7 @@ export class EnvironmentManager {
 
     let bgColor = 0x121316;
     let fogColor = 0x121316;
-    let fogDensity = 0.0035;
+    let fogDensity = 0.0022;
     let dirColor = 0xffedd5;
     let dirIntensity = 1.4;
     const dirPos = new THREE.Vector3(120, 150, 80);
@@ -398,71 +512,219 @@ export class EnvironmentManager {
     let hemiSky = 0x7dd3fc;
     let hemiGround = 0x121316;
 
-    // 1. 시간대(Time of Day)
+    // 스카이돔 4단계 그라데이션 & 태양 산란 파라미터
+    let skyTop = 0x1d4ed8;
+    let skyUpperMid = 0x38bdf8;
+    let skyLowerMid = 0x7dd3fc;
+    let skyHorizon = 0xe0f2fe;
+    let sunGlowColor = 0xfffbeb;
+    let sunGlowStrength = 0.3;
+
+    // 구름 상단(하이라이트) & 하단(음영) 컬러 및 자체 발광(석양 노을 반사)
+    let cloudTopColor = 0xffffff;
+    let cloudBellyColor = 0xcbd5e1;
+    let cloudTopEmissive = 0x000000;
+    let cloudBellyEmissive = 0x000000;
+    let cloudEmissiveIntensity = 0.0;
+
+    // 1. 시간대(Time of Day) 기본 대기 및 조명 설정
     if (timeOfDay === 'morning') {
-      bgColor = 0xf59e0b; // 산뜻한 골든 모닝 아침 하늘
-      fogColor = 0xfef08a; // 부드러운 아침 햇살 연무
-      fogDensity = 0.002;
-      dirColor = 0xfef08a; // 따뜻한 아침 햇살
-      dirIntensity = 1.8;
-      dirPos.set(180, 50, 60);
-      ambColor = 0xfef3c7;
-      ambIntensity = 0.75;
-      hemiSky = 0xfde047;
-      hemiGround = 0x1e293b;
-    } else if (timeOfDay === 'noon') {
-      bgColor = 0x38bdf8; // 쾌청하고 푸른 대낮 하늘
-      fogColor = 0xbae6fd; // 맑은 대기 원경 헤이즈
+      bgColor = 0x60a5fa;
+      fogColor = 0xfef3c7;
       fogDensity = 0.0016;
-      dirColor = 0xffffff; // 정오 순백색 태양광
+      dirColor = 0xfffbeb;
+      dirIntensity = 1.85;
+      dirPos.set(180, 55, 65);
+      ambColor = 0xfef3c7;
+      ambIntensity = 0.8;
+      hemiSky = 0xfde68a;
+      hemiGround = 0x334155;
+
+      skyTop = 0x2563eb;
+      skyUpperMid = 0x60a5fa;
+      skyLowerMid = 0xfcd34d;
+      skyHorizon = 0xfef3c7;
+      sunGlowColor = 0xfde047;
+      sunGlowStrength = 0.65;
+
+      cloudTopColor = 0xfffbeb;
+      cloudBellyColor = 0xfde68a;
+      cloudTopEmissive = 0xfef08a;
+      cloudBellyEmissive = 0xd97706;
+      cloudEmissiveIntensity = 0.15;
+    } else if (timeOfDay === 'noon') {
+      bgColor = 0x38bdf8;
+      fogColor = 0xdbeafe;
+      fogDensity = 0.0014;
+      dirColor = 0xffffff;
       dirIntensity = 2.2;
       dirPos.set(70, 200, 60);
       ambColor = 0xf8fafc;
-      ambIntensity = 0.9;
+      ambIntensity = 0.92;
       hemiSky = 0x7dd3fc;
       hemiGround = 0x334155;
+
+      skyTop = 0x0284c7;
+      skyUpperMid = 0x38bdf8;
+      skyLowerMid = 0x7dd3fc;
+      skyHorizon = 0xe0f2fe;
+      sunGlowColor = 0xffffff;
+      sunGlowStrength = 0.25;
+
+      cloudTopColor = 0xffffff;
+      cloudBellyColor = 0xcbd5e1;
+      cloudEmissiveIntensity = 0.05;
+      cloudTopEmissive = 0xffffff;
     } else if (timeOfDay === 'sunset') {
-      bgColor = 0x9a3412; // 타오르는 앰버 오렌지 석양 하늘
-      fogColor = 0xc2410c;
-      fogDensity = 0.0022;
-      dirColor = 0xf97316; // 강렬한 오렌지-선셋 석양광
-      dirIntensity = 2.0;
-      dirPos.set(190, 28, 90);
-      ambColor = 0x7c2d12;
-      ambIntensity = 0.65;
-      hemiSky = 0xfb923c;
-      hemiGround = 0x431407;
+      // 단조로운 주황색 단색 배경 대신: 인디고 바이올렛(천정) -> 마젠타 로즈(중상단) -> 크림슨 코랄(중하단) -> 골든 앰버(지평선)
+      bgColor = 0x4c1d4b;
+      fogColor = 0x88394e; // 은은한 로즈-앰버 황혼 연무 (구름과 원경 건물을 가리지 않도록 밀도 완화)
+      fogDensity = 0.0013;
+      dirColor = 0xff9e5e; // 따뜻한 골든 코랄 석양 직사광
+      dirIntensity = 2.15;
+      dirPos.set(210, 32, 95);
+      ambColor = 0xc06c84; // 핑크-바이올렛 황혼 환경광
+      ambIntensity = 0.82;
+      hemiSky = 0xfb923c;  // 상공 골든 오렌지
+      hemiGround = 0x2e1a36; // 지면 딥 퍼플 반사광 (입체적인 색채 대비)
+
+      skyTop = 0x161336;       // 천정: 딥 트와일라잇 인디고-네이비
+      skyUpperMid = 0x5b2159;  // 상단: 로열 바이올렛-마젠타
+      skyLowerMid = 0xc83e52;  // 하단: 크림슨-로즈 코랄
+      skyHorizon = 0xff9238;   // 지평선: 타오르는 골든 앰버-피치
+      sunGlowColor = 0xffe082; // 태양 주변 황금빛 대기 산란
+      sunGlowStrength = 0.92;
+
+      // 석양 구름: 상단/외곽은 황금빛 코랄 노을을 받고, 하단 배 부분은 진한 플럼-바이올렛 음영을 주어 뚜렷한 입체감 형성
+      cloudTopColor = 0xffc299;
+      cloudBellyColor = 0x52254e;
+      cloudTopEmissive = 0xf97316;
+      cloudBellyEmissive = 0x3b173b;
+      cloudEmissiveIntensity = 0.38;
     } else if (timeOfDay === 'night') {
-      bgColor = 0x070a14; // 칠흑 같은 미드나잇 밤하늘
+      bgColor = 0x070a14;
       fogColor = 0x070a14;
-      fogDensity = 0.0035;
-      dirColor = 0x38bdf8; // 은은한 청백색 달빛
-      dirIntensity = 0.5;
+      fogDensity = 0.0032;
+      dirColor = 0x60a5fa;
+      dirIntensity = 0.55;
       dirPos.set(60, 120, 40);
       ambColor = 0x0f172a;
-      ambIntensity = 0.4;
+      ambIntensity = 0.45;
       hemiSky = 0x1e293b;
       hemiGround = 0x050811;
+
+      skyTop = 0x03050a;
+      skyUpperMid = 0x070b16;
+      skyLowerMid = 0x0f172a;
+      skyHorizon = 0x1e293b;
+      sunGlowColor = 0x60a5fa;
+      sunGlowStrength = 0.0;
+
+      cloudTopColor = 0x334155;
+      cloudBellyColor = 0x0f172a;
+      cloudEmissiveIntensity = 0.0;
     }
 
-    // 2. 날씨(Weather) 복합 효과
+    // 2. 날씨(Weather) 복합 효과 — 시간대(아침/낮/석양/밤) 고유의 밝기와 색조를 유지!
     if (weather === 'rain') {
       this.isRaining = true;
       this.isFoggy = false;
       if (this.rainParticles) this.rainParticles.visible = true;
       if (this.fogParticles) this.fogParticles.visible = false;
-      fogColor = 0x334155;
-      bgColor = 0x1e293b;
-      fogDensity = 0.007;
-      dirIntensity *= 0.5;
-      ambColor = 0x475569;
+
+      if (timeOfDay === 'morning') {
+        // 아침 비: 산뜻하고 밝은 실버-웜 그레이 아침 우천
+        bgColor = 0x94a3b8;
+        fogColor = 0xb0bec5;
+        fogDensity = 0.0042;
+        dirColor = 0xfef3c7;
+        dirIntensity = 1.25;
+        ambColor = 0xe2e8f0;
+        ambIntensity = 0.88;
+        hemiSky = 0xcbd5e1;
+        hemiGround = 0x334155;
+
+        skyTop = 0x64748b;
+        skyUpperMid = 0x829ab1;
+        skyLowerMid = 0xa8b8c8;
+        skyHorizon = 0xdbeafe;
+        sunGlowStrength = 0.2;
+
+        cloudTopColor = 0xcbd5e1;
+        cloudBellyColor = 0x64748b;
+        cloudEmissiveIntensity = 0.08;
+      } else if (timeOfDay === 'noon') {
+        // 정오(낮) 비: 어두운 밤이 아닌 밝은 주간 흐린 하늘(Daytime Overcast Wet Race)
+        bgColor = 0x829ab1;
+        fogColor = 0x9fb3c8;
+        fogDensity = 0.0040;
+        dirColor = 0xe2e8f0;
+        dirIntensity = 1.45;
+        ambColor = 0xf1f5f9;
+        ambIntensity = 0.98;
+        hemiSky = 0xbae6fd;
+        hemiGround = 0x334155;
+
+        skyTop = 0x475569;
+        skyUpperMid = 0x64748b;
+        skyLowerMid = 0x8fa3b8;
+        skyHorizon = 0xcbd5e1;
+        sunGlowStrength = 0.15;
+
+        cloudTopColor = 0xb0c4de;
+        cloudBellyColor = 0x52667a;
+        cloudEmissiveIntensity = 0.05;
+      } else if (timeOfDay === 'sunset') {
+        // 석양 비: 보랏빛 먹구름 사이로 붉은 황혼빛이 번지는 드라마틱한 우천 석양
+        bgColor = 0x4a2c40;
+        fogColor = 0x73414c;
+        fogDensity = 0.0044;
+        dirColor = 0xfb923c;
+        dirIntensity = 1.15;
+        ambColor = 0x9a6b78;
+        ambIntensity = 0.76;
+        hemiSky = 0xd97757;
+        hemiGround = 0x261722;
+
+        skyTop = 0x1f1930;
+        skyUpperMid = 0x46263f;
+        skyLowerMid = 0x7d3c47;
+        skyHorizon = 0xc46243;
+        sunGlowColor = 0xf97316;
+        sunGlowStrength = 0.45;
+
+        cloudTopColor = 0xb87a76;
+        cloudBellyColor = 0x3d2336;
+        cloudTopEmissive = 0xc2410c;
+        cloudBellyEmissive = 0x291526;
+        cloudEmissiveIntensity = 0.22;
+      } else {
+        // 야간 비: 짙은 미드나잇 폭우
+        bgColor = 0x090d16;
+        fogColor = 0x0f172a;
+        fogDensity = 0.0055;
+        dirIntensity = 0.45;
+        ambColor = 0x1e293b;
+        ambIntensity = 0.45;
+
+        skyTop = 0x04070e;
+        skyUpperMid = 0x090f1d;
+        skyLowerMid = 0x111a2e;
+        skyHorizon = 0x1e293b;
+        sunGlowStrength = 0.0;
+
+        cloudTopColor = 0x283548;
+        cloudBellyColor = 0x0f172a;
+        cloudEmissiveIntensity = 0.0;
+      }
+
       if (audio) audio.setRainAudio(true);
 
       // 비 오는 날 아스팔트 노면 웻 룩 (Glossy Wet Asphalt Reflection)
       if (roadMaterial) {
         roadMaterial.roughness = 0.12;
         roadMaterial.metalness = 0.55;
-        roadMaterial.color.setHex(0x181a20);
+        roadMaterial.color.setHex(timeOfDay === 'night' ? 0x181a20 : 0x222630);
       }
     } else if (weather === 'wind_fog') {
       this.isRaining = false;
@@ -470,21 +732,25 @@ export class EnvironmentManager {
       if (this.rainParticles) this.rainParticles.visible = false;
       if (this.fogParticles) this.fogParticles.visible = true;
 
-      // 시간대별 안개 색조 & 배경색(하늘) 일치화 (온 세상이 짙은 안개로 둘러싸이도록 연출)
       if (timeOfDay === 'morning') {
         fogColor = 0xd4d4d8;
       } else if (timeOfDay === 'noon') {
-        fogColor = 0xe2e8f0; // 짙은 쿨 실버-화이트 안개
+        fogColor = 0xe2e8f0;
       } else if (timeOfDay === 'sunset') {
-        fogColor = 0x7c2d12; // 앰버-더스트 석양 안개
-      } else { // night
-        fogColor = 0x0f172a; // 칠흑 같은 미드나잇 안개
+        fogColor = 0x8c464f;
+      } else {
+        fogColor = 0x0f172a;
       }
       bgColor = fogColor;
-      fogDensity = 0.026; // 시정 약 40~50m 수준의 확실한 레이싱 안개 밀도
+      skyTop = fogColor;
+      skyUpperMid = fogColor;
+      skyLowerMid = fogColor;
+      skyHorizon = fogColor;
+      sunGlowStrength = 0.1;
+      fogDensity = 0.024;
 
-      dirIntensity *= 0.35;
-      ambIntensity *= 1.3;
+      dirIntensity *= 0.45;
+      ambIntensity *= 1.25;
       if (audio) audio.setRainAudio(false);
 
       if (roadMaterial) {
@@ -500,13 +766,13 @@ export class EnvironmentManager {
       if (audio) audio.setRainAudio(false);
 
       if (roadMaterial) {
-        roadMaterial.roughness = 0.7;
-        roadMaterial.metalness = 0.15;
+        roadMaterial.roughness = 0.68;
+        roadMaterial.metalness = 0.16;
         roadMaterial.color.setHex(0x2e323b);
       }
     }
 
-    // 3. 야간 또는 악천후(비/안개) 시에만 차량 헤드라이트 점등 (주간 맑음 시에는 OFF)
+    // 3. 야간 또는 악천후(비/안개) 및 석양 시 차량 헤드라이트 점등
     const needHeadlights = timeOfDay === 'night' || weather === 'rain' || weather === 'wind_fog';
     if (playerVehicle) playerVehicle.setHeadlights(needHeadlights);
     if (aiManager) aiManager.setHeadlights(needHeadlights);
@@ -526,57 +792,87 @@ export class EnvironmentManager {
       this.hemiLight.groundColor.setHex(hemiGround);
     }
 
-    // 4. 천체(해/달/별) 및 3D 구름 외형 동기화
-    if (timeOfDay === 'morning') {
-      if (this.sunGroup) {
-        this.sunGroup.position.set(220, 55, 75);
-        this.sunCore.material.color.setHex(0xfde047);
-        if (this.sunCorona) this.sunCorona.material.color.setHex(0xfbbf24);
-        this.sunGroup.visible = weather !== 'rain' && weather !== 'wind_fog';
-      }
-      if (this.moonGroup) this.moonGroup.visible = false;
-      if (this.starPoints) this.starPoints.visible = false;
-      if (this.cloudMaterial) this.cloudMaterial.color.setHex(weather === 'rain' ? 0x475569 : 0xfef08a);
-    } else if (timeOfDay === 'noon') {
-      if (this.sunGroup) {
-        this.sunGroup.position.set(80, 240, 70);
-        this.sunCore.material.color.setHex(0xffffff);
-        if (this.sunCorona) this.sunCorona.material.color.setHex(0xffedd5);
-        this.sunGroup.visible = weather !== 'rain' && weather !== 'wind_fog';
-      }
-      if (this.moonGroup) this.moonGroup.visible = false;
-      if (this.starPoints) this.starPoints.visible = false;
-      if (this.cloudMaterial) this.cloudMaterial.color.setHex(weather === 'rain' ? 0x334155 : 0xffffff);
-    } else if (timeOfDay === 'sunset') {
-      if (this.sunGroup) {
-        this.sunGroup.position.set(230, 34, 110);
-        this.sunCore.material.color.setHex(0xf97316);
-        if (this.sunCorona) this.sunCorona.material.color.setHex(0xea580c);
-        this.sunGroup.visible = weather !== 'rain';
-      }
-      if (this.moonGroup) this.moonGroup.visible = false;
-      if (this.starPoints) this.starPoints.visible = false;
-      if (this.cloudMaterial) this.cloudMaterial.color.setHex(weather === 'rain' ? 0x334155 : 0xfb923c);
-    } else if (timeOfDay === 'night') {
-      if (this.sunGroup) this.sunGroup.visible = false;
-      if (this.moonGroup) {
-        this.moonGroup.position.set(70, 160, 50);
-        this.moonGroup.visible = weather !== 'rain';
-      }
-      if (this.starPoints) this.starPoints.visible = weather === 'clear';
-      if (this.cloudMaterial) this.cloudMaterial.color.setHex(0x1e293b);
+    // 4. 스카이돔 셰이더 Uniform 업데이트
+    if (this.skyDomeMat) {
+      this.skyDomeMat.uniforms.uTopColor.value.setHex(skyTop);
+      this.skyDomeMat.uniforms.uUpperMidColor.value.setHex(skyUpperMid);
+      this.skyDomeMat.uniforms.uLowerMidColor.value.setHex(skyLowerMid);
+      this.skyDomeMat.uniforms.uHorizonColor.value.setHex(skyHorizon);
+      this.skyDomeMat.uniforms.uSunGlowColor.value.setHex(sunGlowColor);
+      this.skyDomeMat.uniforms.uSunGlowStrength.value = sunGlowStrength;
+      this.skyDomeMat.uniforms.uSunDir.value.copy(dirPos).normalize();
     }
 
-    if (weather === 'rain') {
-      if (this.sunGroup) this.sunGroup.visible = false;
+    // 5. 투톤 볼류메트릭 구름 머티리얼 업데이트
+    if (this.cloudMaterial) {
+      this.cloudMaterial.color.setHex(cloudTopColor);
+      this.cloudMaterial.emissive.setHex(cloudTopEmissive);
+      this.cloudMaterial.emissiveIntensity = cloudEmissiveIntensity;
+    }
+    if (this.cloudShadowMaterial) {
+      this.cloudShadowMaterial.color.setHex(cloudBellyColor);
+      this.cloudShadowMaterial.emissive.setHex(cloudBellyEmissive);
+      this.cloudShadowMaterial.emissiveIntensity = cloudEmissiveIntensity * 0.7;
+    }
+
+    // 6. 천체(해/달/별) 위치 및 외형 동기화
+    if (timeOfDay === 'morning') {
+      this.sunBaseOffset.set(220, 55, 75);
+      if (this.sunGroup) {
+        this.sunGroup.position.copy(this.sunBaseOffset);
+        this.sunCore.material.color.setHex(0xfef08a);
+        if (this.sunCorona) this.sunCorona.material.color.setHex(0xfbbf24);
+        if (this.sunHorizonHalo) {
+          this.sunHorizonHalo.material.color.setHex(0xf59e0b);
+          this.sunHorizonHalo.material.opacity = weather === 'clear' ? 0.35 : 0.0;
+        }
+        this.sunGroup.visible = weather === 'clear';
+      }
       if (this.moonGroup) this.moonGroup.visible = false;
       if (this.starPoints) this.starPoints.visible = false;
-      if (this.cloudMaterial) this.cloudMaterial.color.setHex(0x334155);
-    } else if (weather === 'wind_fog') {
-      if (this.sunGroup) this.sunGroup.visible = false;
+    } else if (timeOfDay === 'noon') {
+      this.sunBaseOffset.set(80, 240, 70);
+      if (this.sunGroup) {
+        this.sunGroup.position.copy(this.sunBaseOffset);
+        this.sunCore.material.color.setHex(0xffffff);
+        if (this.sunCorona) this.sunCorona.material.color.setHex(0xffedd5);
+        if (this.sunHorizonHalo) this.sunHorizonHalo.material.opacity = 0.0;
+        this.sunGroup.visible = weather === 'clear';
+      }
       if (this.moonGroup) this.moonGroup.visible = false;
       if (this.starPoints) this.starPoints.visible = false;
-      if (this.cloudMaterial) this.cloudMaterial.color.setHex(0x94a3b8);
+    } else if (timeOfDay === 'sunset') {
+      this.sunBaseOffset.set(230, 34, 110);
+      if (this.sunGroup) {
+        this.sunGroup.position.copy(this.sunBaseOffset);
+        this.sunCore.material.color.setHex(0xfff3b0);
+        if (this.sunCorona) {
+          this.sunCorona.material.color.setHex(0xff7b38);
+          this.sunCorona.scale.set(95, 95, 1);
+        }
+        if (this.sunHorizonHalo) {
+          this.sunHorizonHalo.material.color.setHex(0xe11d48);
+          this.sunHorizonHalo.material.opacity = weather === 'clear' ? 0.55 : 0.22;
+        }
+        this.sunGroup.visible = weather !== 'wind_fog';
+      }
+      if (this.moonGroup) this.moonGroup.visible = false;
+      // 석양 시 천정(상공 인디고 하늘)에 은은한 초저녁 별빛 표시
+      if (this.starPoints) {
+        this.starPoints.visible = weather === 'clear';
+        (this.starPoints.material as THREE.PointsMaterial).opacity = 0.42;
+      }
+    } else if (timeOfDay === 'night') {
+      if (this.sunGroup) this.sunGroup.visible = false;
+      this.moonBaseOffset.set(70, 160, 50);
+      if (this.moonGroup) {
+        this.moonGroup.position.copy(this.moonBaseOffset);
+        this.moonGroup.visible = weather === 'clear';
+      }
+      if (this.starPoints) {
+        this.starPoints.visible = weather === 'clear';
+        (this.starPoints.material as THREE.PointsMaterial).opacity = 0.88;
+      }
     }
   }
 

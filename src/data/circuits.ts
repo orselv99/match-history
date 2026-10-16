@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { t } from '../i18n/I18nManager.ts';
 
-export type CircuitId = 'circuit_monaco' | 'circuit_monza' | 'circuit_spa';
+export type CircuitId = 'circuit_monaco' | 'circuit_monza' | 'circuit_spa' | 'circuit_silverstone';
 
 export interface CircuitMetadata {
   id: CircuitId;
@@ -148,6 +148,43 @@ export const CIRCUIT_DEFINITIONS: Record<string, CircuitMetadata> = {
       new THREE.Vector3(-65, 0.2, 115),    // Turn 18 (Blanchimont 2 approaching underpass, +0.2m)
       new THREE.Vector3(-80, 0, 95),       // Turn 19 (Bus Stop Underpass beneath the Overpass Bridge, 0m)
       new THREE.Vector3(-90, 0, 85),       // Turn 20 (Bus Stop exit onto pit straight, 0m)
+    ],
+  },
+
+  circuit_silverstone: {
+    id: 'circuit_silverstone',
+    title: 'Silverstone Circuit',
+    badge: '★★★★☆ FAST',
+    badgeClass: 'badge-hard',
+    get desc(): string {
+      return t('wizard.circuitSilverstoneDesc');
+    },
+    len: '5.891 km',
+    corners: '18 CORNERS',
+    record: '01:27.097',
+    type: 'HOME OF BRITISH MOTORSPORT',
+    circuitWidth: 15.0,
+    controlPoints: [
+      new THREE.Vector3(0, 0, 80),         // Start / Finish Line (Hamilton Straight, 0m)
+      new THREE.Vector3(60, 0, 75),        // Turn 1 (Abbey high-speed right, 0m)
+      new THREE.Vector3(95, 0.5, 60),      // Turn 2 (Farm Curve flat out, +0.5m)
+      new THREE.Vector3(120, 1.2, 30),     // Turn 3 (Village Hairpin heavy braking, +1.2m)
+      new THREE.Vector3(95, 1.0, 5),       // Turn 4 (The Loop tight hairpin, +1.0m)
+      new THREE.Vector3(65, 0.5, 15),      // Turn 5 (Aintree acceleration, +0.5m)
+      new THREE.Vector3(15, 0, 5),         // Wellington Straight mid section (0m)
+      new THREE.Vector3(-45, 0, -10),      // Wellington Straight braking zone (0m)
+      new THREE.Vector3(-95, 0.2, -30),    // Turn 6 (Brooklands sweeping left, +0.2m)
+      new THREE.Vector3(-120, 0.6, -10),   // Turn 7 (Luffield long double-apex, +0.6m)
+      new THREE.Vector3(-100, 0.3, 20),    // Turn 8 (Woodcote fast exit, +0.3m)
+      new THREE.Vector3(-125, 0, 65),      // Turn 9 (Copse legendary flat-out right, 0m)
+      new THREE.Vector3(-155, 1.5, 30),    // Turn 10 (Maggotts high-G entry chicane, +1.5m)
+      new THREE.Vector3(-170, 2.0, -10),   // Turn 11-12 (Becketts technical sweeping S-curves, +2.0m)
+      new THREE.Vector3(-150, 1.5, -50),   // Turn 13-14 (Chapel exit onto Hangar Straight, +1.5m)
+      new THREE.Vector3(-90, 0.5, -115),   // Hangar Straight full throttle crest (+0.5m)
+      new THREE.Vector3(-25, 0, -155),     // Hangar Straight high-speed braking zone (0m)
+      new THREE.Vector3(50, 0, -145),      // Turn 15 (Stowe heavy braking right, 0m)
+      new THREE.Vector3(60, 0.2, -85),     // Turn 16-17 (Vale chicane downhill, +0.2m)
+      new THREE.Vector3(40, 0, 0),         // Turn 18 (Club corner onto Hamilton Straight, 0m)
     ],
   },
 };

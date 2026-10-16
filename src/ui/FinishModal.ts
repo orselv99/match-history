@@ -41,6 +41,13 @@ export const FALLBACK_LEADERBOARDS: Record<CircuitId, CircuitLeaderboardEntry[]>
     { rank: 4, driverName: 'Verstappen_1', timeFormatted: '01:47.880' },
     { rank: 5, driverName: 'Russell_63', timeFormatted: '01:48.340' },
   ],
+  circuit_silverstone: [
+    { rank: 1, driverName: 'Hamilton_44', timeFormatted: '01:27.097' },
+    { rank: 2, driverName: 'Verstappen_1', timeFormatted: '01:27.420' },
+    { rank: 3, driverName: 'Norris_4', timeFormatted: '01:27.810' },
+    { rank: 4, driverName: 'Leclerc_16', timeFormatted: '01:28.150' },
+    { rank: 5, driverName: 'Piastri_81', timeFormatted: '01:28.600' },
+  ],
 };
 
 /**

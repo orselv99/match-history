@@ -297,6 +297,39 @@
   color: #c084fc;
 }
 
+.machine-badge.hyper,
+.vehicle-badge.hyper {
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #34d399;
+}
+
+.vehicle-view-col-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.view-mode-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+}
+
+.view-mode-badge.badge-1p {
+  background: rgba(196, 90, 114, 0.2);
+  border: 1px solid rgba(196, 90, 114, 0.6);
+  color: #f472b6;
+}
+
+.view-mode-badge.badge-3p {
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.5);
+  color: #38bdf8;
+}
+
 .lap-highlight {
   font-weight: 700;
   font-family: var(--font-mono);

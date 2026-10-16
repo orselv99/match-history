@@ -37,7 +37,7 @@ export class OpponentManager {
       'gt_turbo',
       'formula_aero',
       'cyber_speedster',
-      'gt_turbo'
+      'lm_hypercar'
     ];
 
     OPPONENT_CONFIGS.forEach((cfg, idx) => {

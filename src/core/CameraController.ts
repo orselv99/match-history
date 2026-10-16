@@ -1,13 +1,16 @@
 import * as THREE from 'three';
 import { Vehicle } from '../game/Vehicle.ts';
 
+export type CameraViewMode = 'THIRD_PERSON' | 'FIRST_PERSON';
+
 /**
- * 3D 체이스 카메라 및 다이내믹 카메라 쉐이크 전담 컨트롤러
+ * 3D 체이스 및 1인칭 본넷/콕핏 카메라, 다이내믹 쉐이크 전담 컨트롤러
  */
 export class CameraController {
   public camera: THREE.PerspectiveCamera;
   private cameraLookTarget: THREE.Vector3 = new THREE.Vector3();
   private cameraShakeIntensity: number = 0;
+  public viewMode: CameraViewMode = 'THIRD_PERSON';
 
   // 그래픽/멀미 방지 설정
   private dynamicFovEnabled: boolean = true;
@@ -17,23 +20,41 @@ export class CameraController {
     this.camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
   }
 
+  public toggleViewMode(): CameraViewMode {
+    this.viewMode = this.viewMode === 'THIRD_PERSON' ? 'FIRST_PERSON' : 'THIRD_PERSON';
+    return this.viewMode;
+  }
+
   public snapToTarget(targetVehicle: Vehicle): void {
     const heading = targetVehicle.heading + targetVehicle.slipAngle;
     const sinH = Math.sin(heading);
     const cosH = Math.cos(heading);
     const pitchLookOffset = -Math.sin(targetVehicle.pitch) * 3.5;
+    const isFirstPerson = this.viewMode === 'FIRST_PERSON';
 
-    this.camera.position.set(
-      targetVehicle.position.x - sinH * 8.5,
-      targetVehicle.position.y + 4.2,
-      targetVehicle.position.z - cosH * 8.5
-    );
-
-    this.cameraLookTarget.set(
-      targetVehicle.position.x + sinH * 4.0,
-      targetVehicle.position.y + 1.2 + pitchLookOffset,
-      targetVehicle.position.z + cosH * 4.0
-    );
+    if (isFirstPerson) {
+      this.camera.position.set(
+        targetVehicle.position.x + sinH * 0.75,
+        targetVehicle.position.y + 0.98,
+        targetVehicle.position.z + cosH * 0.75
+      );
+      this.cameraLookTarget.set(
+        targetVehicle.position.x + sinH * 28.0,
+        targetVehicle.position.y + 0.95 + pitchLookOffset,
+        targetVehicle.position.z + cosH * 28.0
+      );
+    } else {
+      this.camera.position.set(
+        targetVehicle.position.x - sinH * 8.5,
+        targetVehicle.position.y + 4.2,
+        targetVehicle.position.z - cosH * 8.5
+      );
+      this.cameraLookTarget.set(
+        targetVehicle.position.x + sinH * 4.0,
+        targetVehicle.position.y + 1.2 + pitchLookOffset,
+        targetVehicle.position.z + cosH * 4.0
+      );
+    }
     this.camera.lookAt(this.cameraLookTarget);
   }
 
@@ -42,19 +63,29 @@ export class CameraController {
     const sinH = Math.sin(heading);
     const cosH = Math.cos(heading);
     const pitchLookOffset = -Math.sin(targetVehicle.pitch) * 3.5;
+    const isFirstPerson = this.viewMode === 'FIRST_PERSON';
 
-    const targetCamPos = new THREE.Vector3(
-      targetVehicle.position.x - sinH * 8.5,
-      targetVehicle.position.y + 4.2,
-      targetVehicle.position.z - cosH * 8.5
-    );
+    const targetCamPos = isFirstPerson
+      ? new THREE.Vector3(
+          targetVehicle.position.x + sinH * 0.75,
+          targetVehicle.position.y + 0.98,
+          targetVehicle.position.z + cosH * 0.75
+        )
+      : new THREE.Vector3(
+          targetVehicle.position.x - sinH * 8.5,
+          targetVehicle.position.y + 4.2,
+          targetVehicle.position.z - cosH * 8.5
+        );
 
-    this.camera.position.lerp(targetCamPos, Math.min(1.0, 9.0 * delta));
+    const lerpRate = isFirstPerson ? 24.0 : 9.0;
+    this.camera.position.lerp(targetCamPos, Math.min(1.0, lerpRate * delta));
 
+    const lookAhead = isFirstPerson ? 28.0 : 4.0;
+    const lookHeight = isFirstPerson ? 0.95 : 1.2;
     this.cameraLookTarget.set(
-      targetVehicle.position.x + sinH * 4.0,
-      targetVehicle.position.y + 1.2 + pitchLookOffset,
-      targetVehicle.position.z + cosH * 4.0
+      targetVehicle.position.x + sinH * lookAhead,
+      targetVehicle.position.y + lookHeight + pitchLookOffset,
+      targetVehicle.position.z + cosH * lookAhead
     );
     this.camera.lookAt(this.cameraLookTarget);
 
@@ -69,11 +100,12 @@ export class CameraController {
 
     // 100km/h 및 200km/h 초과 시 시각적 속도감 극대화를 위한 다이내믹 FOV 왜곡
     const speedKmh = targetVehicle.getSpeedKmh();
-    let targetFov = 65;
+    const baseFov = isFirstPerson ? 72 : 65;
+    let targetFov = baseFov;
     if (this.dynamicFovEnabled && speedKmh > 95) {
-      // 100km/h: ~68°, 200km/h: 80°~82°
-      const fovBoost = Math.min(17, (speedKmh - 95) * 0.14);
-      targetFov = 65 + fovBoost;
+      // 100km/h: ~68°/75°, 200km/h: 80°~88°
+      const fovBoost = Math.min(16, (speedKmh - 95) * 0.14);
+      targetFov = baseFov + fovBoost;
     }
 
     if (Math.abs(this.camera.fov - targetFov) > 0.05) {

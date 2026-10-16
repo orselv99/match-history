@@ -63,6 +63,7 @@ export interface MatchSummaryMetadata {
   compressedBytes?: number;
   compressionRatioPercent?: number; // e.g. 98.5%
   raceResults?: RaceResultEntry[];
+  viewMode?: 'FIRST_PERSON' | 'THIRD_PERSON';
 }
 
 /**

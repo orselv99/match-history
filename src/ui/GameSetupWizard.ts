@@ -392,11 +392,11 @@ export class GameSetupWizard extends BaseModal {
   public randomizeAll(): void {
     this.pickRandomName();
 
-    const circuits: CircuitId[] = ['circuit_monaco', 'circuit_monza', 'circuit_spa'];
+    const circuits: CircuitId[] = ['circuit_monaco', 'circuit_monza', 'circuit_spa', 'circuit_silverstone'];
     this.selectedCircuit = circuits[Math.floor(Math.random() * circuits.length)];
     this.updateCircuitShowcase();
 
-    const models: VehicleModelId[] = ['gt_turbo', 'formula_aero', 'cyber_speedster'];
+    const models: VehicleModelId[] = ['gt_turbo', 'formula_aero', 'cyber_speedster', 'lm_hypercar'];
     this.selectedVehicleModel = models[Math.floor(Math.random() * models.length)];
     this.updateModelShowcase();
     this.callbacks.onVehicleModelChange?.(this.selectedVehicleModel);

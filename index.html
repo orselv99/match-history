@@ -138,6 +138,10 @@
           <span id="hud-bgm-text-dup" class="marquee-item"></span>
         </div>
       </div>
+      <button id="btn-camera-view" class="hud-camera-pill interactive" title="카메라 시점 변경 [C]: 1인칭 본넷/콕핏 ↔ 3인칭 체이스 뷰">
+        <span class="cam-icon">🎥</span>
+        <span id="camera-view-label" class="cam-label">3P</span>
+      </button>
     </header>
 
     <!-- 2. 우측 상단 실시간 미니맵 -->
@@ -269,10 +273,24 @@
       </div>
     </footer>
 
-    <!-- 6. 기후 윈드실드 전면 화면 연출 (우천 빗자국 물방울 & 강설 유리 김서림/서리) -->
+    <!-- 6. 기후 윈드실드 전면 화면 연출 (우천 빗자국 물방울 & 와이퍼 & 강설 유리 김서림/서리) -->
     <div id="weather-screen-overlay" class="weather-screen-overlay">
       <div class="weather-rain-layer"></div>
       <div class="weather-frost-layer"></div>
+      <div id="windshield-wiper-assembly" class="windshield-wiper-assembly">
+        <div class="wiper-pivot">
+          <div class="wiper-arm">
+            <div class="wiper-blade"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. 슬립스트림 기류선 오버레이 (상대 차량 후미 추종 시 가속 기류 & 부스트 연출) -->
+    <div id="slipstream-overlay" class="slipstream-overlay">
+      <div class="slipstream-lines-left"></div>
+      <div class="slipstream-lines-right"></div>
+      <div class="slipstream-badge"><span class="pulse-dot"></span>SLIPSTREAM // +15% BOOST</div>
     </div>
   </div>
 
@@ -767,6 +785,15 @@
                   <strong class="choice-card-title">Circuit de Spa-Francorchamps</strong>
                   <span class="choice-card-meta" data-i18n="wizard.circuitSpaMeta">7.004 km // 20 Corners // 아르덴 롤러코스터</span>
                 </button>
+
+                <button type="button" class="wizard-choice-card" data-circuit="circuit_silverstone">
+                  <div class="choice-card-header">
+                    <span class="choice-card-num">CKT 04</span>
+                    <span class="choice-card-badge badge-hard">★★★★☆ FAST</span>
+                  </div>
+                  <strong class="choice-card-title">Silverstone Circuit</strong>
+                  <span class="choice-card-meta" data-i18n="wizard.circuitSilverstoneMeta">5.891 km // 18 Corners // 모터스포츠의 성지</span>
+                </button>
               </div>
             </div>
 
@@ -788,6 +815,12 @@
                   </svg>
                   <!-- Spa SVG Map -->
                   <svg id="circuit-svg-spa" class="circuit-svg" viewBox="0 0 400 240">
+                    <path class="circuit-svg-outline" d="" />
+                    <circle cx="0" cy="0" r="5" class="circuit-start-pin" />
+                    <text x="0" y="0" class="circuit-start-text">START / FINISH</text>
+                  </svg>
+                  <!-- Silverstone SVG Map -->
+                  <svg id="circuit-svg-silverstone" class="circuit-svg" viewBox="0 0 400 240">
                     <path class="circuit-svg-outline" d="" />
                     <circle cx="0" cy="0" r="5" class="circuit-start-pin" />
                     <text x="0" y="0" class="circuit-start-text">START / FINISH</text>
@@ -858,6 +891,15 @@
                   </div>
                   <strong class="choice-card-title">Cyber Speedster</strong>
                   <span class="choice-card-meta" data-i18n="wizard.carCyberMeta">최고속 242 km/h // 가속 3.2s // 사이버 하이퍼카</span>
+                </button>
+
+                <button type="button" class="wizard-choice-card" data-model="lm_hypercar">
+                  <div class="choice-card-header">
+                    <span class="choice-card-num">CAR 04</span>
+                    <span class="choice-card-badge badge-insane">LE MANS PROTOTYPE</span>
+                  </div>
+                  <strong class="choice-card-title">Apex Hypercar</strong>
+                  <span class="choice-card-meta" data-i18n="wizard.carHyperMeta">최고속 248 km/h // 가속 2.4s // 르망 샤크핀 에어로</span>
                 </button>
               </div>
 
@@ -1181,6 +1223,16 @@
               <button type="button" class="history-tab-btn" data-circuit="circuit_monaco" data-i18n="history.tabMonaco">MONACO GP</button>
               <button type="button" class="history-tab-btn" data-circuit="circuit_monza" data-i18n="history.tabMonza">MONZA GP</button>
               <button type="button" class="history-tab-btn" data-circuit="circuit_spa" data-i18n="history.tabSpa">SPA-FRANCORCHAMPS</button>
+              <button type="button" class="history-tab-btn" data-circuit="circuit_silverstone" data-i18n="history.tabSilverstone">SILVERSTONE</button>
+            </div>
+
+            <div class="history-sort-select-wrap">
+              <span class="filter-sort-label">시점:</span>
+              <select id="history-view-select" class="history-sort-select">
+                <option value="all">전체 시점</option>
+                <option value="FIRST_PERSON">1인칭 (1P)</option>
+                <option value="THIRD_PERSON">3인칭 (3P)</option>
+              </select>
             </div>
 
             <div class="history-sort-select-wrap">

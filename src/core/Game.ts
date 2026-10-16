@@ -14,7 +14,7 @@ import { SkidMarkManager } from '../game/SkidMarkManager.ts';
 import { CollisionManager } from '../game/CollisionManager.ts';
 import { EnvironmentManager, TimeOfDay, WeatherType } from '../game/EnvironmentManager.ts';
 import { MinimapRenderer } from '../game/MinimapRenderer.ts';
-import { CameraController } from './CameraController.ts';
+import { CameraController, CameraViewMode } from './CameraController.ts';
 import { SpeedFX } from '../game/SpeedFX.ts';
 import { GraphicsSettings, graphicsSettingsManager } from './GraphicsSettingsManager.ts';
 import { MirrorRenderer } from './MirrorRenderer.ts';
@@ -294,6 +294,16 @@ export class Game {
     return next;
   }
 
+  public toggleCameraView(): CameraViewMode {
+    const mode = this.cameraController.toggleViewMode();
+    const btn = document.getElementById('camera-view-label');
+    if (btn) {
+      btn.textContent = mode === 'FIRST_PERSON' ? '1P' : '3P';
+    }
+    showToast(mode === 'FIRST_PERSON' ? '🎥 1인칭 본넷/콕핏 뷰' : '🎥 3인칭 체이스 뷰', 1600);
+    return mode;
+  }
+
   public setDriverName(name: string): void {
     this.currentDriverName = name;
   }
@@ -520,6 +530,33 @@ export class Game {
         this.playerVehicle.speed = Math.max(0, this.playerVehicle.speed - 10.0 * delta);
       }
       activeBrake = this.playerVehicle.speed > 0.2 ? 0.35 : 0;
+    }
+
+    // 슬립스트림(Slipstream) 역학 판정: 상대 차량 후미(2.0m ~ 24.0m) 및 횡편차 2.5m 이내 추종 시 공기저항 감소 & +15% 가속 부스트
+    let isSlipstreaming = false;
+    if (isRunning && this.playerVehicle.speed > 12.0) {
+      const sinH = Math.sin(this.playerVehicle.heading);
+      const cosH = Math.cos(this.playerVehicle.heading);
+      for (const agent of this.opponentManager.agents) {
+        if (!agent.vehicle.mesh.visible) continue;
+        const dx = agent.vehicle.position.x - this.playerVehicle.position.x;
+        const dz = agent.vehicle.position.z - this.playerVehicle.position.z;
+        const distFwd = dx * sinH + dz * cosH;
+        const distLat = Math.abs(dx * cosH - dz * sinH);
+        if (distFwd > 2.0 && distFwd < 24.0 && distLat < 2.5) {
+          isSlipstreaming = true;
+          break;
+        }
+      }
+    }
+
+    if (isSlipstreaming && activeThrottle > 0) {
+      activeThrottle = Math.min(1.25, activeThrottle * 1.15);
+    }
+
+    const slipstreamOverlay = document.getElementById('slipstream-overlay');
+    if (slipstreamOverlay) {
+      slipstreamOverlay.classList.toggle('active', isSlipstreaming);
     }
 
     // 차량 물리 업데이트 (중력 가감속, 고도 추종, 서스펜션 바운스 반영)
@@ -920,6 +957,7 @@ export class Game {
       compressedBytes: benchmark.compressedBytes,
       compressionRatioPercent: benchmark.reductionVsJsonPercent,
       raceResults,
+      viewMode: this.cameraController.viewMode,
     };
 
     this.currentReplayMetadata = metadata;
@@ -970,6 +1008,7 @@ export class Game {
     this.speedFX.clear();
     this.cameraController.camera.fov = 65;
     this.cameraController.camera.updateProjectionMatrix();
+    document.getElementById('slipstream-overlay')?.classList.remove('active');
 
     if (mode === 'TITLE') {
       this.audio.pauseEngine();

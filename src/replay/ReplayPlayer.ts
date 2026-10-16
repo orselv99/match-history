@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { RawReplayTick } from './ReplayTypes.ts';
 import { Vehicle } from '../game/Vehicle.ts';
+import type { VehicleModelId } from '../data/vehicles.ts';
 
 /**
  * 3D 리플레이 & 고스트 카 플레이어
@@ -22,9 +23,10 @@ export class ReplayPlayer {
     this.ghostVehicle.mesh.visible = false;
 
     // 동승했던 라이벌 상대 차량 3대 인스턴스 초기화
-    const defaultModels: Array<'gt_turbo' | 'formula_aero' | 'cyber_speedster'> = [
+    const defaultModels: VehicleModelId[] = [
       'formula_aero',
       'cyber_speedster',
+      'lm_hypercar',
       'gt_turbo'
     ];
     for (let i = 0; i < 3; i++) {

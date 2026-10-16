@@ -249,6 +249,10 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('title-btn-history')?.addEventListener('click', () => matchHistoryModal.open());
   document.getElementById('title-btn-settings')?.addEventListener('click', () => settingsModal.open());
   document.getElementById('btn-hud-pause')?.addEventListener('click', openPauseDialog);
+  document.getElementById('btn-camera-view')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    game.toggleCameraView();
+  });
 
   // BGM 변경 시 상단 중앙 마키 티커 및 로비 UI 동기화
   const lobbyBgmTitle = document.getElementById('lobby-bgm-title');
@@ -345,6 +349,10 @@ window.addEventListener('DOMContentLoaded', () => {
     } else if (keyBindingManager.isActionKey('headlights', e.code) || e.key === 'h' || e.key === 'H') {
       if (!(e.target instanceof HTMLInputElement)) {
         game.toggleHeadlights();
+      }
+    } else if (e.key === 'c' || e.key === 'C') {
+      if (!(e.target instanceof HTMLInputElement)) {
+        game.toggleCameraView();
       }
     } else if (e.key === 'o' || e.key === 'O') {
       if (settingsModal.isOpen()) settingsModal.close();

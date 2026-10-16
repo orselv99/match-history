@@ -19,6 +19,7 @@ export class MatchHistoryModal extends BaseModal {
   private btnSearch: HTMLElement | null;
   private btnRefresh: HTMLElement | null;
   private sortSelect: HTMLSelectElement | null;
+  private viewSelect: HTMLSelectElement | null;
   private tableTbody: HTMLElement | null;
 
   private statTotal: HTMLElement | null;
@@ -30,6 +31,7 @@ export class MatchHistoryModal extends BaseModal {
   private currentCircuitFilter: string = 'all';
   private searchQuery: string = '';
   private sortMode: 'best_lap' | 'recent' | 'top_speed' = 'best_lap';
+  private viewModeFilter: 'all' | 'FIRST_PERSON' | 'THIRD_PERSON' = 'all';
 
   private callbacks: MatchHistoryModalCallbacks;
 
@@ -44,6 +46,7 @@ export class MatchHistoryModal extends BaseModal {
     this.btnSearch = document.getElementById('history-btn-search');
     this.btnRefresh = document.getElementById('history-btn-refresh');
     this.sortSelect = document.getElementById('history-sort-select') as HTMLSelectElement | null;
+    this.viewSelect = document.getElementById('history-view-select') as HTMLSelectElement | null;
     this.tableTbody = document.getElementById('history-table-tbody');
 
     this.statTotal = document.getElementById('history-stat-total');
@@ -83,6 +86,12 @@ export class MatchHistoryModal extends BaseModal {
     // 정렬 셀렉트 변경
     this.sortSelect?.addEventListener('change', () => {
       this.sortMode = (this.sortSelect?.value as any) || 'best_lap';
+      this.renderTable();
+    });
+
+    // 1P/3P 시점 필터 셀렉트 변경
+    this.viewSelect?.addEventListener('change', () => {
+      this.viewModeFilter = (this.viewSelect?.value as any) || 'all';
       this.renderTable();
     });
 
@@ -194,11 +203,17 @@ export class MatchHistoryModal extends BaseModal {
   private renderTable(): void {
     if (!this.tableTbody) return;
 
-    // 1. 서킷 및 검색어 필터링
+    // 1. 서킷 및 검색어 및 시점 필터링
     let filtered = this.allRecords.filter(r => {
       const recCircuitId = r.metadata?.circuitId || 'circuit_monaco';
       if (this.currentCircuitFilter !== 'all' && recCircuitId !== this.currentCircuitFilter) {
         return false;
+      }
+      if (this.viewModeFilter !== 'all') {
+        const itemMode = r.metadata?.viewMode || 'THIRD_PERSON';
+        if (itemMode !== this.viewModeFilter) {
+          return false;
+        }
       }
       if (this.searchQuery) {
         const driverName = (r.metadata?.driverName || (r.metadata as any)?.userNickname || '').toLowerCase();
@@ -249,6 +264,8 @@ export class MatchHistoryModal extends BaseModal {
 
       const driverName = this.escapeHtml(meta?.driverName || (meta as any)?.userNickname || 'Driver');
       const vehicleBadge = this.getVehicleBadge(meta?.vehicleModelId || (meta as any)?.vehicleId || 'gt_turbo');
+      const isFirstPerson = meta?.viewMode === 'FIRST_PERSON';
+      const viewBadge = `<span class="view-mode-badge ${isFirstPerson ? 'badge-1p' : 'badge-3p'}">${isFirstPerson ? '1P' : '3P'}</span>`;
       const recCircuitId = meta?.circuitId || 'circuit_monaco';
       const circuitTitle = this.getCircuitTitle(recCircuitId);
       const lapTime = meta?.bestLapMs ? this.formatTime(meta.bestLapMs) : '--:--.---';
@@ -259,7 +276,7 @@ export class MatchHistoryModal extends BaseModal {
         <tr class="${rankRowClass}">
           <td class="col-rank">${rankBadgeHtml}</td>
           <td class="col-driver"><strong class="driver-name-text">${driverName}</strong></td>
-          <td class="col-vehicle">${vehicleBadge}</td>
+          <td class="col-vehicle"><div class="vehicle-view-col-wrap">${vehicleBadge}${viewBadge}</div></td>
           <td class="col-circuit">${circuitTitle}</td>
           <td class="col-lap"><span class="lap-highlight ${rankNum === 1 ? 'gold' : ''}">${lapTime}</span></td>
           <td class="col-speed">${topSpeed}</td>
@@ -280,6 +297,8 @@ export class MatchHistoryModal extends BaseModal {
       return `<span class="vehicle-badge formula">Formula Aero</span>`;
     } else if (vehicleModelId === 'cyber_speedster') {
       return `<span class="vehicle-badge cyber">Cyber Speedster</span>`;
+    } else if (vehicleModelId === 'lm_hypercar') {
+      return `<span class="vehicle-badge hyper">Apex Hypercar</span>`;
     }
     return `<span class="vehicle-badge gt">GT-86 Turbo</span>`;
   }
@@ -290,6 +309,7 @@ export class MatchHistoryModal extends BaseModal {
     if (circuitId === 'circuit_monaco') return 'Monaco GP';
     if (circuitId === 'circuit_monza') return 'Monza GP';
     if (circuitId === 'circuit_spa') return 'Spa-Francorchamps';
+    if (circuitId === 'circuit_silverstone') return 'Silverstone';
     return circuitId;
   }
 

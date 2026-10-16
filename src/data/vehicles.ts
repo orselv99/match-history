@@ -1,6 +1,6 @@
 import { t } from '../i18n/I18nManager.ts';
 
-export type VehicleModelId = 'gt_turbo' | 'formula_aero' | 'cyber_speedster';
+export type VehicleModelId = 'gt_turbo' | 'formula_aero' | 'cyber_speedster' | 'lm_hypercar';
 
 export interface VehicleModelMetadata {
   id: VehicleModelId;
@@ -108,6 +108,33 @@ export const VEHICLE_MODELS: Record<string, VehicleModelMetadata> = {
     tailLightPos: {
       left: [-0.72, 0.62, -2.28],
       right: [0.72, 0.62, -2.28],
+    },
+  },
+  lm_hypercar: {
+    id: 'lm_hypercar',
+    title: 'Apex Hypercar',
+    badge: 'LE MANS PROTOTYPE',
+    speed: '248 km/h',
+    accel: '2.4s',
+    downforce: 'MAXIMUM PROTOTYPE',
+    handling: 'PRECISION RACER',
+    get desc(): string {
+      return t('wizard.carHyperDesc');
+    },
+    maxSpeedMs: 68.9,
+    acceleration: 18.2,
+    braking: 34.0,
+    drag: 0.36,
+    wheelRadius: 0.40,
+    accentColor: 0x10b981,
+    scale: [1.0, 1.0, 1.0],
+    headlightPos: {
+      left: [-0.78, 0.42, 2.30],
+      right: [0.78, 0.42, 2.30],
+    },
+    tailLightPos: {
+      left: [-0.82, 0.64, -2.32],
+      right: [0.82, 0.64, -2.32],
     },
   },
 };

@@ -3,6 +3,7 @@ import { VEHICLE_MODELS, type VehicleModelId } from '../../data/vehicles.ts';
 import { buildGTTurboGeometry } from './GTTurboMesh.ts';
 import { buildFormulaAeroGeometry } from './FormulaAeroMesh.ts';
 import { buildCyberSpeedsterGeometry } from './CyberSpeedsterMesh.ts';
+import { buildLmHypercarGeometry } from './LmHypercarMesh.ts';
 import type { VehicleMeshParams, VehicleWheels } from './types.ts';
 
 /**
@@ -312,6 +313,8 @@ export function assembleVehicleVisuals(
     wheels = buildFormulaAeroGeometry(meshParams);
   } else if (vehicleModelId === 'cyber_speedster') {
     wheels = buildCyberSpeedsterGeometry(meshParams);
+  } else if (vehicleModelId === 'lm_hypercar') {
+    wheels = buildLmHypercarGeometry(meshParams);
   } else {
     wheels = buildGTTurboGeometry(meshParams);
   }

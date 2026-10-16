@@ -20,6 +20,7 @@ export class CircuitPreview {
       ['circuit_monaco', document.getElementById('circuit-svg-monaco')],
       ['circuit_monza', document.getElementById('circuit-svg-monza')],
       ['circuit_spa', document.getElementById('circuit-svg-spa')],
+      ['circuit_silverstone', document.getElementById('circuit-svg-silverstone')],
     ]);
     this.showcaseTitle = document.getElementById('circuit-showcase-title');
     this.showcaseBadge = document.getElementById('circuit-showcase-badge');

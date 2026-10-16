@@ -116,6 +116,14 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
+  align-items: start;
+}
+
+.wizard-preview-col {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  z-index: 5;
 }
 
 .wizard-choice-col {

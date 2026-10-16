@@ -70,6 +70,8 @@ export const ko = {
       steerDesc: '조향 입력 반응 감도',
       camTilt: '다이내믹 카메라 틸트',
       camTiltDesc: '코너링 시 체이스 카메라 롤 회전',
+      showNametags: '차량 식별 태그 표시',
+      showNametagsDesc: '상대 차량 및 리플레이 차량 상단 이름표',
       controlsTitle: '키보드 조작 설정 (단일 키 매핑)',
       presetName: '조작 프리셋',
       presetDesc: '기본 프리셋 또는 완전 사용자 지정',

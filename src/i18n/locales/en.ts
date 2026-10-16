@@ -70,6 +70,8 @@ export const en = {
       steerDesc: 'Steering response rate and linearity',
       camTilt: 'DYNAMIC CAMERA TILT',
       camTiltDesc: 'Chase camera roll banking during turns',
+      showNametags: 'SHOW DRIVER NAMETAGS',
+      showNametagsDesc: 'Display identification tags above rival and replay cars',
       controlsTitle: 'KEYBOARD CONTROLS',
       presetName: 'CONTROL PRESET',
       presetDesc: 'Default preset or fully customized keybindings',

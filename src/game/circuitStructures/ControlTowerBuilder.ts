@@ -12,7 +12,7 @@ export function buildControlTower(materials: StructureMaterials, circuitWidth: n
   const towerGroup = new THREE.Group();
   const halfW = circuitWidth / 2;
   const towerX = -(halfW + 10.5);
-  const towerZ = -2.5; // 출발선 바로 직전 (Z <= 0)
+  const towerZ = 5.0; // 출발선 통과 직후 메인 스트레이트 초입에 배치하여 마지막 코너 간섭 원천 배제
 
   // 타워 1~3층 메인 본체
   const towerBodyGeom = new THREE.BoxGeometry(6.8, 11.0, 6.8);

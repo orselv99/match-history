@@ -447,4 +447,37 @@ export class Circuit {
   public getDistanceFromCenter(pos: THREE.Vector3): number {
     return this.getCircuitSurfaceInfo(pos, 0).distFromCenter;
   }
+
+  /**
+   * 특정 3D 좌표에서 가장 가까운 서킷 곡선 진행도 (t: 0.0 ~ 1.0) 반환
+   */
+  public getClosestT(pos: THREE.Vector3): number {
+    const n = this.samplePoints.length;
+    if (n === 0) return 0;
+    let bestIdx = 0;
+    let minScore = Infinity;
+    for (let i = 0; i < n; i++) {
+      const p = this.samplePoints[i];
+      const score = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2 + (p.y - pos.y) ** 2 * 6.0;
+      if (score < minScore) {
+        minScore = score;
+        bestIdx = i;
+      }
+    }
+    return bestIdx / n;
+  }
+
+  /**
+   * 오프로드 이탈 시 가장 가까운 서킷 아스팔트 중심선 좌표 및 주행 방향(heading) 산출
+   */
+  public getNearestTrackPoint(pos: THREE.Vector3): { position: THREE.Vector3; heading: number } {
+    const t = this.getClosestT(pos);
+    const pt = this.circuitCurve.getPointAt(t);
+    const tangent = this.circuitCurve.getTangentAt(t).normalize();
+    const heading = Math.atan2(tangent.x, tangent.z);
+    return {
+      position: new THREE.Vector3(pt.x, Math.max(0, pt.y) + 0.055, pt.z),
+      heading,
+    };
+  }
 }

@@ -200,7 +200,7 @@ export class Vehicle {
 
     // 공기 저항(최고속도 도달 시 가속력과 정확히 균형) 및 주행 마찰/코스팅 감속
     const aeroDrag = (topSpeedRatio ** 2) * (this.ACCELERATION * 0.42);
-    const offroadDrag = isOffroad ? 16.0 : 0;
+    const offroadDrag = isOffroad ? 4.8 : 0;
     const coastingDrag = (throttle === 0 && brake === 0 && Math.abs(this.speed) > 0.1)
       ? (Math.abs(this.speed) * 0.03 + 1.2)
       : 0;
@@ -210,57 +210,57 @@ export class Vehicle {
 
     // 최고 속도 클램핑 (내리막 중력 가속 시 최고속도 보너스 허용, 오르막은 중력 부하 반영)
     const slopeTopSpeedMod = slopeSin < 0 ? -slopeSin * 26.0 : -slopeSin * 10.0;
-    const maxAllowedSpeed = isOffroad ? 16.7 : (this.MAX_SPEED_MS + slopeTopSpeedMod);
+    const maxAllowedSpeed = isOffroad ? 11.0 : (this.MAX_SPEED_MS + slopeTopSpeedMod);
     this.speed = Math.max(this.REVERSE_MAX_SPEED_MS, Math.min(maxAllowedSpeed, this.speed));
 
     if (Math.abs(this.speed) < 0.05 && throttle === 0 && brake === 0 && Math.abs(slopeSin) < 0.02) {
       this.speed = 0;
     }
 
-    // 2. 스태미나 기반 드리프트 및 스핀아웃 페널티 연산
-    const speedRatio = Math.min(1.0, Math.abs(this.speed) / 25.0);
-    const steerAngle = steerInput * (0.65 - speedRatio * 0.35);
+    // 2. 고속 안정형 속도 감응식 조향 및 명시적 핸드브레이크 드리프트
+    const speedSensitivity = 1.0 / (1.0 + Math.abs(this.speed) * 0.035);
+    const steerAngle = steerInput * (0.52 * speedSensitivity);
 
-    const isHighSpeedTurn = Math.abs(steerInput) > 0.65 && Math.abs(this.speed) > 13.0;
-    const wantsDrift = (handbrake && Math.abs(this.speed) > 3.0) || isHighSpeedTurn;
+    // 일반 선회 중 임의 드리프트/스핀 방지: 명시적으로 핸드브레이크를 입력한 경우에만 드리프트 발동
+    const wantsDrift = handbrake && Math.abs(this.speed) > 6.0 && Math.abs(steerInput) > 0.15;
 
     if (this.isSpinningOut) {
       this.spinoutTimer -= delta;
       this.isDrifting = true;
 
-      // 제어 불능 스핀: 맹렬한 360도 Yaw 회전 및 급격한 속도 감쇠
-      this.heading += 12.5 * delta;
-      this.speed = Math.max(0, this.speed - 28.0 * delta);
+      // 제어 불능 스핀: Yaw 회전 및 속도 감쇠
+      this.heading += 9.5 * delta;
+      this.speed = Math.max(0, this.speed - 22.0 * delta);
 
       if (this.spinoutTimer <= 0) {
         this.isSpinningOut = false;
         this.spinoutTimer = 0;
-        this.driftStamina = 25.0; // 회복 초기치
+        this.driftStamina = 40.0; // 회복 초기치
       }
     } else if (wantsDrift) {
       if (this.driftStamina <= 0) {
         this.isSpinningOut = true;
-        this.spinoutTimer = 1.5;
+        this.spinoutTimer = 1.2;
         this.isDrifting = true;
       } else {
         this.isDrifting = true;
-        this.driftStamina = Math.max(0, this.driftStamina - 26.0 * delta);
+        this.driftStamina = Math.max(0, this.driftStamina - 16.0 * delta);
         if (this.driftStamina <= 0) {
           this.isSpinningOut = true;
-          this.spinoutTimer = 1.5;
+          this.spinoutTimer = 1.2;
         }
       }
     } else {
       this.isDrifting = false;
-      this.driftStamina = Math.min(100.0, this.driftStamina + 24.0 * delta);
+      this.driftStamina = Math.min(100.0, this.driftStamina + 35.0 * delta);
     }
 
     if (!this.isSpinningOut) {
-      const driftFactor = this.isDrifting ? 2.2 : 1.0;
-      const turnRate = steerAngle * (this.speed / 4.0) * driftFactor;
+      const driftFactor = this.isDrifting ? 1.45 : 1.0;
+      const turnRate = steerAngle * Math.min(7.5, 1.8 + Math.abs(this.speed) * 0.12) * driftFactor;
       this.heading -= turnRate * delta;
 
-      const targetSlip = this.isDrifting ? steerInput * 0.45 : 0;
+      const targetSlip = this.isDrifting ? steerInput * 0.32 : 0;
       this.slipAngle += (targetSlip - this.slipAngle) * Math.min(1.0, 10.0 * delta);
     }
 

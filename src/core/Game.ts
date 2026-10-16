@@ -19,6 +19,7 @@ import { SpeedFX } from '../game/SpeedFX.ts';
 import { GraphicsSettings, graphicsSettingsManager } from './GraphicsSettingsManager.ts';
 import { MirrorRenderer } from './MirrorRenderer.ts';
 import { StartCutsceneController } from './StartCutsceneController.ts';
+import { showToast } from '../ui/Toast.ts';
 
 export type GameMode = 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO';
 export type RaceState = 'READY' | 'START_CUTSCENE' | 'COUNTDOWN' | 'RUNNING' | 'FINISHED';
@@ -95,6 +96,11 @@ export class Game {
   public currentTimeOfDay: TimeOfDay = 'noon';
   public currentWeather: WeatherType = 'clear';
   public currentReplayMetadata?: MatchSummaryMetadata | null;
+  public showNametagsSetting: boolean = typeof localStorage !== 'undefined'
+    ? localStorage.getItem('apex_show_nametags') !== 'false'
+    : true;
+  private offroadTimer: number = 0;
+  private offroadHintShown: boolean = false;
 
   // 콜백
   public onFinishCallback?: (metadata: MatchSummaryMetadata) => void;
@@ -505,6 +511,40 @@ export class Game {
     if (this.playerVehicle.lastLandingImpact > 0.3) {
       this.collisionManager.emitBottomingSparks(this.playerVehicle, this.playerVehicle.lastLandingImpact);
       this.cameraController.triggerShake(this.playerVehicle.lastLandingImpact * 0.45);
+    }
+
+    // 오프로드 2초 이상 이탈 시 서킷 복귀 안내 토스트 표시
+    if (isOffroad && isRunning) {
+      this.offroadTimer += delta;
+      if (this.offroadTimer >= 2.0 && !this.offroadHintShown) {
+        this.offroadHintShown = true;
+        showToast('⚠️ 서킷 이탈! [R] 키를 누르면 트랙으로 즉시 복귀합니다.', 4000);
+      }
+    } else {
+      this.offroadTimer = 0;
+      this.offroadHintShown = false;
+    }
+
+    // [R] 키 입력 시 가장 가까운 서킷 노면 중심선으로 안전 복귀
+    if (this.input.resetRequested && (isRunning || this.raceState === 'READY')) {
+      this.input.resetRequested = false;
+      const respawn = this.circuit.getNearestTrackPoint(this.playerVehicle.position);
+      this.playerVehicle.reset(respawn.position, respawn.heading);
+      this.offroadTimer = 0;
+      this.offroadHintShown = false;
+      showToast('🔄 트랙 중심선으로 안전 복귀했습니다.', 2200);
+    }
+
+    // 상대 차량에 플레이어 위치 실시간 동기화하여 AI가 플레이어를 인지하고 후미 추돌을 회피하도록 연동
+    if (this.opponentManager.isRivalsMode) {
+      const playerT = this.circuit.getClosestT(this.playerVehicle.position);
+      this.opponentManager.syncPlayerState(
+        playerT,
+        Math.max(0, this.playerVehicle.speed),
+        this.lapTimer.currentLap,
+        0,
+        this.playerVehicle.position
+      );
     }
 
     // 상대 차량 업데이트 (3대 그리드 경쟁 및 완주 후 쿨다운 주행)
@@ -1096,17 +1136,27 @@ export class Game {
     return this.playerVehicle;
   }
 
+  public setShowNametags(enabled: boolean): void {
+    this.showNametagsSetting = enabled;
+    try {
+      localStorage.setItem('apex_show_nametags', enabled ? 'true' : 'false');
+    } catch {}
+    this.updateNameTags();
+  }
+
   private updateNameTags(): void {
+    const isPhotoMode = document.body.classList.contains('in-photo-mode');
+    const allowNametags = this.showNametagsSetting && !isPhotoMode;
     const focused = this.getFocusedVehicle();
 
     // 상대 및 리플레이 경쟁 차량들: 카메라가 포커싱 중인 차량을 제외한 나머지 활성 차량 상단에 이름 표시
-    if (this.opponentManager.isActive) {
+    if (allowNametags && this.opponentManager.isActive) {
       const agents = this.opponentManager.agents;
       for (let i = 0; i < agents.length; i++) {
         const v = agents[i].vehicle;
         v.setNameTagVisible(v !== focused && v.mesh.visible);
       }
-    } else if (this.mode === 'REPLAY') {
+    } else if (allowNametags && this.mode === 'REPLAY') {
       this.replayPlayer.ghostVehicle.setNameTagVisible(false);
       for (let i = 0; i < this.replayPlayer.opponentVehicles.length; i++) {
         const v = this.replayPlayer.opponentVehicles[i];
@@ -1116,6 +1166,9 @@ export class Game {
       const agents = this.opponentManager.agents;
       for (let i = 0; i < agents.length; i++) {
         agents[i].vehicle.setNameTagVisible(false);
+      }
+      for (let i = 0; i < this.replayPlayer.opponentVehicles.length; i++) {
+        this.replayPlayer.opponentVehicles[i].setNameTagVisible(false);
       }
     }
   }

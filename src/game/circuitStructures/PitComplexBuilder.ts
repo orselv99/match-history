@@ -13,12 +13,12 @@ export function buildPitComplex(materials: StructureMaterials, circuitWidth: num
   const pitGroup = new THREE.Group();
   const halfW = circuitWidth / 2;
   const pitBaseX = -(halfW + 3.0);
-  const pitLength = 52.0;
-  const pitZ = -30.0; // Z: -56.0 ~ -4.0 (출발선 이전 구간 완벽 일치)
+  const pitLength = 46.0;
+  const pitZ = 34.0; // Z: 11.0 ~ 57.0 (메인 스트레이트 구간에 안전 배치하여 마지막 코너 간섭 배제)
 
-  // A. 피트 월 (트랙과 피트 레인 분리 방호벽 - 출차 구간 Z=-18.0 ~ -4.0은 개방)
-  const pitWallLength = 36.0;
-  const pitWallZ = -38.0; // Z: -56.0 ~ -20.0
+  // A. 피트 월 (트랙과 피트 레인 분리 방호벽)
+  const pitWallLength = 32.0;
+  const pitWallZ = 30.0; // Z: 14.0 ~ 46.0
   const pitWallGeom = new THREE.BoxGeometry(0.7, 1.15, pitWallLength);
   const pitWall = new THREE.Mesh(pitWallGeom, materials.concreteMat);
   pitWall.position.set(pitBaseX + 1.2, 0.575, pitWallZ);
@@ -53,11 +53,11 @@ export function buildPitComplex(materials: StructureMaterials, circuitWidth: num
   pitGroup.add(pitBldg);
 
   // 1층 피트 가레지 셔터 도어 6칸 (레이싱팀 정비 베이)
-  const doorGeom = new THREE.BoxGeometry(0.2, 2.8, 6.0);
+  const doorGeom = new THREE.BoxGeometry(0.2, 2.8, 5.5);
   const doorMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.6 });
   for (let d = 0; d < 6; d++) {
     const door = new THREE.Mesh(doorGeom, doorMat);
-    const bayZ = pitZ - 20.0 + d * 8.0;
+    const bayZ = pitZ - 17.5 + d * 7.0;
     door.position.set(pitBaseX - 2.5 - 3.2 + 0.1, 1.4, bayZ);
     pitGroup.add(door);
 

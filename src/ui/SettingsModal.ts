@@ -36,6 +36,7 @@ export class SettingsModal extends BaseModal {
   private storageStatsEl: HTMLElement | null;
   private btnClearCache: HTMLElement | null;
   private settingLanguage: HTMLSelectElement | null;
+  private chkShowNametags: HTMLInputElement | null;
 
   // 키 바인딩 컨트롤 (단일 키 매핑)
   private btnPresetWasd: HTMLButtonElement | null;
@@ -91,6 +92,7 @@ export class SettingsModal extends BaseModal {
     this.storageStatsEl = document.getElementById('setting-storage-stats');
     this.btnClearCache = document.getElementById('btn-clear-cache');
     this.settingLanguage = document.getElementById('setting-language') as HTMLSelectElement | null;
+    this.chkShowNametags = document.getElementById('chk-show-nametags') as HTMLInputElement | null;
 
     this.btnPresetWasd = document.getElementById('btn-preset-wasd') as HTMLButtonElement | null;
     this.btnPresetArrows = document.getElementById('btn-preset-arrows') as HTMLButtonElement | null;
@@ -164,6 +166,12 @@ export class SettingsModal extends BaseModal {
     this.settingSteer?.addEventListener('input', () => {
       const val = Number(this.settingSteer?.value || 100);
       if (this.settingSteerVal) this.settingSteerVal.textContent = `${(val / 100).toFixed(1)}x`;
+    });
+
+    this.chkShowNametags?.addEventListener('change', () => {
+      if (this.chkShowNametags && this.game) {
+        this.game.setShowNametags(this.chkShowNametags.checked);
+      }
     });
 
     this.btnClearCache?.addEventListener('click', async () => {
@@ -393,6 +401,12 @@ export class SettingsModal extends BaseModal {
 
     if (this.settingLanguage) {
       this.settingLanguage.value = i18nManager.getLanguage();
+    }
+
+    if (this.chkShowNametags) {
+      this.chkShowNametags.checked = this.game
+        ? this.game.showNametagsSetting
+        : (typeof localStorage !== 'undefined' ? localStorage.getItem('apex_show_nametags') !== 'false' : true);
     }
   }
 }

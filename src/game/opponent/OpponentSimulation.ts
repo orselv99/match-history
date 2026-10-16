@@ -62,7 +62,9 @@ export function simulateOpponentAI(
   let vehicleAhead: OpponentAgent | null = null;
 
   for (const other of allAgents) {
-    if (other === agent || !other.vehicle.mesh.visible || other.isFinished) continue;
+    if (other === agent || other.isFinished) continue;
+    // 슬롯 0(플레이어 동기화 에이전트)이거나 메시가 가시적인 상대 차량 탐색
+    if (!other.vehicle.mesh.visible && other !== allAgents[0]) continue;
     let dt = other.t - agent.t;
     if (dt < 0) dt += 1.0;
     const dist = dt * circuitLength;
@@ -98,7 +100,7 @@ export function simulateOpponentAI(
     const draftFactor = 1.0 - (nearestAheadDist / 38.0);
     dynamicBonus += 3.2 + draftFactor * 5.8;
 
-    // C. 능동적 추월 차선 기동 (20m 이내 접근 시 슬링샷 스위칭)
+    // C. 능동적 추월 차선 기동 (20m 이내 접근 시 후미 추돌 방지 및 슬링샷 스위칭)
     if (nearestAheadDist < 20.0) {
       // 코너 선회 중이면 인코너 다이브, 직선주로면 반대 차선 추월
       if (turnDir !== 0) {
@@ -175,12 +177,17 @@ export function simulateOpponentAI(
 
   const slopeMod = -currTangentY * 12.0;
   const basePace = agent.baseSpeedMs + dynamicBonus + slopeMod;
-  const targetSpeed = curveAngle > 0.24
+  let targetSpeed = curveAngle > 0.24
     ? basePace * 0.76
     : (curveAngle > 0.12 ? basePace * 0.90 : basePace * 1.18);
 
-  // 가속 반응성: 현실적인 제로백 및 가속도 상한 적용
-  const maxAccel = agent.isDrafting ? 13.0 : (agent.attackTimer > 0 ? 11.5 : 10.0);
+  // 동일 차선 전방 차량 근접 시 후미 추돌 완충 감속 (안전 차간 거리 유지)
+  if (vehicleAhead && nearestAheadDist < 8.0 && Math.abs(agent.laneOffset - vehicleAhead.laneOffset) < 1.8) {
+    targetSpeed = Math.min(targetSpeed, Math.max(8.0, vehicleAhead.speedMs * 0.94));
+  }
+
+  // 가속 반응성: 출발 그리드 급발진 방지(저속 8.5 m/s²) 및 고속 드래프팅 12.5 m/s²
+  const maxAccel = agent.isDrafting ? 12.5 : (agent.attackTimer > 0 ? 11.0 : (agent.speedMs < 14.0 ? 8.5 : 10.0));
   const maxBrake = 24.0;
   const speedDelta = targetSpeed - agent.speedMs;
 

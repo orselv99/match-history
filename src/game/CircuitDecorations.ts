@@ -299,30 +299,49 @@ export class CircuitDecorations {
    * - 4층 레이스 컨트롤 타워 & 대형 전광판 (Race Control Tower & Live Timing Board)
    */
   public static buildCircuitStructures(circuitCurve: THREE.CatmullRomCurve3, circuitWidth: number): THREE.Group {
-    const group = new THREE.Group();
+    const root = new THREE.Group();
 
     const startPt = circuitCurve.getPointAt(0);
     const startTangent = circuitCurve.getTangentAt(0).normalize();
     const heading = Math.atan2(startTangent.x, startTangent.z);
 
-    group.position.copy(startPt);
-    group.rotation.y = heading;
+    const startGroup = new THREE.Group();
+    startGroup.position.copy(startPt);
+    startGroup.rotation.y = heading;
 
     // 공통 구조물 머티리얼 인스턴스화
     const materials = createStructureMaterials();
 
     // 1. 출발선 갠트리 (F1 Start Lights & Race Gantry)
-    group.add(buildStartGantry(materials, circuitWidth));
+    startGroup.add(buildStartGantry(materials, circuitWidth));
 
-    // 2. 그랜드스탠드 (Grandstand - 출발선 이전 Z <= 0 구간)
-    group.add(buildGrandstand(materials, circuitWidth));
+    // 2. 메인 스트레이트 그랜드스탠드 (Main Straight Grandstand - 출발선 통과 후 Z > 0 구간에 안전 배치)
+    startGroup.add(buildGrandstand(materials, circuitWidth, 52.0, 30.0));
 
-    // 3. 피트 콤플렉스 (Pit Building & Pit Wall & Pit Lane - 출발선 이전 Z <= 0 구간)
-    group.add(buildPitComplex(materials, circuitWidth));
+    // 3. 메인 스트레이트 피트 콤플렉스 (Pit Building & Pit Wall & Pit Lane - 메인 스트레이트 Z=34m)
+    startGroup.add(buildPitComplex(materials, circuitWidth));
 
-    // 4. 레이스 컨트롤 타워 (Race Control Tower & Timing Board - Z <= 0 구간)
-    group.add(buildControlTower(materials, circuitWidth));
+    // 4. 레이스 컨트롤 타워 (Race Control Tower & Timing Board - 출발선 통과 직후 Z=5m)
+    startGroup.add(buildControlTower(materials, circuitWidth));
 
-    return group;
+    root.add(startGroup);
+
+    // 5. 서킷 중간 주요 섹터(S1, S2, 고속 코너) 외곽 그랜드스탠드 추가 (코스 횡함 해소)
+    const intermediateTs = [0.28, 0.55, 0.82];
+    intermediateTs.forEach((t) => {
+      const pt = circuitCurve.getPointAt(t);
+      const tangent = circuitCurve.getTangentAt(t).normalize();
+      const h = Math.atan2(tangent.x, tangent.z);
+
+      const sectorGroup = new THREE.Group();
+      sectorGroup.position.copy(pt);
+      sectorGroup.rotation.y = h;
+
+      // 중간 관중석은 길이 38m, Z=0 중심으로 트랙 바깥쪽에 배치
+      sectorGroup.add(buildGrandstand(materials, circuitWidth, 38.0, 0.0));
+      root.add(sectorGroup);
+    });
+
+    return root;
   }
 }

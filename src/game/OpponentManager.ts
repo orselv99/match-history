@@ -135,8 +135,8 @@ export class OpponentManager {
       agent.hasPassedStartLine = false;
       agent.lastSectorTimeMs = 0;
       agent.currentSectorIndex = 0;
-      agent.attackTimer = idx * 1.8;
-      agent.attackCooldown = 3.0 + idx * 2.2;
+      agent.attackTimer = 0; // 시작 직후 급발진으로 인한 플레이어 후미 추돌 방지
+      agent.attackCooldown = 3.5 + idx * 2.0;
       agent.isDrafting = false;
       agent.driftTimer = 0;
       agent.steerDir = 0;
@@ -171,6 +171,20 @@ export class OpponentManager {
     this.agents.forEach((agent) => {
       syncAgentFromPhysics(agent, this.circuit);
     });
+  }
+
+  /**
+   * Rivals 주행 모드에서 플레이어의 실제 서킷 진행도 및 속도를 AI 인지 모델에 실시간 동기화
+   */
+  public syncPlayerState(progressT: number, speedMs: number, lap: number, laneOffset: number, pos: THREE.Vector3): void {
+    if (!this.isActive || !this.isRivalsMode || !this.agents[0]) return;
+    const p = this.agents[0];
+    p.t = progressT;
+    p.speedMs = speedMs;
+    p.currentLap = lap;
+    p.laneOffset = laneOffset;
+    p.vehicle.position.copy(pos);
+    p.hasPassedStartLine = true;
   }
 
   public update(delta: number, isRunning: boolean): void {

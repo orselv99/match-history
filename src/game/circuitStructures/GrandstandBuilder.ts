@@ -7,12 +7,17 @@ import type { StructureMaterials } from './types.ts';
  * - 5단 계단식 스탠드 & 레드/블루 교차 시트
  * - 트랙 방향 캔틸레버 에어로 루프 차양막 & 후방 지지 강철 기둥
  */
-export function buildGrandstand(materials: StructureMaterials, circuitWidth: number): THREE.Group {
+export function buildGrandstand(
+  materials: StructureMaterials,
+  circuitWidth: number,
+  customLength: number = 52.0,
+  customZ: number = 30.0
+): THREE.Group {
   const grandstand = new THREE.Group();
   const halfW = circuitWidth / 2;
   const gsBaseX = halfW + 4.5;
-  const gsLength = 52.0;
-  const gsZ = -30.0; // Z: -56.0 ~ -4.0 (출발선 이전 구간)
+  const gsLength = customLength;
+  const gsZ = customZ;
 
   // 5단 계단식 스탠드
   for (let tier = 0; tier < 5; tier++) {
@@ -38,11 +43,13 @@ export function buildGrandstand(materials: StructureMaterials, circuitWidth: num
   canopy.rotation.z = -0.16; // 트랙 방향으로 살짝 기울어진 에어로 루프
   grandstand.add(canopy);
 
-  // 후방 지지 강철 기둥 5개
+  // 후방 지지 강철 기둥
+  const colCount = Math.max(3, Math.round(gsLength / 10.0));
   const colGeom = new THREE.BoxGeometry(0.6, 7.5, 0.6);
-  for (let c = 0; c < 5; c++) {
+  const colStep = (gsLength - 8.0) / Math.max(1, colCount - 1);
+  for (let c = 0; c < colCount; c++) {
     const col = new THREE.Mesh(colGeom, materials.steelMat);
-    col.position.set(gsBaseX + 8.5, 3.75, gsZ - 20.0 + c * 10.0);
+    col.position.set(gsBaseX + 8.5, 3.75, gsZ - (gsLength - 8.0) / 2 + c * colStep);
     grandstand.add(col);
   }
 

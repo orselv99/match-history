@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { VEHICLE_MODELS } from '../data/vehicles.ts';
-import type { VehicleMeshParams, VehicleWheels } from './vehicleModels/types.ts';
 import {
   buildGTTurboGeometry,
   buildFormulaAeroGeometry,
   buildCyberSpeedsterGeometry,
-} from './vehicleModels/VehicleMeshBuilders.ts';
+  type VehicleMeshParams,
+  type VehicleWheels,
+} from './vehicleModels/index.ts';
 
 export interface VehiclePhysicsState {
   x: number;

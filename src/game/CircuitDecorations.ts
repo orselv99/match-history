@@ -265,26 +265,74 @@ export class CircuitDecorations {
 
   public static buildOverpassBridge = buildOverpassBridge;
 
+  private static grassTexture?: THREE.CanvasTexture;
+
+  private static getGrassTexture(): THREE.CanvasTexture {
+    if (this.grassTexture) return this.grassTexture;
+    if (typeof document === 'undefined') {
+      return new THREE.Texture() as THREE.CanvasTexture;
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return new THREE.CanvasTexture(canvas);
+    }
+
+    // 1. 천연 서킷 잔디 베이스 (차분하고 묵직한 모스 그린)
+    ctx.fillStyle = '#1c381e';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // 2. F1 / 챔피언십 서킷 특유의 가로/세로 격자 잔디 깎기(Mowed Lawn Stripes) 패턴
+    const stripeW = 64;
+    for (let x = 0; x < 512; x += stripeW * 2) {
+      ctx.fillStyle = 'rgba(38, 77, 40, 0.4)';
+      ctx.fillRect(x, 0, stripeW, 512);
+    }
+    for (let y = 0; y < 512; y += stripeW * 2) {
+      ctx.fillStyle = 'rgba(23, 49, 25, 0.3)';
+      ctx.fillRect(0, y, 512, stripeW);
+    }
+
+    // 3. 미세 유기 잔디 노이즈 질감 입히기
+    const imgData = ctx.getImageData(0, 0, 512, 512);
+    const d = imgData.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const n = (Math.random() - 0.5) * 24;
+      d[i] = Math.max(12, Math.min(65, d[i] + n * 0.7));     // R
+      d[i + 1] = Math.max(30, Math.min(95, d[i + 1] + n));  // G
+      d[i + 2] = Math.max(12, Math.min(60, d[i + 2] + n * 0.6)); // B
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(70, 70); // 800m 대지에 균형 잡힌 자연스러운 잔디 밀도
+    this.grassTexture = tex;
+    return tex;
+  }
+
   /**
-   * 600m x 600m 다크 매트 그라운드 플레인 & 테크니컬 그리드 헬퍼 생성
+   * 800m x 800m 서킷 천연 잔디 대지(Championship Circuit Turf) 생성
    */
   public static buildGround(): THREE.Group {
     const group = new THREE.Group();
 
-    const groundGeom = new THREE.PlaneGeometry(600, 600);
+    const groundGeom = new THREE.PlaneGeometry(800, 800);
+    const grassTex = this.getGrassTexture();
     const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x121316,
-      roughness: 0.95,
-      metalness: 0.05,
+      color: 0x244c26,
+      map: grassTex,
+      roughness: 0.92,
+      metalness: 0.04,
     });
     const ground = new THREE.Mesh(groundGeom, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     group.add(ground);
-
-    const grid = new THREE.GridHelper(600, 60, 0x3a3d47, 0x1a1b20);
-    grid.position.y = 0.01;
-    group.add(grid);
 
     return group;
   }

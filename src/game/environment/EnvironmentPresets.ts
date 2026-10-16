@@ -303,7 +303,7 @@ export function getEnvironmentPreset(timeOfDay: TimeOfDay, weather: WeatherType)
   let sunHorizonHaloColor = 0xf97316;
   let sunHorizonHaloOpacity = 0.0;
 
-  const moonOffset = new THREE.Vector3(70, 160, 50);
+  const moonOffset = new THREE.Vector3(140, 260, -220);
   let moonVisible = false;
 
   let starsVisible = false;
@@ -336,10 +336,13 @@ export function getEnvironmentPreset(timeOfDay: TimeOfDay, weather: WeatherType)
   } else if (timeOfDay === 'night') {
     moonVisible = weather === 'clear';
     starsVisible = weather === 'clear';
-    starsOpacity = 0.88;
+    starsOpacity = 0.95;
   }
 
-  const cloudWindX = (weather === 'wind_fog' ? 16.0 : 4.5);
+  // 야간에는 구름이 별빛을 가로질러 빠르게 날아가지 않도록 미풍(0.4m/s)으로 잔잔하게 연출
+  const cloudWindX = timeOfDay === 'night'
+    ? (weather === 'clear' ? 0.4 : 1.2)
+    : (weather === 'wind_fog' ? 16.0 : 4.5);
   const needHeadlights = timeOfDay === 'night' || weather === 'rain' || weather === 'wind_fog';
 
   return {

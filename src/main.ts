@@ -332,14 +332,15 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     } else if (e.key === 'r' || e.key === 'R') {
       if (!(e.target instanceof HTMLInputElement)) {
-        if (pauseModal.isOpen()) pauseModal.close();
-        if (game.mode === 'DRIVING' || game.mode === 'DEMO') {
+        if (pauseModal.isOpen()) {
+          pauseModal.close();
           game.restartRace();
         } else if (game.mode === 'REPLAY') {
           game.replayPlayer.seek(0);
           game.replayPlayer.play();
           replayBar.updateButtonState();
         }
+        // 주행 중(DRIVING 모드)에는 Game.ts의 [R] 트랙 안전 복귀(Track Respawn)가 독립 처리됨
       }
     } else if (keyBindingManager.isActionKey('headlights', e.code) || e.key === 'h' || e.key === 'H') {
       if (!(e.target instanceof HTMLInputElement)) {

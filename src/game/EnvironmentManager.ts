@@ -107,6 +107,40 @@ export class EnvironmentManager {
     return new THREE.CanvasTexture(canvas);
   }
 
+  private createMoonTexture(): THREE.CanvasTexture | null {
+    if (typeof document === 'undefined') return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    // 밝은 은빛 달 표면
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(0, 0, 256, 256);
+
+    // 크레이터 및 바다(Lunar Maria) 음영
+    const craters = [
+      { x: 95, y: 85, r: 48, a: 0.18 },
+      { x: 165, y: 115, r: 58, a: 0.22 },
+      { x: 135, y: 175, r: 42, a: 0.16 },
+      { x: 75, y: 155, r: 32, a: 0.20 },
+      { x: 185, y: 65, r: 28, a: 0.15 },
+    ];
+    craters.forEach(c => {
+      const g = ctx.createRadialGradient(c.x, c.y, 4, c.x, c.y, c.r);
+      g.addColorStop(0, `rgba(71, 85, 105, ${c.a})`);
+      g.addColorStop(0.7, `rgba(100, 116, 139, ${c.a * 0.6})`);
+      g.addColorStop(1, 'rgba(241, 245, 249, 0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    return new THREE.CanvasTexture(canvas);
+  }
+
   private initCelestialAndClouds(): void {
     // 0. 다중 스톱 대기 산란 스카이돔 (4-Stop Gradient + Directional Sun Mie Glow)
     const skyGeom = new THREE.SphereGeometry(440, 32, 24);
@@ -200,47 +234,73 @@ export class EnvironmentManager {
     }
     this.scene.add(this.sunGroup);
 
-    // 2. 달 (Moon)
+    // 2. 대형 달 (Full Moon + 크레이터 음영 + 소프트 루나 코로나)
     this.moonGroup = new THREE.Group();
-    const moonGeom = new THREE.SphereGeometry(10, 16, 16);
-    const moonMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe, fog: false });
+    const moonTex = this.createMoonTexture();
+    const moonGeom = new THREE.SphereGeometry(22, 24, 24);
+    const moonMat = new THREE.MeshBasicMaterial({
+      color: 0xf8fafc,
+      map: moonTex || undefined,
+      fog: false,
+    });
     this.moonCore = new THREE.Mesh(moonGeom, moonMat);
     this.moonGroup.add(this.moonCore);
 
     if (glowTex) {
       const moonCoronaMat = new THREE.SpriteMaterial({
         map: glowTex,
-        color: 0x93c5fd,
+        color: 0xbde0fe,
         transparent: true,
-        opacity: 0.65,
+        opacity: 0.78,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         fog: false,
       });
       this.moonCorona = new THREE.Sprite(moonCoronaMat);
-      this.moonCorona.scale.set(45, 45, 1);
+      this.moonCorona.scale.set(110, 110, 1);
       this.moonGroup.add(this.moonCorona);
     }
     this.scene.add(this.moonGroup);
 
-    // 3. 야간 및 석양 상공 별자리 (Stars)
-    const starCount = 450;
+    // 3. 밤하늘 대형 성단 (2600개 별자리 + 다채로운 항성 스펙트럼)
+    const starCount = 2600;
     const starGeom = new THREE.BufferGeometry();
     const starPositions = new Float32Array(starCount * 3);
+    const starColors = new Float32Array(starCount * 3);
+
     for (let i = 0; i < starCount; i++) {
       const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * (Math.PI * 0.42);
-      const r = 260 + Math.random() * 20;
+      const phi = Math.random() * (Math.PI * 0.48); // 지평선 근처까지 균일하고 둥글게 분포
+      const r = 390 + Math.random() * 30; // 440m 스카이돔 직전 천구면
       starPositions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-      starPositions[i * 3 + 1] = r * Math.cos(phi) + 25;
+      starPositions[i * 3 + 1] = r * Math.cos(phi) + 10;
       starPositions[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
+      // 다채로운 항성 스펙트럼 색상 (다이아몬드 화이트 / 아이시 블루 / 웜 앰버 골드)
+      const colorRand = Math.random();
+      if (colorRand < 0.72) {
+        starColors[i * 3] = 1.0;
+        starColors[i * 3 + 1] = 1.0;
+        starColors[i * 3 + 2] = 1.0;
+      } else if (colorRand < 0.88) {
+        starColors[i * 3] = 0.72;
+        starColors[i * 3 + 1] = 0.88;
+        starColors[i * 3 + 2] = 1.0;
+      } else {
+        starColors[i * 3] = 1.0;
+        starColors[i * 3 + 1] = 0.92;
+        starColors[i * 3 + 2] = 0.70;
+      }
     }
     starGeom.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    starGeom.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
     const starMat = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 1.6,
+      size: 2.2,
+      vertexColors: true,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.92,
+      depthWrite: false,
       fog: false,
     });
     this.starPoints = new THREE.Points(starGeom, starMat);

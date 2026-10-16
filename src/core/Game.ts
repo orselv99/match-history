@@ -8,7 +8,7 @@ import { ReplayRecorder } from '../replay/ReplayRecorder.ts';
 import { ReplayPlayer } from '../replay/ReplayPlayer.ts';
 import { ReplayCodec } from '../replay/ReplayCodec.ts';
 import { MatchSummaryMetadata, RaceResultEntry } from '../replay/ReplayTypes.ts';
-import { AICarManager } from '../game/AICarManager.ts';
+import { OpponentManager } from '../game/OpponentManager.ts';
 import { SkidMarkManager } from '../game/SkidMarkManager.ts';
 import { CollisionManager } from '../game/CollisionManager.ts';
 import { EnvironmentManager, TimeOfDay, WeatherType } from '../game/EnvironmentManager.ts';
@@ -59,7 +59,7 @@ export class Game {
   public circuit: Circuit;
   public playerVehicle: Vehicle;
   public replayPlayer: ReplayPlayer;
-  public aiManager: AICarManager;
+  public opponentManager: OpponentManager;
   public skidMarkManager: SkidMarkManager;
   public collisionManager: CollisionManager;
   public input: InputManager;
@@ -153,13 +153,13 @@ export class Game {
     this.scene.add(this.replayPlayer.ghostVehicle.mesh);
     this.replayPlayer.opponentVehicles.forEach(v => this.scene.add(v.mesh));
 
-    this.aiManager = new AICarManager(this.circuit);
-    this.aiManager.onSectorPassed = (name, sectorName, timeMs) => {
+    this.opponentManager = new OpponentManager(this.circuit);
+    this.opponentManager.onSectorPassed = (name, sectorName, timeMs) => {
       if (this.onSectorPassed) {
         this.onSectorPassed(name, sectorName, timeMs);
       }
     };
-    this.scene.add(this.aiManager.group);
+    this.scene.add(this.opponentManager.group);
 
     // 스키드마크 & 충돌 매니저
     this.skidMarkManager = new SkidMarkManager();
@@ -254,7 +254,7 @@ export class Game {
       weather,
       this.circuit?.roadMaterial,
       this.playerVehicle,
-      this.aiManager,
+      this.opponentManager,
       this.audio
     );
   }
@@ -264,7 +264,7 @@ export class Game {
       weatherId,
       this.circuit?.roadMaterial,
       this.playerVehicle,
-      this.aiManager,
+      this.opponentManager,
       this.audio
     );
   }
@@ -272,8 +272,8 @@ export class Game {
   public toggleHeadlights(): boolean {
     const next = !this.playerVehicle.headlightsEnabled;
     this.playerVehicle.setHeadlights(next);
-    if (this.mode === 'DEMO' && this.aiManager.agents[0]) {
-      this.aiManager.agents[0].vehicle.setHeadlights(next);
+    if (this.mode === 'DEMO' && this.opponentManager.agents[0]) {
+      this.opponentManager.agents[0].vehicle.setHeadlights(next);
     }
     return next;
   }
@@ -288,18 +288,18 @@ export class Game {
   public loadCircuit(circuitId: string): void {
     this.currentCircuitId = circuitId;
     this.circuit.loadCircuit(circuitId);
-    this.resetCarToStart();
+    this.resetVehicleToStart();
     this.drawMinimap();
   }
 
-  public resetCarToStart(): void {
+  public resetVehicleToStart(): void {
     // 플레이어 차량을 스타팅 그리드 1번 슬롯(Pole Position, Y: 0.055m 노면 밀착)에 정렬!
     const gridPos = this.circuit.getGridPosition(0);
     this.playerVehicle.reset(gridPos.position, gridPos.heading);
 
-    // 주행 모드일 경우 라이벌 AI 차량들도 1, 2, 3번 슬롯에 정렬
+    // 주행 모드일 경우 상대 차량들도 1, 2, 3번 슬롯에 정렬
     if (this.mode === 'DRIVING') {
-      this.aiManager.resetToGrids(true);
+      this.opponentManager.resetToGrids(true);
     }
 
     this.skidMarkManager.reset();
@@ -320,7 +320,7 @@ export class Game {
     if (withCutscene) {
       this.setupStartCutscene();
     } else {
-      this.resetCarToStart();
+      this.resetVehicleToStart();
       this.startCountdown();
     }
   }
@@ -331,9 +331,9 @@ export class Game {
   private getVehicleForSlot(slotIndex: number): Vehicle | null {
     if (this.mode === 'DRIVING') {
       if (slotIndex === 0) return this.playerVehicle;
-      return this.aiManager.agents[slotIndex]?.vehicle || null;
+      return this.opponentManager.agents[slotIndex]?.vehicle || null;
     } else {
-      return this.aiManager.agents[slotIndex]?.vehicle || (slotIndex === 0 ? this.playerVehicle : null);
+      return this.opponentManager.agents[slotIndex]?.vehicle || (slotIndex === 0 ? this.playerVehicle : null);
     }
   }
 
@@ -407,9 +407,9 @@ export class Game {
     const halfW = this.circuit.circuitWidth / 2;
 
     if (this.mode === 'DRIVING') {
-      this.aiManager.resetToGrids(true);
+      this.opponentManager.resetToGrids(true);
     } else {
-      this.aiManager.resetToGrids(false);
+      this.opponentManager.resetToGrids(false);
     }
 
     // 모든 출전 차량(슬롯 0~3)을 그리드가 아닌 피트 가레지/피트 레인 대기열에 순서대로 배치
@@ -559,7 +559,7 @@ export class Game {
       if (this.mode === 'DEMO') {
         this.setMode('DEMO');
       } else {
-        this.resetCarToStart();
+        this.resetVehicleToStart();
       }
     }
 
@@ -672,21 +672,21 @@ export class Game {
       this.cameraController.triggerShake(this.playerVehicle.lastLandingImpact * 0.45);
     }
 
-    // 라이벌 AI 차량 업데이트 (3대 그리드 경쟁 및 완주 후 쿨다운 주행)
-    this.aiManager.update(delta, isRunning || isFinished);
+    // 상대 차량 업데이트 (3대 그리드 경쟁 및 완주 후 쿨다운 주행)
+    this.opponentManager.update(delta, isRunning || isFinished);
 
-    // 활성 차량 수집 (플레이어 + 라이벌 AI)
-    const activeCars = [
+    // 활성 차량 수집 (플레이어 + 상대 차량)
+    const activeVehicles = [
       this.playerVehicle,
-      ...this.aiManager.agents.filter(a => a.vehicle.mesh.visible).map(a => a.vehicle)
+      ...this.opponentManager.agents.filter(a => a.vehicle.mesh.visible).map(a => a.vehicle)
     ];
 
     // 차량 간 충돌 감지 및 물리적 반발력 해결 (탄성 반발, 토크, 스파크, 충돌음)
-    this.collisionManager.update(delta, activeCars, this.playerVehicle);
-    this.aiManager.syncFromPhysics();
+    this.collisionManager.update(delta, activeVehicles, this.playerVehicle);
+    this.opponentManager.syncFromPhysics();
 
     // 드리프트 스키드마크(검은 고무 자국) 및 타이어 연기 업데이트
-    this.skidMarkManager.update(delta, activeCars);
+    this.skidMarkManager.update(delta, activeVehicles);
 
     // 환경 효과(구름 이동, 비/안개 파티클) 업데이트
     this.environmentManager.update(delta, this.playerVehicle.position);
@@ -706,11 +706,11 @@ export class Game {
         }
       );
 
-      // 30Hz 주행 리플레이 데이터 레코딩 (플레이어 및 라이벌 3대 동시 기록)
+      // 30Hz 주행 리플레이 데이터 레코딩 (플레이어 및 상대 3대 동시 기록)
       const opponents = [
-        this.aiManager.agents[1]?.vehicle,
-        this.aiManager.agents[2]?.vehicle,
-        this.aiManager.agents[3]?.vehicle,
+        this.opponentManager.agents[1]?.vehicle,
+        this.opponentManager.agents[2]?.vehicle,
+        this.opponentManager.agents[3]?.vehicle,
       ].filter(Boolean) as Vehicle[];
 
       this.recorder.update(
@@ -742,7 +742,7 @@ export class Game {
     if (this.raceState === 'FINISHED') {
       const winner = this.lapTimer.isFinished
         ? this.playerVehicle
-        : (this.aiManager.agents.find(a => a.isFinished)?.vehicle || this.playerVehicle);
+        : (this.opponentManager.agents.find(a => a.isFinished)?.vehicle || this.playerVehicle);
       this.cameraController.updateFinishCutscene(delta, winner);
     } else {
       this.cameraController.updateChase(delta, this.playerVehicle);
@@ -758,19 +758,19 @@ export class Game {
   private updateDemo(delta: number, deltaMs: number): void {
     const isRunning = this.raceState === 'RUNNING';
     const isFinished = this.raceState === 'FINISHED';
-    this.aiManager.update(delta, isRunning || isFinished);
+    this.opponentManager.update(delta, isRunning || isFinished);
 
     // 처음에 설정한 플레이어 차량(슬롯 0)을 타겟으로 고정 추적
-    const playerAgent = this.aiManager.agents[0];
+    const playerAgent = this.opponentManager.agents[0];
     const targetVehicle = playerAgent ? playerAgent.vehicle : this.playerVehicle;
-    const activeCars = this.aiManager.agents.filter(a => a.vehicle.mesh.visible).map(a => a.vehicle);
+    const activeVehicles = this.opponentManager.agents.filter(a => a.vehicle.mesh.visible).map(a => a.vehicle);
 
-    // AI 차량 간 충돌 감지 및 물리 반응
-    this.collisionManager.update(delta, activeCars);
-    this.aiManager.syncFromPhysics();
+    // 상대 차량 간 충돌 감지 및 물리 반응
+    this.collisionManager.update(delta, activeVehicles);
+    this.opponentManager.syncFromPhysics();
 
     // 드리프트 스키드마크 및 연기 업데이트
-    this.skidMarkManager.update(delta, activeCars);
+    this.skidMarkManager.update(delta, activeVehicles);
 
     // 환경 효과(구름 이동, 비/안개 파티클) 업데이트
     this.environmentManager.update(delta, targetVehicle.position);
@@ -784,7 +784,7 @@ export class Game {
         () => this.audio.playCheckpointBeep()
       );
 
-      const opponents = this.aiManager.agents
+      const opponents = this.opponentManager.agents
         .filter(a => a !== playerAgent && a.vehicle.mesh.visible)
         .map(a => a.vehicle);
 
@@ -796,17 +796,17 @@ export class Game {
         opponents
       );
 
-      // 플레이어 차량 또는 AI 전체 완주 판정
-      if ((playerAgent.isFinished || this.aiManager.isAllFinished || this.lapTimer.isFinished) && this.raceState === 'RUNNING') {
+      // 플레이어 차량 또는 상대 전체 완주 판정
+      if ((playerAgent.isFinished || this.opponentManager.isAllFinished || this.lapTimer.isFinished) && this.raceState === 'RUNNING') {
         this.raceState = 'FINISHED';
         this.cameraController.snapFinishCutscene(targetVehicle);
-        this.handleFinish(targetVehicle, 'player_demo', playerAgent.name);
+        this.handleFinish(targetVehicle, 'player_demo', playerAgent.driverName);
       }
     }
 
     // 완주 컷씬 카메라 (1등 차량을 화면 좌측에 배치) 또는 일반 주행 체이스 카메라
     if (this.raceState === 'FINISHED') {
-      const winner = this.aiManager.agents[0]?.vehicle || targetVehicle;
+      const winner = this.opponentManager.agents[0]?.vehicle || targetVehicle;
       this.cameraController.updateFinishCutscene(delta, winner);
     } else {
       // 처음 설정한 플레이어 차량을 일관되게 고정 추적 (순위가 바뀌어도 카메라 전환 없음)
@@ -881,7 +881,7 @@ export class Game {
    * 경기 완주 시 출전 드라이버 4인의 최종 순위, 이름, 완주/추정 시간 산출 ('순위, 이름, 시간')
    */
   public computeRaceResults(): RaceResultEntry[] {
-    const rawList: { name: string; timeMs: number; isPlayer: boolean; colorHex?: number }[] = [];
+    const rawList: { name: string; timeMs: number; isPlayer: boolean; color?: string }[] = [];
     const totalLaps = this.lapTimer.totalLaps;
     const circuitLen = this.circuit.circuitCurve.getLength();
 
@@ -891,51 +891,51 @@ export class Game {
         name: this.currentDriverName || 'Apex Hunter',
         timeMs: playerTimeMs,
         isPlayer: true,
-        colorHex: this.playerVehicle.bodyColorHex,
+        color: this.playerVehicle.color,
       });
 
-      for (let i = 1; i < this.aiManager.agents.length; i++) {
-        const agent = this.aiManager.agents[i];
+      for (let i = 1; i < this.opponentManager.agents.length; i++) {
+        const agent = this.opponentManager.agents[i];
         if (!agent) continue;
-        let aiTimeMs: number;
+        let opponentTimeMs: number;
         if (agent.isFinished && agent.finishTimeMs) {
-          aiTimeMs = Math.round(agent.finishTimeMs);
+          opponentTimeMs = Math.round(agent.finishTimeMs);
         } else {
           // 완주선 통과 전 차량: 남은 거리 및 평균 속도 기반 완주 시간 계산
           const remainingLaps = Math.max(0, totalLaps - agent.currentLap);
           const remainingDist = remainingLaps * circuitLen + Math.max(0, 1.0 - agent.t) * circuitLen;
           const speedMs = Math.max(25.0, agent.speedMs || agent.baseSpeedMs);
           const estRemainingMs = (remainingDist / speedMs) * 1000;
-          aiTimeMs = Math.round(Math.max(playerTimeMs + 650, this.aiManager.raceTimeMs + estRemainingMs));
+          opponentTimeMs = Math.round(Math.max(playerTimeMs + 650, this.opponentManager.raceTimeMs + estRemainingMs));
         }
 
         rawList.push({
-          name: agent.name,
-          timeMs: aiTimeMs,
+          name: agent.driverName,
+          timeMs: opponentTimeMs,
           isPlayer: false,
-          colorHex: agent.color,
+          color: agent.color,
         });
       }
     } else {
-      for (let i = 0; i < this.aiManager.agents.length; i++) {
-        const agent = this.aiManager.agents[i];
+      for (let i = 0; i < this.opponentManager.agents.length; i++) {
+        const agent = this.opponentManager.agents[i];
         if (!agent) continue;
-        let aiTimeMs: number;
+        let opponentTimeMs: number;
         if (agent.isFinished && agent.finishTimeMs) {
-          aiTimeMs = Math.round(agent.finishTimeMs);
+          opponentTimeMs = Math.round(agent.finishTimeMs);
         } else {
           const remainingLaps = Math.max(0, totalLaps - agent.currentLap);
           const remainingDist = remainingLaps * circuitLen + Math.max(0, 1.0 - agent.t) * circuitLen;
           const speedMs = Math.max(25.0, agent.speedMs || agent.baseSpeedMs);
           const estRemainingMs = (remainingDist / speedMs) * 1000;
-          aiTimeMs = Math.round(this.aiManager.raceTimeMs + estRemainingMs);
+          opponentTimeMs = Math.round(this.opponentManager.raceTimeMs + estRemainingMs);
         }
 
         rawList.push({
-          name: agent.name,
-          timeMs: aiTimeMs,
+          name: agent.driverName,
+          timeMs: opponentTimeMs,
           isPlayer: i === 0,
-          colorHex: agent.color,
+          color: agent.color,
         });
       }
     }
@@ -948,7 +948,7 @@ export class Game {
       timeMs: item.timeMs,
       timeFormatted: this.formatTime(item.timeMs),
       isPlayer: item.isPlayer,
-      colorHex: item.colorHex,
+      color: item.color,
     }));
   }
 
@@ -974,18 +974,18 @@ export class Game {
     const avgSpeedKmh = Number((ticks.reduce((acc, t) => acc + t.speedKmh, 0) / (ticks.length || 1)).toFixed(1));
 
     const opponentConfigs = [
-      { modelId: this.aiManager.agents[1]?.vehicle.currentModelId, colorHex: this.aiManager.agents[1]?.color, name: this.aiManager.agents[1]?.name },
-      { modelId: this.aiManager.agents[2]?.vehicle.currentModelId, colorHex: this.aiManager.agents[2]?.color, name: this.aiManager.agents[2]?.name },
-      { modelId: this.aiManager.agents[3]?.vehicle.currentModelId, colorHex: this.aiManager.agents[3]?.color, name: this.aiManager.agents[3]?.name },
+      { vehicleModelId: this.opponentManager.agents[1]?.vehicle.currentVehicleModelId, color: this.opponentManager.agents[1]?.color, driverName: this.opponentManager.agents[1]?.driverName },
+      { vehicleModelId: this.opponentManager.agents[2]?.vehicle.currentVehicleModelId, color: this.opponentManager.agents[2]?.color, driverName: this.opponentManager.agents[2]?.driverName },
+      { vehicleModelId: this.opponentManager.agents[3]?.vehicle.currentVehicleModelId, color: this.opponentManager.agents[3]?.color, driverName: this.opponentManager.agents[3]?.driverName },
     ];
 
     const metadata: MatchSummaryMetadata = {
       matchCode: `RACE-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
       userId,
-      userNickname: this.currentDriverName || nickname,
+      driverName: this.currentDriverName || nickname,
       circuitId: this.currentCircuitId,
-      vehicleId: this.playerVehicle.currentModelId,
-      playerColorHex: this.playerVehicle.bodyColorHex,
+      vehicleModelId: this.playerVehicle.currentVehicleModelId,
+      color: this.playerVehicle.color,
       opponentConfigs,
       totalLaps: 3,
       totalTimeMs,
@@ -1038,7 +1038,7 @@ export class Game {
     if (this.mode === 'DEMO') {
       this.setMode('DEMO');
     } else {
-      this.resetCarToStart();
+      this.resetVehicleToStart();
       this.recorder.clear();
       this.startRace(true);
     }
@@ -1055,9 +1055,9 @@ export class Game {
       this.audio.pauseEngine();
       this.audio.playLobbyBgm();
       this.playerVehicle.mesh.visible = true;
-      this.resetCarToStart();
+      this.resetVehicleToStart();
       this.replayPlayer.hideGhost();
-      this.aiManager.deactivate();
+      this.opponentManager.deactivate();
       this.raceState = 'READY';
       this.countdownTimer = 3.0;
       this.lastBeepNumber = -1;
@@ -1066,16 +1066,16 @@ export class Game {
       this.audio.pauseEngine();
       this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = false;
-      this.aiManager.deactivate();
-      this.replayPlayer.ghostVehicle.setModel(this.playerVehicle.currentModelId as any);
-      this.replayPlayer.ghostVehicle.setColor(this.playerVehicle.bodyColorHex);
+      this.opponentManager.deactivate();
+      this.replayPlayer.ghostVehicle.setVehicleModel(this.playerVehicle.currentVehicleModelId);
+      this.replayPlayer.ghostVehicle.setColor(this.playerVehicle.color);
 
-      // 라이벌 AI 차량 3대의 모델 및 컬러를 리플레이 플레이어에 동기화 (AI 매니저가 활성 상태일 때만)
-      if (this.aiManager.isActive && this.aiManager.agents[1]?.vehicle.currentModelId) {
+      // 상대 차량 3대의 모델 및 컬러를 리플레이 플레이어에 동기화 (상대 매니저가 활성 상태일 때만)
+      if (this.opponentManager.isActive && this.opponentManager.agents[1]?.vehicle.currentVehicleModelId) {
         this.replayPlayer.syncOpponents([
-          { modelId: this.aiManager.agents[1]?.vehicle.currentModelId, colorHex: this.aiManager.agents[1]?.color, name: this.aiManager.agents[1]?.name },
-          { modelId: this.aiManager.agents[2]?.vehicle.currentModelId, colorHex: this.aiManager.agents[2]?.color, name: this.aiManager.agents[2]?.name },
-          { modelId: this.aiManager.agents[3]?.vehicle.currentModelId, colorHex: this.aiManager.agents[3]?.color, name: this.aiManager.agents[3]?.name },
+          { vehicleModelId: this.opponentManager.agents[1]?.vehicle.currentVehicleModelId, color: this.opponentManager.agents[1]?.color, driverName: this.opponentManager.agents[1]?.driverName },
+          { vehicleModelId: this.opponentManager.agents[2]?.vehicle.currentVehicleModelId, color: this.opponentManager.agents[2]?.color, driverName: this.opponentManager.agents[2]?.driverName },
+          { vehicleModelId: this.opponentManager.agents[3]?.vehicle.currentVehicleModelId, color: this.opponentManager.agents[3]?.color, driverName: this.opponentManager.agents[3]?.driverName },
         ]);
       }
 
@@ -1088,14 +1088,14 @@ export class Game {
       this.playerVehicle.mesh.visible = false;
       this.replayPlayer.hideGhost();
       // 슬롯 0을 위저드에서 설정한 플레이어 차량 스펙 및 컬러로 동기화
-      this.aiManager.setSlotConfig(
+      this.opponentManager.setSlotConfig(
         0,
-        this.playerVehicle.currentModelId as any,
-        this.playerVehicle.bodyColorHex
+        this.playerVehicle.currentVehicleModelId,
+        this.playerVehicle.color
       );
-      this.aiManager.activate(false); // 4대 차량 전체 그리드 정렬
-      if (this.aiManager.agents[0]) {
-        this.aiManager.agents[0].vehicle.setHeadlights(this.playerVehicle.headlightsEnabled);
+      this.opponentManager.activate(false); // 4대 차량 전체 그리드 정렬
+      if (this.opponentManager.agents[0]) {
+        this.opponentManager.agents[0].vehicle.setHeadlights(this.playerVehicle.headlightsEnabled);
       }
       this.skidMarkManager.reset();
       this.collisionManager.reset();
@@ -1107,8 +1107,8 @@ export class Game {
       this.audio.playInGameBgm();
       this.playerVehicle.mesh.visible = true;
       this.replayPlayer.hideGhost();
-      this.aiManager.activate(true); // 라이벌 AI 3대 (슬롯 1, 2, 3) 활성화
-      this.resetCarToStart();
+      this.opponentManager.activate(true); // 상대 3대 (슬롯 1, 2, 3) 활성화
+      this.resetVehicleToStart();
       this.raceState = 'READY';
       this.countdownTimer = 3.0;
       this.lastBeepNumber = -1;
@@ -1150,7 +1150,7 @@ export class Game {
     } else if (this.mode === 'REPLAY') {
       speed = this.replayPlayer.getCurrentTick()?.speedKmh || 0;
     } else if (this.mode === 'DEMO') {
-      const playerAgent = this.aiManager.agents[0];
+      const playerAgent = this.opponentManager.agents[0];
       if (playerAgent) {
         speed = playerAgent.vehicle.getSpeedKmh();
         lap = Math.min(3, Math.max(playerAgent.currentLap, this.lapTimer.currentLap));
@@ -1186,8 +1186,8 @@ export class Game {
         handbrake: this.input.handbrake,
       };
     } else if (this.mode === 'DEMO') {
-      // shortcut: 서킷 탄젠트 각도 및 차선 변경량으로 AI 조작 키 추정, AI 컨트롤러에 가상 입력 축이 통합되면 직접 바인딩
-      const playerAgent = this.aiManager.agents[0];
+      // shortcut: 서킷 탄젠트 각도 및 차선 변경량으로 조작 키 추정, 컨트롤러에 가상 입력 축이 통합되면 직접 바인딩
+      const playerAgent = this.opponentManager.agents[0];
       if (playerAgent && this.raceState === 'RUNNING') {
         const futureT = (playerAgent.t + 0.02) % 1.0;
         const currTangent = this.circuit.circuitCurve.getTangentAt(playerAgent.t);
@@ -1250,7 +1250,7 @@ export class Game {
 
   public getFocusedVehicle(): Vehicle | null {
     if (this.mode === 'DEMO') {
-      return this.aiManager.agents[0]?.vehicle || this.playerVehicle;
+      return this.opponentManager.agents[0]?.vehicle || this.playerVehicle;
     }
     if (this.mode === 'REPLAY') {
       return this.replayPlayer.ghostVehicle;
@@ -1261,9 +1261,9 @@ export class Game {
   private updateNameTags(): void {
     const focused = this.getFocusedVehicle();
 
-    // AI 및 리플레이 경쟁 차량들: 카메라가 포커싱 중인 차량을 제외한 나머지 활성 차량 상단에 이름 표시
-    if (this.aiManager.isActive) {
-      const agents = this.aiManager.agents;
+    // 상대 및 리플레이 경쟁 차량들: 카메라가 포커싱 중인 차량을 제외한 나머지 활성 차량 상단에 이름 표시
+    if (this.opponentManager.isActive) {
+      const agents = this.opponentManager.agents;
       for (let i = 0; i < agents.length; i++) {
         const v = agents[i].vehicle;
         v.setNameTagVisible(v !== focused && v.mesh.visible);
@@ -1275,7 +1275,7 @@ export class Game {
         v.setNameTagVisible(v !== focused && v.mesh.visible);
       }
     } else {
-      const agents = this.aiManager.agents;
+      const agents = this.opponentManager.agents;
       for (let i = 0; i < agents.length; i++) {
         agents[i].vehicle.setNameTagVisible(false);
       }
@@ -1290,7 +1290,7 @@ export class Game {
       ctx: this.minimapCtx,
       circuit: this.circuit,
       targetVehicle,
-      aiManager: this.aiManager,
+      opponentManager: this.opponentManager,
       replayPlayer: this.replayPlayer,
       mode: this.mode,
     });
@@ -1393,10 +1393,10 @@ export class Game {
 
     let nearestLeftDist = Infinity;
     let nearestRightDist = Infinity;
-    let hasCarBehind = false;
+    let hasVehicleBehind = false;
 
-    // 라이벌 차량 목록 확인 (현재 타겟 차량 제외)
-    const opponents = this.aiManager.agents
+    // 상대 차량 목록 확인 (현재 타겟 차량 제외)
+    const opponents = this.opponentManager.agents
       .filter((a) => a.vehicle.mesh.visible && a.vehicle !== targetVehicle)
       .map((a) => a.vehicle);
 
@@ -1413,9 +1413,9 @@ export class Game {
       const fwdProj = dx * fwdX + dz * fwdZ;     // 양수면 전방, 음수면 후방
       const latProj = dx * rightX + dz * rightZ; // 양수면 우측(+), 음수면 좌측(-)
 
-      // 후방 60m 이내 및 트랙 도로 폭 반경(좌우 12m 이내)에 위치한 후방 차량만 백미러 유효 감지
+      // 후방 60m 이내 및 서킷 도로 폭 반경(좌우 12m 이내)에 위치한 후방 차량만 백미러 유효 감지
       if (fwdProj < 1.0 && fwdProj > -60.0 && Math.abs(latProj) < 12.0) {
-        hasCarBehind = true;
+        hasVehicleBehind = true;
 
         // 내 차량 후방(범퍼)부터 뒷차량 전방(범퍼)까지의 실제 유효 거리 계산 (접촉 시 0.0m)
         // fwdProj는 음수이므로 -fwdProj는 차량 중심 간 종방향 거리
@@ -1434,9 +1434,9 @@ export class Game {
       }
     }
 
-    this.shouldRenderMirrors = hasCarBehind;
+    this.shouldRenderMirrors = hasVehicleBehind;
 
-    if (!hasCarBehind) {
+    if (!hasVehicleBehind) {
       leftFrame.classList.remove('active', 'danger');
       rightFrame.classList.remove('active', 'danger');
       return;

@@ -425,12 +425,12 @@ export default {
         const replayKey = `matches/${meta.matchCode}.bin`;
 
         // 1) 유저 자동 업서트 (없으면 생성)
-        const userNickname = meta.userNickname || 'Racer';
+        const driverName = meta.driverName || meta.userNickname || 'Racer';
         await env.DB.prepare(`
           INSERT INTO users (user_id, nickname, last_active_at)
           VALUES (?, ?, DATETIME('now'))
           ON CONFLICT (user_id) DO UPDATE SET nickname = ?, last_active_at = DATETIME('now');
-        `).bind(meta.userId, userNickname, userNickname).run();
+        `).bind(meta.userId, driverName, driverName).run();
 
         // 2) 매치 메타데이터 INSERT
         await env.DB.prepare(`
@@ -444,7 +444,7 @@ export default {
           meta.matchCode,
           meta.userId,
           meta.trackId,
-          meta.vehicleId || 'apex_gt_red',
+          meta.vehicleModelId || meta.vehicleId || 'gt_turbo',
           meta.totalLaps || 3,
           meta.totalTimeMs || 0,
           meta.bestLapMs || 0,

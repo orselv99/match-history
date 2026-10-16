@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { Vehicle } from './Vehicle.ts';
-import type { AICarManager } from './AICarManager.ts';
+import type { OpponentManager } from './OpponentManager.ts';
 import type { AudioManager } from '../core/AudioManager.ts';
 
 export type TimeOfDay = 'morning' | 'noon' | 'sunset' | 'night';
@@ -495,7 +495,7 @@ export class EnvironmentManager {
     weather: WeatherType,
     roadMaterial?: THREE.MeshStandardMaterial,
     playerVehicle?: Vehicle,
-    aiManager?: AICarManager,
+    opponentManager?: OpponentManager,
     audio?: AudioManager
   ): void {
     this.currentTimeOfDay = timeOfDay;
@@ -775,7 +775,7 @@ export class EnvironmentManager {
     // 3. 야간 또는 악천후(비/안개) 및 석양 시 차량 헤드라이트 점등
     const needHeadlights = timeOfDay === 'night' || weather === 'rain' || weather === 'wind_fog';
     if (playerVehicle) playerVehicle.setHeadlights(needHeadlights);
-    if (aiManager) aiManager.setHeadlights(needHeadlights);
+    if (opponentManager) opponentManager.setHeadlights(needHeadlights);
 
     this.scene.background = new THREE.Color(bgColor);
     if (this.scene.fog instanceof THREE.FogExp2) {
@@ -880,17 +880,17 @@ export class EnvironmentManager {
     weatherId: 'clear' | 'sunset' | 'night' | 'rain',
     roadMaterial?: THREE.MeshStandardMaterial,
     playerVehicle?: Vehicle,
-    aiManager?: AICarManager,
+    opponentManager?: OpponentManager,
     audio?: AudioManager
   ): void {
     if (weatherId === 'sunset') {
-      this.setEnvironment('sunset', 'clear', roadMaterial, playerVehicle, aiManager, audio);
+      this.setEnvironment('sunset', 'clear', roadMaterial, playerVehicle, opponentManager, audio);
     } else if (weatherId === 'night') {
-      this.setEnvironment('night', 'clear', roadMaterial, playerVehicle, aiManager, audio);
+      this.setEnvironment('night', 'clear', roadMaterial, playerVehicle, opponentManager, audio);
     } else if (weatherId === 'rain') {
-      this.setEnvironment('noon', 'rain', roadMaterial, playerVehicle, aiManager, audio);
+      this.setEnvironment('noon', 'rain', roadMaterial, playerVehicle, opponentManager, audio);
     } else {
-      this.setEnvironment('noon', 'clear', roadMaterial, playerVehicle, aiManager, audio);
+      this.setEnvironment('noon', 'clear', roadMaterial, playerVehicle, opponentManager, audio);
     }
   }
 }

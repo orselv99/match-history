@@ -103,7 +103,7 @@ export function createGroundBeamMesh(): THREE.Mesh {
 /**
  * 차량 상단 3D 빌보드 네임태그 스프라이트 생성
  */
-export function createNameTagSprite(name: string, colorHex: number, visible: boolean): THREE.Sprite {
+export function createNameTagSprite(driverName: string, color: string, visible: boolean): THREE.Sprite {
   const canvas = document.createElement('canvas');
   canvas.width = 384;
   canvas.height = 96;
@@ -115,7 +115,7 @@ export function createNameTagSprite(name: string, colorHex: number, visible: boo
     ctx.font = `700 ${fontSize}px 'JetBrains Mono', 'Inter', -apple-system, BlinkMacSystemFont, monospace, sans-serif`;
     ctx.textBaseline = 'middle';
 
-    const textW = ctx.measureText(name).width;
+    const textW = ctx.measureText(driverName).width;
     const dotRadius = 7;
     const paddingX = 18;
     const dotSpace = dotRadius * 2 + 12;
@@ -151,11 +151,11 @@ export function createNameTagSprite(name: string, colorHex: number, visible: boo
     ctx.stroke();
 
     // 차량 고유 컬러 인디케이터 도트
-    const hex = colorHex.toString(16).padStart(6, '0');
+    const hexColor = color.startsWith('#') ? color : `#${color}`;
     const dotX = pillX + paddingX + dotRadius;
     const dotY = 96 / 2;
 
-    ctx.fillStyle = `#${hex}`;
+    ctx.fillStyle = hexColor;
     ctx.beginPath();
     ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
     ctx.fill();
@@ -164,11 +164,11 @@ export function createNameTagSprite(name: string, colorHex: number, visible: boo
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // 드라이버 / AI 이름
+    // 드라이버 이름
     const textX = dotX + dotRadius + 12;
     const maxTextW = pillW - (textX - pillX) - paddingX;
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(name, textX, dotY, maxTextW);
+    ctx.fillText(driverName, textX, dotY, maxTextW);
   }
 
   const tex = new THREE.CanvasTexture(canvas);

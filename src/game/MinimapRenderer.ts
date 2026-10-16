@@ -1,6 +1,6 @@
 import { Circuit } from './Circuit.ts';
 import { Vehicle } from './Vehicle.ts';
-import { AICarManager } from './AICarManager.ts';
+import { OpponentManager } from './OpponentManager.ts';
 import { ReplayPlayer } from '../replay/ReplayPlayer.ts';
 import { t } from '../i18n/I18nManager.ts';
 
@@ -9,7 +9,7 @@ export interface MinimapRenderParams {
   ctx: CanvasRenderingContext2D | null;
   circuit: Circuit;
   targetVehicle: Vehicle;
-  aiManager: AICarManager;
+  opponentManager: OpponentManager;
   replayPlayer: ReplayPlayer;
   mode: 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO';
 }
@@ -21,7 +21,7 @@ export interface MinimapRenderParams {
  */
 export class MinimapRenderer {
   public static draw(params: MinimapRenderParams): void {
-    const { canvas, ctx, circuit, targetVehicle, aiManager, replayPlayer, mode } = params;
+    const { canvas, ctx, circuit, targetVehicle, opponentManager, replayPlayer, mode } = params;
     if (!ctx) return;
 
     const w = canvas.width;
@@ -102,15 +102,15 @@ export class MinimapRenderer {
       });
     }
 
-    // 5. 주변 라이벌 AI 차량 닷 렌더링
-    if (aiManager.isActive) {
-      aiManager.agents.forEach(agent => {
+    // 5. 주변 라이벌 상대 차량 닷 렌더링
+    if (opponentManager.isActive) {
+      opponentManager.agents.forEach(agent => {
         if (!agent.vehicle.mesh.visible || agent.vehicle === targetVehicle) return;
         const p = agent.vehicle.position;
         const ax = p.x * scale + offsetX;
         const ay = p.z * scale + offsetY;
 
-        ctx.fillStyle = `#${agent.color.toString(16).padStart(6, '0')}`;
+        ctx.fillStyle = agent.color;
         ctx.beginPath();
         ctx.arc(ax, ay, 4, 0, Math.PI * 2);
         ctx.fill();
@@ -126,7 +126,7 @@ export class MinimapRenderer {
       replayPlayer.opponentVehicles.forEach(opp => {
         if (!opp.mesh.visible || opp === targetVehicle) return;
         const op = opp.position;
-        ctx.fillStyle = `#${(opp.bodyColorHex || 0x38bdf8).toString(16).padStart(6, '0')}`;
+        ctx.fillStyle = opp.color || '#38bdf8';
         ctx.beginPath();
         ctx.arc(op.x * scale + offsetX, op.z * scale + offsetY, 4, 0, Math.PI * 2);
         ctx.fill();
@@ -149,8 +149,8 @@ export class MinimapRenderer {
     ctx.stroke();
 
     // 차량 진행 방향 화살표 포인터 (3D 좌표계 -> 2D 캔버스 매핑 및 차량 조향각과 100% 일치)
-    const carHeading = targetVehicle.heading + targetVehicle.slipAngle;
-    const arrowAngle = Math.atan2(Math.sin(carHeading), -Math.cos(carHeading));
+    const vehicleHeading = targetVehicle.heading + targetVehicle.slipAngle;
+    const arrowAngle = Math.atan2(Math.sin(vehicleHeading), -Math.cos(vehicleHeading));
     ctx.rotate(arrowAngle);
     ctx.fillStyle = mode === 'DEMO' ? '#38bdf8' : '#ef4444';
     ctx.beginPath();

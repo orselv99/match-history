@@ -81,20 +81,23 @@ window.addEventListener('DOMContentLoaded', () => {
         if (circuitMeta) hud.setCircuitTitle(circuitMeta.title);
       }
 
-      // 2. 플레이어 머신 스펙/컬러/이름 복원
-      if (record.metadata.vehicleId) {
-        game.playerVehicle.setModel(record.metadata.vehicleId as any);
-        game.replayPlayer.ghostVehicle.setModel(record.metadata.vehicleId as any);
+      // 2. 플레이어 차량 스펙/컬러/이름 복원
+      const model = record.metadata.vehicleModelId || (record.metadata as any).vehicleId;
+      if (model) {
+        game.playerVehicle.setVehicleModel(model as any);
+        game.replayPlayer.ghostVehicle.setVehicleModel(model as any);
       }
-      if (record.metadata.playerColorHex !== undefined) {
-        game.playerVehicle.setColor(record.metadata.playerColorHex);
-        game.replayPlayer.ghostVehicle.setColor(record.metadata.playerColorHex);
+      const color = record.metadata.color || (record.metadata as any).playerColorHex;
+      if (color !== undefined) {
+        game.playerVehicle.setColor(typeof color === 'number' ? `#${color.toString(16).padStart(6, '0')}` : color);
+        game.replayPlayer.ghostVehicle.setColor(typeof color === 'number' ? `#${color.toString(16).padStart(6, '0')}` : color);
       }
-      if (record.metadata.userNickname) {
-        game.setDriverName(record.metadata.userNickname);
+      const driverName = record.metadata.driverName || (record.metadata as any).userNickname;
+      if (driverName) {
+        game.setDriverName(driverName);
       }
 
-      // 3. 상대 라이벌 3대 차량 모델/컬러/이름 동기화
+      // 3. 상대 3대 차량 모델/컬러/이름 동기화
       if (record.metadata.opponentConfigs) {
         game.replayPlayer.syncOpponents(record.metadata.opponentConfigs);
       }
@@ -107,14 +110,14 @@ window.addEventListener('DOMContentLoaded', () => {
       game.replayPlayer.play();
       game.cameraController.snapToTarget(game.replayPlayer.ghostVehicle);
 
-      showToast(`▶ [${record.matchCode}] ${record.metadata.userNickname} 리플레이 재생을 시작합니다.`);
+      showToast(`▶ [${record.matchCode}] ${driverName || 'Driver'} 리플레이 재생을 시작합니다.`);
     },
   });
 
   // 3. 게임 설정 위저드 모달 (Step 1~4)
   let currentConfig: RaceSetupConfig = {
     circuitId: 'circuit_monaco',
-    modelId: 'gt_turbo',
+    vehicleModelId: 'gt_turbo',
     color: '#ef4444',
     timeOfDay: 'noon',
     weather: 'clear',
@@ -126,8 +129,8 @@ window.addEventListener('DOMContentLoaded', () => {
     onStartRace: (config) => {
       currentConfig = config;
       game.loadCircuit(config.circuitId);
-      game.playerVehicle.setModel(config.modelId);
-      game.playerVehicle.setColor(parseInt(config.color.replace('#', '0x'), 16));
+      game.playerVehicle.setVehicleModel(config.vehicleModelId);
+      game.playerVehicle.setColor(config.color);
       game.setDriverName(config.driverName);
       game.setEnvironment(config.timeOfDay, config.weather);
 
@@ -223,7 +226,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (game.mode !== 'DRIVING' && game.mode !== 'DEMO' && game.mode !== 'REPLAY') return;
     game.pause();
     const circuitTitle = CIRCUIT_DEFINITIONS[currentConfig.circuitId]?.title || game.currentCircuitId;
-    const vehicleTitle = VEHICLE_MODELS[currentConfig.modelId]?.title || game.playerVehicle.currentModelId;
+    const vehicleTitle = VEHICLE_MODELS[currentConfig.vehicleModelId]?.title || game.playerVehicle.currentVehicleModelId;
     const lapStr = `LAP ${game.lapTimer.currentLap.toString().padStart(2, '0')} / ${game.lapTimer.totalLaps.toString().padStart(2, '0')}`;
     const timeStr = `${(game.lapTimer.currentLapTimeMs / 1000).toFixed(3)}s`;
     pauseModal.show({ circuitTitle, vehicleTitle, lapStr, timeStr });

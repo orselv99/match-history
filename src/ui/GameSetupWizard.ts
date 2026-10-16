@@ -13,7 +13,7 @@ export type WeatherType = 'clear' | 'rain' | 'wind_fog';
 
 export interface RaceSetupConfig {
   circuitId: CircuitId;
-  modelId: VehicleModelId;
+  vehicleModelId: VehicleModelId;
   color: string;
   timeOfDay: TimeOfDay;
   weather: WeatherType;
@@ -24,7 +24,7 @@ export interface RaceSetupConfig {
 export interface GameSetupWizardCallbacks {
   onStartRace: (config: RaceSetupConfig) => void | Promise<void>;
   onColorChange?: (hexVal: string) => void;
-  onModelChange?: (modelId: VehicleModelId) => void;
+  onVehicleModelChange?: (vehicleModelId: VehicleModelId) => void;
   onEnvironmentChange?: (time: TimeOfDay, weather: WeatherType) => void;
 }
 
@@ -85,7 +85,7 @@ export class GameSetupWizard extends BaseModal {
   // 내부 상태
   private currentStep: 1 | 2 | 3 | 4 = 1;
   public selectedCircuit: CircuitId = 'circuit_monaco';
-  public selectedModel: VehicleModelId = 'gt_turbo';
+  public selectedVehicleModel: VehicleModelId = 'gt_turbo';
   public selectedColor: string = '#ef4444';
   public selectedTime: TimeOfDay = 'noon';
   public selectedWeather: WeatherType = 'clear';
@@ -157,8 +157,8 @@ export class GameSetupWizard extends BaseModal {
     if (this.vehicleCanvas) {
       try {
         this.vehiclePreview = new VehiclePreview(this.vehicleCanvas);
-        this.vehiclePreview.setModel(this.selectedModel);
-        this.vehiclePreview.setColor(parseInt(this.selectedColor.replace('#', '0x'), 16));
+        this.vehiclePreview.setVehicleModel(this.selectedVehicleModel);
+        this.vehiclePreview.setColor(this.selectedColor);
       } catch (e) {
         console.warn('VehiclePreview init failed', e);
       }
@@ -241,12 +241,12 @@ export class GameSetupWizard extends BaseModal {
       });
     });
 
-    // Step 2: 머신 모델 카드
+    // Step 2: 차량 모델 카드
     this.modelCards.forEach(card => {
       card.addEventListener('click', () => {
-        this.selectedModel = (card.dataset.model as VehicleModelId) || 'gt_turbo';
+        this.selectedVehicleModel = (card.dataset.model as VehicleModelId) || 'gt_turbo';
         this.updateModelShowcase();
-        this.callbacks.onModelChange?.(this.selectedModel);
+        this.callbacks.onVehicleModelChange?.(this.selectedVehicleModel);
       });
     });
 
@@ -302,7 +302,7 @@ export class GameSetupWizard extends BaseModal {
     this.btnStart?.addEventListener('click', () => {
       const config: RaceSetupConfig = {
         circuitId: this.selectedCircuit,
-        modelId: this.selectedModel,
+        vehicleModelId: this.selectedVehicleModel,
         color: this.selectedColor,
         timeOfDay: this.selectedTime,
         weather: this.selectedWeather,
@@ -390,10 +390,10 @@ export class GameSetupWizard extends BaseModal {
 
   public updateModelShowcase(): void {
     this.modelCards.forEach(c => {
-      c.classList.toggle('active', c.dataset.model === this.selectedModel);
+      c.classList.toggle('active', c.dataset.model === this.selectedVehicleModel);
     });
 
-    const meta = VEHICLE_MODELS[this.selectedModel];
+    const meta = VEHICLE_MODELS[this.selectedVehicleModel];
     if (meta) {
       if (this.vehicleSpecSpeed) this.vehicleSpecSpeed.textContent = meta.speed;
       if (this.vehicleSpecAccel) this.vehicleSpecAccel.textContent = meta.accel;
@@ -401,8 +401,8 @@ export class GameSetupWizard extends BaseModal {
       if (this.vehicleSpecHandling) this.vehicleSpecHandling.textContent = meta.handling;
     }
 
-    this.vehiclePreview?.setModel(this.selectedModel);
-    if (this.briefingModel) this.briefingModel.textContent = meta?.title || this.selectedModel;
+    this.vehiclePreview?.setVehicleModel(this.selectedVehicleModel);
+    if (this.briefingModel) this.briefingModel.textContent = meta?.title || this.selectedVehicleModel;
   }
 
   public updateColor(hexVal: string, syncPicker: boolean = false): void {
@@ -411,8 +411,7 @@ export class GameSetupWizard extends BaseModal {
       this.honeycombPicker.selectColor(hexVal);
     }
 
-    const hexNum = parseInt(hexVal.replace('#', '0x'), 16);
-    this.vehiclePreview?.setColor(hexNum);
+    this.vehiclePreview?.setColor(hexVal);
     if (this.briefingColorDot) this.briefingColorDot.style.backgroundColor = hexVal;
     this.callbacks.onColorChange?.(hexVal);
   }
@@ -439,7 +438,7 @@ export class GameSetupWizard extends BaseModal {
 
   public updateBriefingCard(): void {
     if (this.briefingCircuit) this.briefingCircuit.textContent = CIRCUIT_DEFINITIONS[this.selectedCircuit]?.title || this.selectedCircuit;
-    if (this.briefingModel) this.briefingModel.textContent = VEHICLE_MODELS[this.selectedModel]?.title || this.selectedModel;
+    if (this.briefingModel) this.briefingModel.textContent = VEHICLE_MODELS[this.selectedVehicleModel]?.title || this.selectedVehicleModel;
     if (this.briefingColorDot) this.briefingColorDot.style.backgroundColor = this.selectedColor;
 
     const timeKey = `wizard.${this.selectedTime}`;
@@ -470,9 +469,9 @@ export class GameSetupWizard extends BaseModal {
     this.updateCircuitShowcase();
 
     const models: VehicleModelId[] = ['gt_turbo', 'formula_aero', 'cyber_speedster'];
-    this.selectedModel = models[Math.floor(Math.random() * models.length)];
+    this.selectedVehicleModel = models[Math.floor(Math.random() * models.length)];
     this.updateModelShowcase();
-    this.callbacks.onModelChange?.(this.selectedModel);
+    this.callbacks.onVehicleModelChange?.(this.selectedVehicleModel);
 
     const randHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
     this.updateColor(randHex, true);
@@ -490,7 +489,7 @@ export class GameSetupWizard extends BaseModal {
 
   public resetDefaults(): void {
     this.selectedCircuit = 'circuit_monaco';
-    this.selectedModel = 'gt_turbo';
+    this.selectedVehicleModel = 'gt_turbo';
     this.selectedColor = '#ef4444';
     this.selectedTime = 'noon';
     this.selectedWeather = 'clear';
@@ -509,7 +508,7 @@ export class GameSetupWizard extends BaseModal {
     this.updateEnvironmentShowcase();
     this.updateBriefingCard();
 
-    this.callbacks.onModelChange?.(this.selectedModel);
+    this.callbacks.onVehicleModelChange?.(this.selectedVehicleModel);
     this.callbacks.onEnvironmentChange?.(this.selectedTime, this.selectedWeather);
   }
 

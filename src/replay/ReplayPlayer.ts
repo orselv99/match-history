@@ -18,29 +18,29 @@ export class ReplayPlayer {
   private ticks: RawReplayTick[] = [];
 
   constructor() {
-    this.ghostVehicle = new Vehicle(false, 0xef4444); // 실차 외관의 3D 리플레이 차량
+    this.ghostVehicle = new Vehicle(false, '#ef4444'); // 실차 외관의 3D 리플레이 차량
     this.ghostVehicle.mesh.visible = false;
 
-    // 동승했던 라이벌 차량 3대 인스턴스 초기화
+    // 동승했던 라이벌 상대 차량 3대 인스턴스 초기화
     const defaultModels: Array<'gt_turbo' | 'formula_aero' | 'cyber_speedster'> = [
       'formula_aero',
       'cyber_speedster',
       'gt_turbo'
     ];
     for (let i = 0; i < 3; i++) {
-      const v = new Vehicle(false, 0xc45a72, defaultModels[i % defaultModels.length]);
+      const v = new Vehicle(false, '#c45a72', defaultModels[i % defaultModels.length]);
       v.mesh.visible = false;
       this.opponentVehicles.push(v);
     }
   }
 
-  public syncOpponents(configs: Array<{ modelId?: string; colorHex?: number; name?: string }>): void {
+  public syncOpponents(configs: Array<{ vehicleModelId?: string; color?: string; driverName?: string }>): void {
     configs.forEach((cfg, idx) => {
       const v = this.opponentVehicles[idx];
       if (v) {
-        if (cfg.modelId) v.setModel(cfg.modelId as any);
-        if (cfg.colorHex !== undefined) v.setColor(cfg.colorHex);
-        if (cfg.name) v.setNameTag(cfg.name, cfg.colorHex || 0x38bdf8);
+        if (cfg.vehicleModelId) v.setVehicleModel(cfg.vehicleModelId as any);
+        if (cfg.color !== undefined) v.setColor(cfg.color);
+        if (cfg.driverName) v.setNameTag(cfg.driverName, cfg.color || '#38bdf8');
       }
     });
   }

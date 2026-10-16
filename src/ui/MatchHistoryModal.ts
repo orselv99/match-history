@@ -164,7 +164,7 @@ export class MatchHistoryModal extends BaseModal {
         const ms = r.metadata?.bestLapMs;
         if (typeof ms === 'number' && ms > 0 && ms < minBestMs) {
           minBestMs = ms;
-          bestDriver = r.metadata?.userNickname || '';
+          bestDriver = r.metadata?.driverName || '';
         }
       }
 
@@ -201,10 +201,10 @@ export class MatchHistoryModal extends BaseModal {
         return false;
       }
       if (this.searchQuery) {
-        const nickname = (r.metadata?.userNickname || '').toLowerCase();
+        const driverName = (r.metadata?.driverName || (r.metadata as any)?.userNickname || '').toLowerCase();
         const code = (r.matchCode || '').toLowerCase();
         const circuitTitle = (CIRCUIT_DEFINITIONS[recCircuitId]?.title || '').toLowerCase();
-        if (!nickname.includes(this.searchQuery) && !code.includes(this.searchQuery) && !circuitTitle.includes(this.searchQuery)) {
+        if (!driverName.includes(this.searchQuery) && !code.includes(this.searchQuery) && !circuitTitle.includes(this.searchQuery)) {
           return false;
         }
       }
@@ -247,8 +247,8 @@ export class MatchHistoryModal extends BaseModal {
         rankRowClass = `rank-row-top rank-${rankNum}`;
       }
 
-      const driverName = this.escapeHtml(meta?.userNickname || 'Driver');
-      const machineBadge = this.getMachineBadge(meta?.vehicleId || 'gt_turbo');
+      const driverName = this.escapeHtml(meta?.driverName || (meta as any)?.userNickname || 'Driver');
+      const vehicleBadge = this.getVehicleBadge(meta?.vehicleModelId || (meta as any)?.vehicleId || 'gt_turbo');
       const recCircuitId = meta?.circuitId || (meta as any)?.trackId || 'circuit_monaco';
       const circuitTitle = this.getCircuitTitle(recCircuitId);
       const lapTime = meta?.bestLapMs ? this.formatTime(meta.bestLapMs) : '--:--.---';
@@ -259,8 +259,8 @@ export class MatchHistoryModal extends BaseModal {
         <tr class="${rankRowClass}">
           <td class="col-rank">${rankBadgeHtml}</td>
           <td class="col-driver"><strong class="driver-name-text">${driverName}</strong></td>
-          <td class="col-machine">${machineBadge}</td>
-          <td class="col-track">${circuitTitle}</td>
+          <td class="col-vehicle">${vehicleBadge}</td>
+          <td class="col-circuit">${circuitTitle}</td>
           <td class="col-lap"><span class="lap-highlight ${rankNum === 1 ? 'gold' : ''}">${lapTime}</span></td>
           <td class="col-speed">${topSpeed}</td>
           <td class="col-date">${dateStr}</td>
@@ -275,13 +275,13 @@ export class MatchHistoryModal extends BaseModal {
     }).join('');
   }
 
-  private getMachineBadge(vehicleId: string): string {
-    if (vehicleId === 'formula_aero') {
-      return `<span class="machine-badge formula">Formula Aero</span>`;
-    } else if (vehicleId === 'cyber_speedster') {
-      return `<span class="machine-badge cyber">Cyber Speedster</span>`;
+  private getVehicleBadge(vehicleModelId: string): string {
+    if (vehicleModelId === 'formula_aero') {
+      return `<span class="vehicle-badge formula">Formula Aero</span>`;
+    } else if (vehicleModelId === 'cyber_speedster') {
+      return `<span class="vehicle-badge cyber">Cyber Speedster</span>`;
     }
-    return `<span class="machine-badge gt">GT-86 Turbo</span>`;
+    return `<span class="vehicle-badge gt">GT-86 Turbo</span>`;
   }
 
   private getCircuitTitle(circuitId: string): string {

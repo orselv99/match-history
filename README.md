@@ -32,9 +32,9 @@ match-history/
 │   │   ├── audio.ts                # BGM 트랙 목록 및 오디오 메타데이터 상수
 │   │   ├── gameConstants.ts        # 랜덤 드라이버명, 환경 라벨, 로딩 팁 문구
 │   │   ├── tracks.ts               # 서킷별 제어점(Catmull-Rom), 폭, 메타데이터
-│   │   └── vehicles.ts             # 차량 모델 스펙(가속/최고속/에어로) 및 AI 머신 설정
+│   │   └── vehicles.ts             # 차량 모델 스펙(가속/최고속/에어로) 및 라이벌 머신 설정
 │   ├── game/                       # 인게임 엔티티 및 게임플레이 물리/시뮬레이션 로직
-│   │   ├── AICarManager.ts         # 자율주행 AI 차량 에이전트 및 경로 추종
+│   │   ├── OpponentManager.ts      # 라이벌 레이서(Opponent) 차량 에이전트 및 경로 추종
 │   │   ├── CircuitTrack.ts         # 동적 서킷 트랙 지오메트리, 연석, 그리드 및 체크포인트
 │   │   ├── CollisionManager.ts     # 차량 간 탄성 물리 충돌, 반발 임펄스, 카메라 쉐이크 및 스파크
 │   │   ├── EnvironmentManager.ts   # 시간대 및 날씨별 태양/안개/비/앰비언스 환경 시뮬레이션

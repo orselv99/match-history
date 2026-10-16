@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { Vehicle } from './Vehicle.ts';
 import { Circuit } from './Circuit.ts';
-import { AI_CAR_CONFIGS } from '../data/vehicles.ts';
+import { OPPONENT_CONFIGS, type VehicleModelId } from '../data/vehicles.ts';
 
-export interface AICarAgent {
+export interface OpponentAgent {
   id: number;
-  name: string;
+  driverName: string;
   vehicle: Vehicle;
   t: number;             // 서킷 곡선 진행도 (0.0 ~ 1.0)
   prevT: number;
@@ -14,7 +14,7 @@ export interface AICarAgent {
   maxSpeedMs: number;    // 최고 속도 m/s
   laneOffset: number;    // 서킷 중심선으로부터의 좌우 레인 오프셋 (m)
   targetLaneOffset: number;
-  color: number;
+  color: string;
   currentLap: number;
   isFinished: boolean;
   finishTimeMs?: number;
@@ -30,46 +30,46 @@ export interface AICarAgent {
 }
 
 /**
- * 4대의 컴퓨터 자동주행 레이서 관리자 (AI Multi-Car Simulation)
+ * 4대의 경쟁 레이서 관리자 (Opponent Multi-Vehicle Simulation)
  * - 슬립스트림(Drafting / DRS) 및 능동적 추월 차선 기동 (Overtake Maneuver)
  * - 드라이버별 어택 모멘텀 웨이브로 끊임없는 1~4위 순위 교체(엎치락뒤치락 배틀)
  * - 팩 압축(Pack Compression)으로 선두 독주 방지 및 초접전 연출
  * - 물리 충돌 엔진과 양방향 레인/속도 동기화로 겹침 및 관통 원천 차단
  */
-export class AICarManager {
-  public agents: AICarAgent[] = [];
+export class OpponentManager {
+  public agents: OpponentAgent[] = [];
   public group: THREE.Group = new THREE.Group();
   public isActive: boolean = false;
   public totalLaps: number = 3; // 3 Lap 완주
   public isAllFinished: boolean = false;
   public raceTimeMs: number = 0;
   public isRivalsMode: boolean = false;
-  public onSectorPassed?: (name: string, sectorName: string, timeMs: number) => void;
+  public onSectorPassed?: (driverName: string, sectorName: string, timeMs: number) => void;
 
   private circuit: Circuit;
 
   constructor(circuit: Circuit) {
     this.circuit = circuit;
 
-    const defaultModels: Array<'gt_turbo' | 'formula_aero' | 'cyber_speedster'> = [
+    const defaultModels: VehicleModelId[] = [
       'gt_turbo',
       'formula_aero',
       'cyber_speedster',
       'gt_turbo'
     ];
 
-    AI_CAR_CONFIGS.forEach((cfg, idx) => {
+    OPPONENT_CONFIGS.forEach((cfg, idx) => {
       const model = defaultModels[idx % defaultModels.length];
-      const vehicle = new Vehicle(false, 0x06b6d4, model);
+      const vehicle = new Vehicle(false, '#06b6d4', model);
       vehicle.setColor(cfg.color);
-      vehicle.setNameTag(cfg.name, cfg.color);
+      vehicle.setNameTag(cfg.driverName, cfg.color);
 
       // 차량 기본 속도를 대등하게 정규화하여 성능 격차로 인한 일방적 독주 방지
       const balancedBase = 49.0;
 
       this.agents.push({
         id: cfg.id,
-        name: cfg.name,
+        driverName: cfg.driverName,
         vehicle,
         t: 0,
         prevT: 0,
@@ -98,26 +98,26 @@ export class AICarManager {
   }
 
   /**
-   * 특정 슬롯의 차량 모델 및 컬러, 드라이버 이름 동적 설정 (선택된 차량/옵션 자동주행 DEMO 모드 반영)
+   * 특정 슬롯의 차량 모델 및 컬러, 드라이버 이름 동적 설정 (선택된 차량/옵션 DEMO 모드 반영)
    */
   public setSlotConfig(
     slotIndex: number,
-    modelId: 'gt_turbo' | 'formula_aero' | 'cyber_speedster',
-    colorHex: number,
-    name?: string
+    vehicleModelId: VehicleModelId,
+    color: string,
+    driverName?: string
   ): void {
     if (slotIndex < 0 || slotIndex >= this.agents.length) return;
     const agent = this.agents[slotIndex];
-    if (name) agent.name = name;
-    agent.vehicle.setModel(modelId);
-    agent.vehicle.setColor(colorHex);
-    agent.color = colorHex;
-    agent.vehicle.setNameTag(agent.name, colorHex);
+    if (driverName) agent.driverName = driverName;
+    agent.vehicle.setVehicleModel(vehicleModelId);
+    agent.vehicle.setColor(color);
+    agent.color = color;
+    agent.vehicle.setNameTag(agent.driverName, color);
   }
 
   /**
    * 스타팅 그리드 박스에 차량 나란히 정렬 배치 (Grid Alignment)
-   * @param asRivals 플레이어 주행 모드 시 (슬롯 0은 플레이어 전용, AI는 1, 2, 3번 슬롯에 배치)
+   * @param asRivals 플레이어 주행 모드 시 (슬롯 0은 플레이어 전용, 상대는 1, 2, 3번 슬롯에 배치)
    */
   public resetToGrids(asRivals: boolean = false): void {
     this.isRivalsMode = asRivals;
@@ -183,7 +183,7 @@ export class AICarManager {
 
   /**
    * 물리 충돌 엔진(CollisionManager)이 차량을 밀어내거나 감속시킨 실제 결과를
-   * AI의 레인 오프셋(laneOffset) 및 속도(speedMs)에 즉각 피드백 반영하여 겹침 원천 차단
+   * 상대 차량의 레인 오프셋(laneOffset) 및 속도(speedMs)에 즉각 피드백 반영하여 겹침 원천 차단
    */
   public syncFromPhysics(): void {
     if (!this.isActive) return;
@@ -204,7 +204,7 @@ export class AICarManager {
       agent.laneOffset = THREE.MathUtils.clamp(actualOffset, -5.2, 5.2);
       agent.targetLaneOffset = agent.laneOffset;
 
-      // 충돌 반발력으로 변경된 물리 속도를 AI 진행 속도로 동기화
+      // 충돌 반발력으로 변경된 물리 속도를 진행 속도로 동기화
       if (agent.vehicle.speed > 0) {
         agent.speedMs = Math.max(12.0, Math.min(agent.maxSpeedMs, agent.vehicle.speed));
       }
@@ -243,7 +243,7 @@ export class AICarManager {
       } else {
         // 1. 전방 가장 가까운 라이벌 차량 탐색 (슬립스트림 및 추월 궤적 연산)
         let nearestAheadDist = Infinity;
-        let carAhead: AICarAgent | null = null;
+        let vehicleAhead: OpponentAgent | null = null;
 
         for (const other of this.agents) {
           if (other === agent || !other.vehicle.mesh.visible || other.isFinished) continue;
@@ -252,7 +252,7 @@ export class AICarManager {
           const dist = dt * circuitLength;
           if (dist > 0.3 && dist < 60.0 && dist < nearestAheadDist) {
             nearestAheadDist = dist;
-            carAhead = other;
+            vehicleAhead = other;
           }
         }
 
@@ -277,7 +277,7 @@ export class AICarManager {
 
         // B. 슬립스트림 견인 가속 (전방 38m 이내 추격 시 강력한 가속)
         agent.isDrafting = false;
-        if (carAhead && nearestAheadDist < 38.0) {
+        if (vehicleAhead && nearestAheadDist < 38.0) {
           agent.isDrafting = true;
           const draftFactor = 1.0 - (nearestAheadDist / 38.0);
           dynamicBonus += 3.2 + draftFactor * 5.8;
@@ -288,7 +288,7 @@ export class AICarManager {
             if (turnDir !== 0) {
               agent.targetLaneOffset = turnDir > 0 ? 2.4 : -2.4;
             } else {
-              agent.targetLaneOffset = carAhead.laneOffset <= 0 ? 2.4 : -2.4;
+              agent.targetLaneOffset = vehicleAhead.laneOffset <= 0 ? 2.4 : -2.4;
             }
           }
         } else {
@@ -386,7 +386,7 @@ export class AICarManager {
 
       // 6. 스타트/피니시 라인 및 섹터(S1, S2, 도착선) 통과 감지
       const isEligible = this.isRivalsMode ? (idx !== 0) : true;
-      const displayName = (!this.isRivalsMode && idx === 0) ? 'Player' : agent.name;
+      const displayName = (!this.isRivalsMode && idx === 0) ? 'Player' : agent.driverName;
 
       if (agent.prevT > 0.85 && agent.t < 0.15) {
         if (!agent.hasPassedStartLine) {
@@ -434,18 +434,18 @@ export class AICarManager {
     }
   }
 
-  private updateAgentPosition(agent: AICarAgent, delta: number, curveAngle: number): void {
+  private updateAgentPosition(agent: OpponentAgent, delta: number, curveAngle: number): void {
     const pt = this.circuit.circuitCurve.getPointAt(agent.t);
     const tangent = this.circuit.circuitCurve.getTangentAt(agent.t).normalize();
     const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
-    const carPos = new THREE.Vector3()
+    const vehiclePos = new THREE.Vector3()
       .copy(pt)
       .addScaledVector(right, agent.laneOffset);
-    carPos.y = Math.max(0, pt.y) + 0.055; // 3D 트랙 노면 고도 밀착
+    vehiclePos.y = Math.max(0, pt.y) + 0.055; // 3D 서킷 노면 고도 밀착
 
-    agent.vehicle.position.copy(carPos);
-    agent.vehicle.mesh.position.copy(carPos);
+    agent.vehicle.position.copy(vehiclePos);
+    agent.vehicle.mesh.position.copy(vehiclePos);
 
     const heading = Math.atan2(tangent.x, tangent.z);
     agent.vehicle.heading = heading;
@@ -505,9 +505,9 @@ export class AICarManager {
   /**
    * 현재 선두(가장 랩 수가 많거나 t가 큰) 차량 반환
    */
-  public getLeaderAgent(): AICarAgent {
+  public getLeaderAgent(): OpponentAgent {
     let leader = this.agents[0];
-    const getProg = (a: AICarAgent) => a.hasPassedStartLine ? (a.currentLap - 1) + a.t : a.t - 1.0;
+    const getProg = (a: OpponentAgent) => a.hasPassedStartLine ? (a.currentLap - 1) + a.t : a.t - 1.0;
     let leaderProg = getProg(leader);
     for (let i = 1; i < this.agents.length; i++) {
       const a = this.agents[i];

@@ -181,8 +181,8 @@ export class CameraController {
   /**
    * 레이스 출발 컷씬 카메라: 피트에서 나와 출발 그리드로 진입하는 차량을 역동적으로 트래킹
    */
-  public updateStartCutscene(delta: number, car: Vehicle, progress: number): void {
-    const heading = car.heading;
+  public updateStartCutscene(delta: number, vehicle: Vehicle, progress: number): void {
+    const heading = vehicle.heading;
     const sinH = Math.sin(heading);
     const cosH = Math.cos(heading);
     const rightX = cosH;
@@ -197,14 +197,14 @@ export class CameraController {
       const frontDist = 5.6 - p * 1.2;
       const sideDist = 3.2 - p * 1.2;
       targetCamPos = new THREE.Vector3(
-        car.position.x + sinH * frontDist + rightX * sideDist,
-        car.position.y + 1.2 + p * 0.3,
-        car.position.z + cosH * frontDist + rightZ * sideDist
+        vehicle.position.x + sinH * frontDist + rightX * sideDist,
+        vehicle.position.y + 1.2 + p * 0.3,
+        vehicle.position.z + cosH * frontDist + rightZ * sideDist
       );
       targetLook = new THREE.Vector3(
-        car.position.x,
-        car.position.y + 0.8,
-        car.position.z
+        vehicle.position.x,
+        vehicle.position.y + 0.8,
+        vehicle.position.z
       );
     } else {
       const p = (progress - 0.35) / 0.65;
@@ -212,14 +212,14 @@ export class CameraController {
       const camDist = 5.2 + ease * 1.8;
       const sideOffset = (1.0 - ease) * 1.8;
       targetCamPos = new THREE.Vector3(
-        car.position.x - sinH * camDist + rightX * sideOffset,
-        car.position.y + 1.5 + ease * 0.9,
-        car.position.z - cosH * camDist + rightZ * sideOffset
+        vehicle.position.x - sinH * camDist + rightX * sideOffset,
+        vehicle.position.y + 1.5 + ease * 0.9,
+        vehicle.position.z - cosH * camDist + rightZ * sideOffset
       );
       targetLook = new THREE.Vector3(
-        car.position.x + sinH * 4.0,
-        car.position.y + 0.9,
-        car.position.z + cosH * 4.0
+        vehicle.position.x + sinH * 4.0,
+        vehicle.position.y + 0.9,
+        vehicle.position.z + cosH * 4.0
       );
     }
 

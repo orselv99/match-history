@@ -26,15 +26,15 @@ export class LapTimer {
   private nextCheckpointIndex: number = 0; // 그리드 스폰 후 출발선(0번) 통과부터 대기
   private lastCheckpointTimestamp: number = 0;
   private currentSectorIndex: number = 0;
-  private prevCarPos: THREE.Vector3 = new THREE.Vector3();
-  private hasPrevCarPos: boolean = false;
+  private prevVehiclePos: THREE.Vector3 = new THREE.Vector3();
+  private hasPrevVehiclePos: boolean = false;
   public hasPassedStartLine: boolean = false;
 
   constructor(totalLaps: number = 3) {
     this.totalLaps = totalLaps;
   }
 
-  public update(deltaMs: number, carPos: THREE.Vector3, checkpoints: CheckpointTrigger[], onCheckpointPassed?: (cpId: number, sectorTimeMs: number) => void): void {
+  public update(deltaMs: number, vehiclePos: THREE.Vector3, checkpoints: CheckpointTrigger[], onCheckpointPassed?: (cpId: number, sectorTimeMs: number) => void): void {
     if (this.isFinished) return;
 
     if (!this.isStarted) {
@@ -46,21 +46,21 @@ export class LapTimer {
 
     if (!checkpoints || checkpoints.length === 0) return;
 
-    if (!this.hasPrevCarPos) {
-      this.prevCarPos.copy(carPos);
-      this.hasPrevCarPos = true;
+    if (!this.hasPrevVehiclePos) {
+      this.prevVehiclePos.copy(vehiclePos);
+      this.hasPrevVehiclePos = true;
       return;
     }
 
     // 현재 대기 중인 체크포인트 감지
     const targetCp = checkpoints[this.nextCheckpointIndex];
     if (!targetCp || !targetCp.position) {
-      this.prevCarPos.copy(carPos);
+      this.prevVehiclePos.copy(vehiclePos);
       return;
     }
 
-    const dx = carPos.x - targetCp.position.x;
-    const dz = carPos.z - targetCp.position.z;
+    const dx = vehiclePos.x - targetCp.position.x;
+    const dz = vehiclePos.z - targetCp.position.z;
     const distSq = dx * dx + dz * dz;
 
     const dirX = targetCp.direction ? targetCp.direction.x : 0;
@@ -70,14 +70,14 @@ export class LapTimer {
     const currDistAlong = dx * dirX + dz * dirZ;
     const currDistLateral = Math.abs(-dx * dirZ + dz * dirX);
 
-    // 게이트 좌우 폭(트랙 폭 반경) 내 주행 여부 검증
+    // 게이트 좌우 폭(서킷 폭 반경) 내 주행 여부 검증
     if (currDistLateral > targetCp.radius) {
-      this.prevCarPos.copy(carPos);
+      this.prevVehiclePos.copy(vehiclePos);
       return;
     }
 
-    const prevDx = this.prevCarPos.x - targetCp.position.x;
-    const prevDz = this.prevCarPos.z - targetCp.position.z;
+    const prevDx = this.prevVehiclePos.x - targetCp.position.x;
+    const prevDz = this.prevVehiclePos.z - targetCp.position.z;
     const prevDistAlong = prevDx * dirX + prevDz * dirZ;
 
     // 1. 역주행 및 게이트 평면 통과(Plane-crossing) 엄격 판정:
@@ -95,7 +95,7 @@ export class LapTimer {
         this.lastCheckpointTimestamp = 0;
         this.currentSectorIndex = 0;
         this.nextCheckpointIndex = 1;
-        this.prevCarPos.copy(carPos);
+        this.prevVehiclePos.copy(vehiclePos);
         return;
       }
 
@@ -121,7 +121,7 @@ export class LapTimer {
       }
     }
 
-    this.prevCarPos.copy(carPos);
+    this.prevVehiclePos.copy(vehiclePos);
   }
 
   public start(): void {
@@ -135,7 +135,7 @@ export class LapTimer {
     this.lastCheckpointTimestamp = 0;
     this.currentSectorIndex = 0;
     this.currentSectorTimes = [0, 0, 0];
-    this.hasPrevCarPos = false;
+    this.hasPrevVehiclePos = false;
   }
 
   private onLapCompleted(): void {
@@ -176,6 +176,6 @@ export class LapTimer {
     this.hasPassedStartLine = false;
     this.lastCheckpointTimestamp = 0;
     this.currentSectorIndex = 0;
-    this.hasPrevCarPos = false;
+    this.hasPrevVehiclePos = false;
   }
 }

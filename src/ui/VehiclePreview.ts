@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Vehicle } from '../game/Vehicle.ts';
+import type { VehicleModelId } from '../data/vehicles.ts';
 
 /**
  * 게임 설정 마법사 Step 2용 독립 Three.js 턴테이블 3D 뷰어
@@ -57,12 +58,12 @@ export class VehiclePreview {
     this.animate = this.animate.bind(this);
   }
 
-  public setModel(modelId: 'gt_turbo' | 'formula_aero' | 'cyber_speedster'): void {
-    this.vehicle.setModel(modelId);
+  public setVehicleModel(vehicleModelId: VehicleModelId): void {
+    this.vehicle.setVehicleModel(vehicleModelId);
   }
 
-  public setColor(colorHex: number): void {
-    this.vehicle.setColor(colorHex);
+  public setColor(color: string): void {
+    this.vehicle.setColor(color);
   }
 
   public start(): void {

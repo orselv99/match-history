@@ -24,7 +24,7 @@ export class PauseModal extends BaseModal<PauseModalInfo> {
   private btnExit: HTMLElement | null;
 
   private infoCircuit: HTMLElement | null;
-  private infoCar: HTMLElement | null;
+  private infoVehicle: HTMLElement | null;
   private infoLap: HTMLElement | null;
   private infoTime: HTMLElement | null;
 
@@ -37,7 +37,7 @@ export class PauseModal extends BaseModal<PauseModalInfo> {
     this.btnExit = document.getElementById('pause-btn-exit');
 
     this.infoCircuit = document.getElementById('pause-info-track');
-    this.infoCar = document.getElementById('pause-info-car');
+    this.infoVehicle = document.getElementById('pause-info-vehicle') || document.getElementById('pause-info-car');
     this.infoLap = document.getElementById('pause-info-lap');
     this.infoTime = document.getElementById('pause-info-time');
 
@@ -64,7 +64,7 @@ export class PauseModal extends BaseModal<PauseModalInfo> {
   public open(info?: PauseModalInfo): void {
     if (info) {
       if (this.infoCircuit) this.infoCircuit.textContent = info.circuitTitle;
-      if (this.infoCar) this.infoCar.textContent = info.vehicleTitle;
+      if (this.infoVehicle) this.infoVehicle.textContent = info.vehicleTitle;
       if (this.infoLap) this.infoLap.textContent = info.lapStr;
       if (this.infoTime) this.infoTime.textContent = info.timeStr;
     }

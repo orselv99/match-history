@@ -271,24 +271,28 @@
   margin-left: 4px;
 }
 
-.machine-badge {
+.machine-badge,
+.vehicle-badge {
   font-size: 10px;
   padding: 2px 6px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid var(--border-subtle);
 }
 
-.machine-badge.formula {
+.machine-badge.formula,
+.vehicle-badge.formula {
   border-color: rgba(6, 182, 212, 0.5);
   color: #38bdf8;
 }
 
-.machine-badge.gt {
+.machine-badge.gt,
+.vehicle-badge.gt {
   border-color: rgba(239, 68, 68, 0.5);
   color: #f87171;
 }
 
-.machine-badge.cyber {
+.machine-badge.cyber,
+.vehicle-badge.cyber {
   border-color: rgba(168, 85, 247, 0.5);
   color: #c084fc;
 }

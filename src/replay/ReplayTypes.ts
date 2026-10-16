@@ -34,7 +34,7 @@ export interface RaceResultEntry {
   timeMs: number;
   timeFormatted: string;
   isPlayer: boolean;
-  colorHex?: number;
+  color?: string;
 }
 
 /**
@@ -43,11 +43,11 @@ export interface RaceResultEntry {
 export interface MatchSummaryMetadata {
   matchCode: string;
   userId: string;
-  userNickname: string;
+  driverName: string;
   circuitId: string;
-  vehicleId: string;
-  playerColorHex?: number;
-  opponentConfigs?: Array<{ modelId?: string; colorHex?: number; name?: string }>;
+  vehicleModelId: string;
+  color?: string;
+  opponentConfigs?: Array<{ vehicleModelId?: string; color?: string; driverName?: string }>;
   totalLaps: number;
   totalTimeMs: number;
   bestLapMs: number;

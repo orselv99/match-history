@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { VEHICLE_MODELS } from '../data/vehicles.ts';
+import { VEHICLE_MODELS, type VehicleModelId } from '../data/vehicles.ts';
 import {
   buildGTTurboGeometry,
   buildFormulaAeroGeometry,
@@ -60,7 +60,7 @@ export class Vehicle {
   public rearRightWheel!: THREE.Mesh;
   public brakeLightMaterial!: THREE.MeshStandardMaterial;
   public bodyMaterial!: THREE.MeshStandardMaterial;
-  public currentModelId: string = 'gt_turbo';
+  public currentVehicleModelId: VehicleModelId = 'gt_turbo';
 
   public headSpotLight!: THREE.SpotLight;
   public headTarget!: THREE.Object3D;
@@ -72,12 +72,12 @@ export class Vehicle {
   public rightTailPointLight!: THREE.PointLight;
   public tailPointLight!: THREE.PointLight;
   public headlightsEnabled: boolean = false;
-  public bodyColorHex: number = 0xef4444;
+  public color: string = '#ef4444';
   public driverName: string = '';
-  public nameTagColorHex?: number;
+  public nameTagColor?: string;
   public nameTagSprite?: THREE.Sprite;
   private isGhost: boolean = false;
-  private ghostColor: number = 0x06b6d4;
+  private ghostColor: string = '#06b6d4';
 
   // 스펙 상수 (가변)
   private MAX_SPEED_MS = 58.3; // 약 210 km/h
@@ -87,36 +87,36 @@ export class Vehicle {
   private DRAG = 0.45; // 공기 저항
   private readonly OFFROAD_DRAG = 2.5; // 오프로드 잔디 저항
 
-  constructor(isGhost: boolean = false, ghostColor: number = 0x06b6d4, initialModel: 'gt_turbo' | 'formula_aero' | 'cyber_speedster' = 'gt_turbo') {
+  constructor(isGhost: boolean = false, ghostColor: string = '#06b6d4', initialVehicleModelId: VehicleModelId = 'gt_turbo') {
     this.isGhost = isGhost;
     this.ghostColor = ghostColor;
-    this.currentModelId = initialModel;
+    this.currentVehicleModelId = initialVehicleModelId;
     this.mesh.rotation.order = 'YXZ';
-    this.buildCarMesh(isGhost, ghostColor, initialModel);
+    this.buildVehicleMesh(isGhost, ghostColor, initialVehicleModelId);
   }
 
-  public setColor(colorHex: number): void {
-    this.bodyColorHex = colorHex;
+  public setColor(color: string): void {
+    this.color = color;
     if (this.bodyMaterial) {
-      this.bodyMaterial.color.setHex(colorHex);
+      this.bodyMaterial.color.set(color);
     }
     if (this.driverName) {
-      this.setNameTag(this.driverName, colorHex);
+      this.setNameTag(this.driverName, color);
     }
   }
 
   /**
    * 차량 모델 변경 (스케일 단순 조절이 아닌, 모델 고유의 독립 3D 절차적 지오메트리 동적 리빌드)
    */
-  public setModel(modelId: 'gt_turbo' | 'formula_aero' | 'cyber_speedster'): void {
-    this.currentModelId = modelId;
-    const meta = VEHICLE_MODELS[modelId] || VEHICLE_MODELS['gt_turbo'];
+  public setVehicleModel(vehicleModelId: VehicleModelId): void {
+    this.currentVehicleModelId = vehicleModelId;
+    const meta = VEHICLE_MODELS[vehicleModelId] || VEHICLE_MODELS['gt_turbo'];
 
     // 1. 기존 도색 색상 유지
-    const currentColor = this.bodyMaterial ? this.bodyMaterial.color.getHex() : 0xef4444;
+    const currentColor = this.color;
 
     // 2. 해당 모델 고유 3D 지오메트리 빌드
-    this.buildCarMesh(this.isGhost, this.ghostColor, modelId);
+    this.buildVehicleMesh(this.isGhost, this.ghostColor, vehicleModelId);
     this.setColor(currentColor);
 
     // 3. 메타데이터 기반 물리 스펙 및 스케일 정규화 동기화
@@ -135,21 +135,23 @@ export class Vehicle {
   /**
    * 메인 메시 조립 디스패처 (기존 메시 자식 청소 후 모델별 전용 지오메트리 생성)
    */
-  private buildCarMesh(isGhost: boolean, ghostColor: number, modelId: string = this.currentModelId): void {
+  private buildVehicleMesh(isGhost: boolean, ghostColor: string, vehicleModelId: VehicleModelId = this.currentVehicleModelId): void {
     // 기존 자식 메시 클린업
     while (this.mesh.children.length > 0) {
       this.mesh.remove(this.mesh.children[0]);
     }
 
+    const ghostColorVal = new THREE.Color(ghostColor);
+
     // 1. 공통 머티리얼 정의 (Low-poly 각진 면이 돋보이도록 flatShading 적용)
     this.bodyMaterial = isGhost
       ? new THREE.MeshStandardMaterial({
-          color: ghostColor,
+          color: ghostColorVal,
           transparent: true,
           opacity: 0.35,
           roughness: 0.15,
           metalness: 0.8,
-          emissive: ghostColor,
+          emissive: ghostColorVal,
           emissiveIntensity: 0.65,
           flatShading: true,
         })
@@ -172,7 +174,7 @@ export class Vehicle {
     });
 
     const glassMat = new THREE.MeshPhysicalMaterial({
-      color: isGhost ? ghostColor : 0x0f172a,
+      color: isGhost ? ghostColorVal : 0x0f172a,
       roughness: 0.08,
       metalness: 0.9,
       clearcoat: 1.0,
@@ -183,14 +185,14 @@ export class Vehicle {
 
     const headLightMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      emissive: isGhost ? ghostColor : 0xffffff,
+      emissive: isGhost ? ghostColorVal : 0xffffff,
       emissiveIntensity: isGhost ? 2.0 : 3.2,
     });
     this.headLightMaterial = headLightMat;
 
     this.brakeLightMaterial = new THREE.MeshStandardMaterial({
-      color: isGhost ? ghostColor : 0xdc2626,
-      emissive: isGhost ? ghostColor : 0xef4444,
+      color: isGhost ? ghostColorVal : 0xdc2626,
+      emissive: isGhost ? ghostColorVal : 0xef4444,
       emissiveIntensity: 1.5,
     });
 
@@ -216,14 +218,14 @@ export class Vehicle {
       headLightMat,
       brakeLightMat: this.brakeLightMaterial,
       isGhost,
-      ghostColor,
+      ghostColor: ghostColorVal.getHex(),
       addHoloEdges,
     };
 
     let wheels: VehicleWheels;
-    if (modelId === 'formula_aero') {
+    if (vehicleModelId === 'formula_aero') {
       wheels = buildFormulaAeroGeometry(meshParams);
-    } else if (modelId === 'cyber_speedster') {
+    } else if (vehicleModelId === 'cyber_speedster') {
       wheels = buildCyberSpeedsterGeometry(meshParams);
     } else {
       wheels = buildGTTurboGeometry(meshParams);
@@ -235,14 +237,14 @@ export class Vehicle {
     this.rearRightWheel = wheels.rearRightWheel;
 
     // 3. 메타데이터 좌표 기반 전방 스포트라이트, 볼류메트릭 빔 및 후방 듀얼 조명 세팅
-    const meta = VEHICLE_MODELS[modelId] || VEHICLE_MODELS['gt_turbo'];
+    const meta = VEHICLE_MODELS[vehicleModelId] || VEHICLE_MODELS['gt_turbo'];
     this.setupLighting(
       new THREE.Vector3(...meta.headlightPos.left),
       new THREE.Vector3(...meta.headlightPos.right),
       new THREE.Vector3(...meta.tailLightPos.left),
       new THREE.Vector3(...meta.tailLightPos.right),
       isGhost,
-      ghostColor
+      ghostColorVal.getHex()
     );
 
     if (this.nameTagSprite) {
@@ -555,10 +557,10 @@ export class Vehicle {
   /**
    * 차량 상단 3D 빌보드 네임태그 생성 및 갱신
    */
-  public setNameTag(name: string, colorHex?: number): void {
-    this.driverName = name;
-    if (colorHex !== undefined) {
-      this.nameTagColorHex = colorHex;
+  public setNameTag(driverName: string, color?: string): void {
+    this.driverName = driverName;
+    if (color !== undefined) {
+      this.nameTagColor = color;
     }
 
     const wasVisible = this.nameTagSprite ? this.nameTagSprite.visible : false;
@@ -571,11 +573,11 @@ export class Vehicle {
       this.nameTagSprite = undefined;
     }
 
-    if (!name || typeof document === 'undefined') return;
+    if (!driverName || typeof document === 'undefined') return;
 
     this.nameTagSprite = createNameTagSprite(
-      name,
-      this.nameTagColorHex ?? this.bodyColorHex,
+      driverName,
+      this.nameTagColor ?? this.color,
       wasVisible
     );
     this.mesh.add(this.nameTagSprite);

@@ -1,7 +1,9 @@
 import { t } from '../i18n/I18nManager.ts';
 
+export type VehicleModelId = 'gt_turbo' | 'formula_aero' | 'cyber_speedster';
+
 export interface VehicleModelMetadata {
-  id: 'gt_turbo' | 'formula_aero' | 'cyber_speedster';
+  id: VehicleModelId;
   title: string;
   badge: string;
   speed: string;
@@ -110,17 +112,17 @@ export const VEHICLE_MODELS: Record<string, VehicleModelMetadata> = {
   },
 };
 
-export interface AICarConfig {
+export interface OpponentConfig {
   id: number;
-  name: string;
-  color: number;
+  driverName: string;
+  color: string;
   baseSpeed: number;
   laneOffset: number;
 }
 
-export const AI_CAR_CONFIGS: AICarConfig[] = [
-  { id: 1, name: 'AI_01 // APEX_RED', color: 0xef4444, baseSpeed: 47.0, laneOffset: -2.2 },
-  { id: 2, name: 'AI_02 // SWISS_ROSE', color: 0xc45a72, baseSpeed: 49.2, laneOffset: 2.2 },
-  { id: 3, name: 'AI_03 // PASTEL_SKY', color: 0x7dd3fc, baseSpeed: 45.8, laneOffset: -2.2 },
-  { id: 4, name: 'AI_04 // AMBER_GOLD', color: 0xf59e0b, baseSpeed: 48.0, laneOffset: 2.2 },
+export const OPPONENT_CONFIGS: OpponentConfig[] = [
+  { id: 1, driverName: 'OPPONENT_01 // APEX_RED', color: '#ef4444', baseSpeed: 47.0, laneOffset: -2.2 },
+  { id: 2, driverName: 'OPPONENT_02 // SWISS_ROSE', color: '#c45a72', baseSpeed: 49.2, laneOffset: 2.2 },
+  { id: 3, driverName: 'OPPONENT_03 // PASTEL_SKY', color: '#7dd3fc', baseSpeed: 45.8, laneOffset: -2.2 },
+  { id: 4, driverName: 'OPPONENT_04 // AMBER_GOLD', color: '#f59e0b', baseSpeed: 48.0, laneOffset: 2.2 },
 ];

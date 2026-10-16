@@ -104,10 +104,14 @@ export function createGroundBeamMesh(): THREE.Mesh {
     opacity: 0.65,
     blending: THREE.AdditiveBlending,
     depthWrite: false,
+    depthTest: false, // 도로 고저차나 오르막 경사에서 빔이 땅속으로 파묻혀 꺼지는 현상 원천 차단
     side: THREE.DoubleSide,
   });
-  return new THREE.Mesh(geom, mat);
+  const mesh = new THREE.Mesh(geom, mat);
+  mesh.renderOrder = 2;
+  return mesh;
 }
+
 
 /**
  * 차량 상단 3D 빌보드 네임태그 스프라이트 생성

@@ -356,7 +356,7 @@ export class EnvironmentManager {
     this.scene.add(this.cloudGroup);
   }
 
-  public update(delta: number, focusPos: THREE.Vector3): void {
+  public update(delta: number, focusPos: THREE.Vector3, heading: number = 0, speed: number = 0): void {
     if (this.skyDome) {
       this.skyDome.position.set(focusPos.x, 0, focusPos.z);
     }
@@ -392,8 +392,9 @@ export class EnvironmentManager {
       }
     }
 
-    this.weatherParticles.update(delta, focusPos);
+    this.weatherParticles.update(delta, focusPos, heading, speed);
   }
+
 
   public setEnvironment(
     timeOfDay: TimeOfDay,

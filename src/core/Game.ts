@@ -355,12 +355,13 @@ export class Game {
 
     const target = leadVehicle || this.playerVehicle;
     if (this.startCutsceneController.isManualPitDriving) {
-      this.environmentManager.update(delta, target.position);
+      this.environmentManager.update(delta, target.position, target.heading, target.speed);
       this.audio.update(target.getSpeedKmh(), target.isDrifting, this.input.throttle);
     } else {
-      this.environmentManager.update(delta, target.position);
+      this.environmentManager.update(delta, target.position, target.heading, target.speed);
       this.audio.update(target.getSpeedKmh(), false, 0.4);
     }
+
 
     this.emitUIState();
   }
@@ -567,7 +568,13 @@ export class Game {
     this.skidMarkManager.update(delta, activeVehicles);
 
     // 환경 효과(구름 이동, 비/안개 파티클) 업데이트
-    this.environmentManager.update(delta, this.playerVehicle.position);
+    this.environmentManager.update(
+      delta,
+      this.playerVehicle.position,
+      this.playerVehicle.heading,
+      this.playerVehicle.speed
+    );
+
 
     if (isRunning) {
       // 랩 타이머 & 체크포인트 판정
@@ -652,7 +659,8 @@ export class Game {
     this.skidMarkManager.update(delta, activeVehicles);
 
     // 환경 효과(구름 이동, 비/안개 파티클) 업데이트
-    this.environmentManager.update(delta, targetVehicle.position);
+    this.environmentManager.update(delta, targetVehicle.position, targetVehicle.heading, targetVehicle.speed);
+
 
     // 데모 중 주행 리플레이 데이터 레코딩 및 플레이어 차량 랩 타이머 갱신
     if (isRunning && playerAgent) {
@@ -729,15 +737,21 @@ export class Game {
       });
 
       this.cameraController.updateFinishCutscene(delta, leadVehicle);
-      this.environmentManager.update(delta, leadVehicle.position);
+      this.environmentManager.update(delta, leadVehicle.position, leadVehicle.heading, leadVehicle.speed);
       this.emitUIState();
       return;
     }
 
     this.replayPlayer.update(deltaMs);
     this.cameraController.updateChase(delta, this.replayPlayer.ghostVehicle);
-    this.environmentManager.update(delta, this.replayPlayer.ghostVehicle.position);
+    this.environmentManager.update(
+      delta,
+      this.replayPlayer.ghostVehicle.position,
+      this.replayPlayer.ghostVehicle.heading,
+      this.replayPlayer.ghostVehicle.speed
+    );
     this.emitUIState();
+
   }
 
   public handleReplayFinish(): void {

@@ -94,15 +94,15 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
       callbacks.onTitle();
     });
 
-    // H 키 단축키로 포토 모드(UI 숨김) 토글 및 복귀 리스너
+    // Ctrl + Z 단축키로 포토 모드(UI 숨김) 토글 및 복귀 리스너
     window.addEventListener('keydown', (e) => {
       if (!this.isOpen()) return;
 
-      if (e.code === 'KeyH') {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
         e.preventDefault();
         this.togglePhotoMode();
-      } else if (this.isPhotoMode) {
-        // 포토 모드 중 아무 키(ESC, Space 등)나 누르면 UI 복귀
+      } else if (this.isPhotoMode && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        // 포토 모드 중 아무 일반 키나 누르면 UI 복귀 (Ctrl 등 보조키 단독 입력 제외)
         this.setPhotoMode(false);
       }
     });

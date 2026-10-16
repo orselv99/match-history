@@ -84,9 +84,8 @@ export class Vehicle {
   constructor(isGhost: boolean = false, ghostColor: string = '#06b6d4', initialVehicleModelId: VehicleModelId = 'gt_turbo') {
     this.isGhost = isGhost;
     this.ghostColor = ghostColor;
-    this.currentVehicleModelId = initialVehicleModelId;
     this.mesh.rotation.order = 'YXZ';
-    this.buildVehicleMesh(isGhost, ghostColor, initialVehicleModelId);
+    this.setVehicleModel(initialVehicleModelId);
   }
 
   public setColor(color: string): void {
@@ -177,9 +176,11 @@ export class Vehicle {
 
     // 1. 가속, 감속 및 경사면 중력 가감속(Gravity Slope Effect) 연산
     let appliedAccel = 0;
+    const topSpeedRatio = Math.max(0, this.speed / this.MAX_SPEED_MS);
+
     if (throttle > 0) {
-      // 속도가 오를수록 가속도 완만하게 감소 (토크 곡선)
-      const powerCurve = Math.max(0.2, 1.0 - (this.speed / this.MAX_SPEED_MS));
+      // 현실적인 고출력 터보 엔진 토크 곡선: 저속 폭발 가속 + 고속 지속 견인
+      const powerCurve = Math.max(0.42, 1.0 - topSpeedRatio * 0.58);
       appliedAccel += throttle * this.ACCELERATION * powerCurve;
     }
 
@@ -197,9 +198,15 @@ export class Vehicle {
       appliedAccel += gravitySlopeAccel;
     }
 
-    // 오프로드 잔디 감속 또는 기본 공기 저항
-    const currentDrag = isOffroad ? this.OFFROAD_DRAG : this.DRAG;
-    this.speed += (appliedAccel - Math.sign(this.speed) * (this.speed ** 2 * 0.005 + Math.abs(this.speed) * currentDrag)) * delta;
+    // 공기 저항(최고속도 도달 시 가속력과 정확히 균형) 및 주행 마찰/코스팅 감속
+    const aeroDrag = (topSpeedRatio ** 2) * (this.ACCELERATION * 0.42);
+    const offroadDrag = isOffroad ? 16.0 : 0;
+    const coastingDrag = (throttle === 0 && brake === 0 && Math.abs(this.speed) > 0.1)
+      ? (Math.abs(this.speed) * 0.03 + 1.2)
+      : 0;
+
+    const netAccel = appliedAccel - Math.sign(this.speed) * (aeroDrag + offroadDrag + coastingDrag);
+    this.speed += netAccel * delta;
 
     // 최고 속도 클램핑 (내리막 중력 가속 시 최고속도 보너스 허용, 오르막은 중력 부하 반영)
     const slopeTopSpeedMod = slopeSin < 0 ? -slopeSin * 26.0 : -slopeSin * 10.0;

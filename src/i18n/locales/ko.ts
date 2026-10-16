@@ -283,8 +283,8 @@ export const ko = {
     replay: '다시보기',
     retry: '다시 주행',
     titleMenu: '메인 메뉴',
-    photoMode: '📷 포토 모드 [H]',
+    photoMode: '📷 포토 모드 [Ctrl+Z]',
     capture: '📷 캡처 저장',
-    photoModeHint: '[H] 또는 화면 클릭 시 UI 다시 표시',
+    photoModeHint: '[Ctrl+Z] 또는 화면 클릭 시 UI 다시 표시',
   },
 };

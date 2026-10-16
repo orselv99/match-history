@@ -1,14 +1,8 @@
 import * as THREE from 'three';
 import { VEHICLE_MODELS, type VehicleModelId } from '../data/vehicles.ts';
 import {
-  buildGTTurboGeometry,
-  buildFormulaAeroGeometry,
-  buildCyberSpeedsterGeometry,
-  createLensGlowSprite,
-  createGroundBeamMesh,
   createNameTagSprite,
-  type VehicleMeshParams,
-  type VehicleWheels,
+  assembleVehicleVisuals,
 } from './vehicleModels/index.ts';
 
 export interface VehiclePhysicsState {
@@ -133,177 +127,36 @@ export class Vehicle {
   }
 
   /**
-   * 메인 메시 조립 디스패처 (기존 메시 자식 청소 후 모델별 전용 지오메트리 생성)
+   * 메인 메시 조립 디스패처 (모델별 전용 절차적 지오메트리 및 듀얼 조명 시스템 동적 빌드)
    */
   private buildVehicleMesh(isGhost: boolean, ghostColor: string, vehicleModelId: VehicleModelId = this.currentVehicleModelId): void {
-    // 기존 자식 메시 클린업
-    while (this.mesh.children.length > 0) {
-      this.mesh.remove(this.mesh.children[0]);
-    }
-
-    const ghostColorVal = new THREE.Color(ghostColor);
-
-    // 1. 공통 머티리얼 정의 (Low-poly 각진 면이 돋보이도록 flatShading 적용)
-    this.bodyMaterial = isGhost
-      ? new THREE.MeshStandardMaterial({
-          color: ghostColorVal,
-          transparent: true,
-          opacity: 0.35,
-          roughness: 0.15,
-          metalness: 0.8,
-          emissive: ghostColorVal,
-          emissiveIntensity: 0.65,
-          flatShading: true,
-        })
-      : new THREE.MeshPhysicalMaterial({
-          color: 0xef4444, // 기본 스포츠 레드
-          roughness: 0.2,
-          metalness: 0.65,
-          clearcoat: 1.0,
-          clearcoatRoughness: 0.08,
-          flatShading: true, // 각진 폴리곤 면 하이라이트 강조
-        });
-
-    const darkMat = new THREE.MeshStandardMaterial({
-      color: 0x111827,
-      roughness: 0.5,
-      metalness: 0.4,
-      transparent: isGhost,
-      opacity: isGhost ? 0.25 : 1.0,
-      flatShading: true,
-    });
-
-    const glassMat = new THREE.MeshPhysicalMaterial({
-      color: isGhost ? ghostColorVal : 0x0f172a,
-      roughness: 0.08,
-      metalness: 0.9,
-      clearcoat: 1.0,
-      transparent: true,
-      opacity: isGhost ? 0.2 : 0.88,
-      flatShading: true,
-    });
-
-    const headLightMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      emissive: isGhost ? ghostColorVal : 0xffffff,
-      emissiveIntensity: isGhost ? 2.0 : 3.2,
-    });
-    this.headLightMaterial = headLightMat;
-
-    this.brakeLightMaterial = new THREE.MeshStandardMaterial({
-      color: isGhost ? ghostColorVal : 0xdc2626,
-      emissive: isGhost ? ghostColorVal : 0xef4444,
-      emissiveIntensity: 1.5,
-    });
-
-    // 고스트 차량 전용 홀로그램 와이어프레임 헬퍼 함수
-    const addHoloEdges = (mesh: THREE.Mesh, opacity = 0.65) => {
-      if (!isGhost) return;
-      const edges = new THREE.EdgesGeometry(mesh.geometry, 18);
-      const lineMat = new THREE.LineBasicMaterial({
-        color: 0x67e8f9,
-        transparent: true,
-        opacity,
-        blending: THREE.AdditiveBlending,
-      });
-      mesh.add(new THREE.LineSegments(edges, lineMat));
-    };
-
-    // 2. 모델별 전용 3D 지오메트리 빌드 (모듈화된 VehicleMeshBuilders 사용)
-    const meshParams: VehicleMeshParams = {
-      rootGroup: this.mesh,
-      bodyMat: this.bodyMaterial,
-      darkMat,
-      glassMat,
-      headLightMat,
-      brakeLightMat: this.brakeLightMaterial,
+    const visuals = assembleVehicleVisuals(
+      this.mesh,
+      vehicleModelId,
       isGhost,
-      ghostColor: ghostColorVal.getHex(),
-      addHoloEdges,
-    };
-
-    let wheels: VehicleWheels;
-    if (vehicleModelId === 'formula_aero') {
-      wheels = buildFormulaAeroGeometry(meshParams);
-    } else if (vehicleModelId === 'cyber_speedster') {
-      wheels = buildCyberSpeedsterGeometry(meshParams);
-    } else {
-      wheels = buildGTTurboGeometry(meshParams);
-    }
-
-    this.frontLeftWheel = wheels.frontLeftWheel;
-    this.frontRightWheel = wheels.frontRightWheel;
-    this.rearLeftWheel = wheels.rearLeftWheel;
-    this.rearRightWheel = wheels.rearRightWheel;
-
-    // 3. 메타데이터 좌표 기반 전방 스포트라이트, 볼류메트릭 빔 및 후방 듀얼 조명 세팅
-    const meta = VEHICLE_MODELS[vehicleModelId] || VEHICLE_MODELS['gt_turbo'];
-    this.setupLighting(
-      new THREE.Vector3(...meta.headlightPos.left),
-      new THREE.Vector3(...meta.headlightPos.right),
-      new THREE.Vector3(...meta.tailLightPos.left),
-      new THREE.Vector3(...meta.tailLightPos.right),
-      isGhost,
-      ghostColorVal.getHex()
+      ghostColor,
+      this.headlightsEnabled
     );
+
+    this.bodyMaterial = visuals.bodyMaterial;
+    this.headLightMaterial = visuals.headLightMaterial;
+    this.brakeLightMaterial = visuals.brakeLightMaterial;
+    this.frontLeftWheel = visuals.frontLeftWheel;
+    this.frontRightWheel = visuals.frontRightWheel;
+    this.rearLeftWheel = visuals.rearLeftWheel;
+    this.rearRightWheel = visuals.rearRightWheel;
+    this.headSpotLight = visuals.headSpotLight;
+    this.headTarget = visuals.headTarget;
+    this.groundBeamMesh = visuals.groundBeamMesh;
+    this.leftLensGlow = visuals.leftLensGlow;
+    this.rightLensGlow = visuals.rightLensGlow;
+    this.leftTailPointLight = visuals.leftTailPointLight;
+    this.rightTailPointLight = visuals.rightTailPointLight;
+    this.tailPointLight = visuals.leftTailPointLight;
 
     if (this.nameTagSprite) {
       this.mesh.add(this.nameTagSprite);
     }
-  }
-
-  /**
-   * 전방 스포트라이트, 볼류메트릭 빔 콘 및 좌/우 듀얼 리어 포인트 라이트 공통 바인딩
-   */
-  private setupLighting(
-    leftHeadPos: THREE.Vector3,
-    rightHeadPos: THREE.Vector3,
-    leftTailPos: THREE.Vector3,
-    rightTailPos: THREE.Vector3,
-    isGhost: boolean,
-    ghostColor: number
-  ): void {
-    // 1. 전방 고성능 스포트라이트 (차량 전면 중앙에서 노면 전방으로 뻗어 나가는 단일 고성능 빔)
-    const centerHeadY = (leftHeadPos.y + rightHeadPos.y) * 0.5;
-    const centerHeadZ = (leftHeadPos.z + rightHeadPos.z) * 0.5;
-
-    this.headSpotLight = new THREE.SpotLight(0xfffbeb, 0, 55, Math.PI / 3.4, 0.75, 1.2);
-    this.headSpotLight.position.set(0, centerHeadY, centerHeadZ);
-    this.headTarget = new THREE.Object3D();
-    this.headTarget.position.set(0, 0.05, 30.0);
-    this.mesh.add(this.headSpotLight, this.headTarget);
-    this.headSpotLight.target = this.headTarget;
-
-    // 2. 차량 정면에서 바라볼 때 선명하게 빛나는 듀얼 LED 프로젝터 렌즈 플레어
-    this.leftLensGlow = createLensGlowSprite();
-    this.leftLensGlow.position.set(leftHeadPos.x, leftHeadPos.y, leftHeadPos.z + 0.08);
-    this.leftLensGlow.visible = this.headlightsEnabled;
-    this.mesh.add(this.leftLensGlow);
-
-    this.rightLensGlow = createLensGlowSprite();
-    this.rightLensGlow.position.set(rightHeadPos.x, rightHeadPos.y, rightHeadPos.z + 0.08);
-    this.rightLensGlow.visible = this.headlightsEnabled;
-    this.mesh.add(this.rightLensGlow);
-
-    // 3. 전방 아스팔트 노면 헤드라이트 투사 빔 (두 갈래 분할 없이 하나로 비추는 단일 일루미네이션 카펫)
-    this.groundBeamMesh = createGroundBeamMesh();
-    this.groundBeamMesh.visible = this.headlightsEnabled;
-    this.mesh.add(this.groundBeamMesh);
-
-    if (this.headlightsEnabled) {
-      this.headSpotLight.intensity = 55.0;
-    }
-
-    // 4. 후방 좌/우 듀얼 레드 포인트 라이트 (차량 양쪽에 위치, 브레이크/드리프트 시에만 점등)
-    this.leftTailPointLight = new THREE.PointLight(0xef4444, 0, 8, 1.6);
-    this.leftTailPointLight.position.copy(leftTailPos);
-    this.mesh.add(this.leftTailPointLight);
-
-    this.rightTailPointLight = new THREE.PointLight(0xef4444, 0, 8, 1.6);
-    this.rightTailPointLight.position.copy(rightTailPos);
-    this.mesh.add(this.rightTailPointLight);
-
-    this.tailPointLight = this.leftTailPointLight; // 하위 호환 레퍼런스 유지
   }
 
   /**

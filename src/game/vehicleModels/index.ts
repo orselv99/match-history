@@ -6,4 +6,6 @@ export {
   createLensGlowSprite,
   createGroundBeamMesh,
   createNameTagSprite,
+  assembleVehicleVisuals,
+  type VehicleVisuals,
 } from './VehicleVisualsBuilder.ts';

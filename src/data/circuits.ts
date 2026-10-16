@@ -31,7 +31,7 @@ export const CIRCUIT_DEFINITIONS: Record<string, CircuitMetadata> = {
     badge: '★★★★★ HARD',
     badgeClass: 'badge-expert',
     get desc(): string {
-      return t('wizard.trackMonacoDesc');
+      return t('wizard.circuitMonacoDesc');
     },
     len: '3.337 km',
     corners: '19 CORNERS',
@@ -62,7 +62,7 @@ export const CIRCUIT_DEFINITIONS: Record<string, CircuitMetadata> = {
     badge: '★★★☆☆ MEDIUM',
     badgeClass: 'badge-medium',
     get desc(): string {
-      return t('wizard.trackMonzaDesc');
+      return t('wizard.circuitMonzaDesc');
     },
     len: '5.793 km',
     corners: '11 CORNERS',
@@ -110,7 +110,7 @@ export const CIRCUIT_DEFINITIONS: Record<string, CircuitMetadata> = {
     badge: '★★★★★ HARD',
     badgeClass: 'badge-expert',
     get desc(): string {
-      return t('wizard.trackSpaDesc');
+      return t('wizard.circuitSpaDesc');
     },
     len: '7.004 km',
     corners: '20 CORNERS',

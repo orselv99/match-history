@@ -7,13 +7,13 @@ match-history/
 │       └── deploy.yml              # GitHub Pages CI/CD 배포 워크플로우
 ├── cloudflare-worker/              # Cloudflare Worker 백엔드 API (D1 & R2)
 │   ├── src/
-│   │   └── index.ts                # Worker API 라우트 (리더보드, 전적 업로드/조회)
+│   │   └── index.ts                # Worker API 라우트 (리더보드, 전적 업로드/조회, OpenAPI)
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── wrangler.toml               # Cloudflare Worker 설정 (D1 & R2 바인딩)
 ├── database/                       # 데이터베이스 SQL 스크립트
-│   ├── queries.sql                 # 전적 조회 및 리더보드 쿼리
-│   └── schema.sql                  # D1 SQLite 테이블 스키마
+│   ├── queries.sql                 # 전적 조회 및 리더보드 쿼리 (circuits, matches)
+│   └── schema.sql                  # D1 SQLite 테이블 스키마 (circuits, users, matches, match_laps)
 ├── public/                         # 정적 오디오 에셋 (Vite 배포 에셋)
 │   └── audio/                      # 사운드 에셋
 │       ├── bgm/                    # 레이싱 BGM 트랙 (.ogg)
@@ -26,28 +26,38 @@ match-history/
 ├── src/                            # Three.js 3D 레이싱 웹 애플리케이션 프론트엔드
 │   ├── core/                       # 코어 엔진 시스템
 │   │   ├── AudioManager.ts         # Web Audio API 기반 절차적 사운드 생성기
+│   │   ├── CameraController.ts     # 다이내믹 체이스 카메라, 충돌 쉐이크, 완주 컷씬
 │   │   ├── Game.ts                 # 메인 게임 루프, 씬, 조명, 환경 및 일시정지 제어
-│   │   └── InputManager.ts         # 키보드 입력 및 스티어링 제어
+│   │   ├── InputManager.ts         # 키보드 입력 및 스티어링 제어
+│   │   ├── MirrorRenderer.ts       # 좌/우 사이드 미러 Scissor 렌더러 및 후방 추격 차량 감지
+│   │   ├── SpeedFX.ts              # 고속 방사형 줌 블러 및 포스트 프로세싱
+│   │   └── StartCutsceneController.ts # 피트 출차 롤아웃 키네마틱스 컷씬 제어기
 │   ├── data/                       # 모듈화된 게임 정적 데이터
 │   │   ├── audio.ts                # BGM 트랙 목록 및 오디오 메타데이터 상수
+│   │   ├── circuits.ts             # 3대 글로벌 공식 서킷 제어점(Catmull-Rom), 폭, 메타데이터
 │   │   ├── gameConstants.ts        # 랜덤 드라이버명, 환경 라벨, 로딩 팁 문구
-│   │   ├── tracks.ts               # 서킷별 제어점(Catmull-Rom), 폭, 메타데이터
 │   │   └── vehicles.ts             # 차량 모델 스펙(가속/최고속/에어로) 및 라이벌 머신 설정
 │   ├── game/                       # 인게임 엔티티 및 게임플레이 물리/시뮬레이션 로직
-│   │   ├── OpponentManager.ts      # 라이벌 레이서(Opponent) 차량 에이전트 및 경로 추종
-│   │   ├── CircuitTrack.ts         # 동적 서킷 트랙 지오메트리, 연석, 그리드 및 체크포인트
+│   │   ├── Circuit.ts              # 3D 튜브 리본 서킷 지오메트리, 고저차, 교량, 연석, 그리드 및 체크포인트
+│   │   ├── CircuitDecorations.ts   # 그랜드스탠드, 방호벽, 관중석, 라이트 타워 절차적 장식물
 │   │   ├── CollisionManager.ts     # 차량 간 탄성 물리 충돌, 반발 임펄스, 카메라 쉐이크 및 스파크
 │   │   ├── EnvironmentManager.ts   # 시간대 및 날씨별 태양/안개/비/앰비언스 환경 시뮬레이션
 │   │   ├── LapTimer.ts             # 랩 타임 및 섹터 기록 측정기
 │   │   ├── MinimapRenderer.ts      # 2D 캔버스 실시간 미니맵 및 레이더 렌더러
+│   │   ├── OpponentManager.ts      # 상대 레이서(Opponent) 차량 에이전트 및 경로 추종
 │   │   ├── SkidMarkManager.ts      # 실시간 드리프트 타이어 스키드마크 쿼드 및 타이어 연기
-│   │   ├── TrackDecorations.ts     # 그랜드스탠드, 방호벽, 관중석, 라이트 타워 절차적 장식물
 │   │   ├── Vehicle.ts              # 레이싱 머신 3D 메시, 물리, 헤드라이트/조명 및 리버리 컬러
 │   │   └── vehicleModels/          # 세부 차량 모델 지오메트리 빌더
+│   ├── i18n/                       # 다국어(i18n) 시스템
+│   │   ├── index.ts                # 언어 상태 관리 및 리스너 배선
+│   │   └── locales/                # 한국어(ko) / 영어(en) 번역 사전
+│   ├── storage/                    # 브라우저 영구 데이터베이스 (IndexedDB)
+│   │   ├── AppDatabase.ts          # BGM 오디오 바이너리 캐시 및 매치 리플레이 로컬 저장소
+│   │   └── schema.ts               # IndexedDB 데이터베이스 스키마 및 마이그레이션 핸들러
 │   ├── ui/                         # DOM UI 컴포넌트, 모달 및 프리뷰 제어기
 │   │   ├── BaseModal.ts            # 공통 모달 베이스 추상 클래스
 │   │   ├── FinishModal.ts          # 레이스 완주 및 결과 요약 모달
-│   │   ├── GameSetupWizard.ts      # 4단계 레이스 세팅 위저드 모달
+│   │   ├── GameSetupWizard.ts      # 4단계 레이스 세팅 위저드 모달 (서킷/머신/환경/모드)
 │   │   ├── HoneycombPicker.ts      # 127셀 헥사곤 허니콤 컬러 팔레트 컴포넌트
 │   │   ├── HUDController.ts        # 속도계, 기어, 랩 타임 HUD 컨트롤러
 │   │   ├── LoadingScreen.ts        # 초기화 및 인게임전 겸용 로딩 씬 제어기

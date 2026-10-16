@@ -4,16 +4,19 @@
 -- =====================================================================
 
 -- 1. 서킷 마스터 테이블
-CREATE TABLE IF NOT EXISTS tracks (
-    track_id TEXT PRIMARY KEY,
-    track_name TEXT NOT NULL,
+CREATE TABLE IF NOT EXISTS circuits (
+    circuit_id TEXT PRIMARY KEY,
+    circuit_name TEXT NOT NULL,
     length_meters REAL NOT NULL,
     sector_count INTEGER NOT NULL DEFAULT 3,
     created_at TEXT NOT NULL DEFAULT (DATETIME('now'))
 );
 
-INSERT OR IGNORE INTO tracks (track_id, track_name, length_meters, sector_count)
-VALUES ('circuit_monaco', 'Apex Monaco Technical Circuit', 750.00, 3);
+INSERT OR IGNORE INTO circuits (circuit_id, circuit_name, length_meters, sector_count)
+VALUES 
+    ('circuit_monaco', 'Apex Monaco Technical Circuit', 3337.00, 3),
+    ('circuit_monza', 'Apex Monza Autodromo', 5793.00, 3),
+    ('circuit_spa', 'Apex Circuit de Spa', 7004.00, 3);
 
 -- 2. 레이서 유저 테이블
 CREATE TABLE IF NOT EXISTS users (
@@ -33,7 +36,7 @@ CREATE TABLE IF NOT EXISTS matches (
     match_id TEXT PRIMARY KEY,                    -- UUID 문자열
     match_code TEXT NOT NULL UNIQUE,              -- M_20261013_A8F2
     user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    track_id TEXT NOT NULL REFERENCES tracks(track_id) ON DELETE RESTRICT,
+    circuit_id TEXT NOT NULL REFERENCES circuits(circuit_id) ON DELETE RESTRICT,
     vehicle_id TEXT NOT NULL,                     -- apex_gt_red 등
     
     -- 레이스 핵심 성적 지표 (ms 단위)
@@ -74,7 +77,7 @@ CREATE TABLE IF NOT EXISTS match_laps (
 
 -- 리더보드 순위 전용 인덱스
 CREATE INDEX IF NOT EXISTS idx_matches_leaderboard 
-ON matches (track_id, best_lap_ms ASC, created_at ASC);
+ON matches (circuit_id, best_lap_ms ASC, created_at ASC);
 
 -- 유저별 최근 전적 이력 조회 최적화
 CREATE INDEX IF NOT EXISTS idx_matches_user_history 

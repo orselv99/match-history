@@ -45,7 +45,7 @@ function getCorsHeaders(request: Request): HeadersInit {
   return {
     'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Track-Id, X-Match-Code',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Circuit-Id, X-Match-Code',
     'Access-Control-Max-Age': '86400',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'SAMEORIGIN',
@@ -138,7 +138,7 @@ const OPENAPI_SPEC = {
       get: {
         summary: '서킷별 랩타임 순위 리더보드 (Top 100 랭킹 & D1 쿼리)',
         parameters: [
-          { name: 'trackId', in: 'query', schema: { type: 'string', default: 'circuit_monaco' } },
+          { name: 'circuitId', in: 'query', schema: { type: 'string', default: 'circuit_monaco' } },
           { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
         ],
         responses: { '200': { description: '리더보드 목록 반환' } },
@@ -303,18 +303,18 @@ export default {
     // [API 1] 트랙별 리더보드 순위 조회: GET /api/leaderboard
     // -----------------------------------------------------------------
     if (method === 'GET' && url.pathname === '/api/leaderboard') {
-      const circuitId = url.searchParams.get('circuitId') || url.searchParams.get('trackId') || 'circuit_monaco';
+      const circuitId = url.searchParams.get('circuitId') || 'circuit_monaco';
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || '50')));
 
       try {
         const query = `
           WITH user_best AS (
             SELECT 
-              m.match_id, m.match_code, m.user_id, m.track_id, m.vehicle_id, 
+              m.match_id, m.match_code, m.user_id, m.circuit_id, m.vehicle_id, 
               m.best_lap_ms, m.top_speed_kmh, m.replay_r2_key, m.created_at,
               ROW_NUMBER() OVER (PARTITION BY m.user_id ORDER BY m.best_lap_ms ASC) as rn
             FROM matches m
-            WHERE m.track_id = ? AND m.is_valid = 1
+            WHERE m.circuit_id = ? AND m.is_valid = 1
           )
           SELECT 
             DENSE_RANK() OVER (ORDER BY ub.best_lap_ms ASC) as rank,
@@ -367,11 +367,11 @@ export default {
       try {
         const query = `
           SELECT 
-            m.match_code, m.track_id, t.track_name, m.vehicle_id, m.total_laps,
+            m.match_code, m.circuit_id, c.circuit_name, m.vehicle_id, m.total_laps,
             m.total_time_ms, m.best_lap_ms, m.top_speed_kmh, m.avg_speed_kmh,
             m.raw_json_bytes, m.compressed_bytes, m.compression_ratio, m.created_at
           FROM matches m
-          JOIN tracks t ON m.track_id = t.track_id
+          JOIN circuits c ON m.circuit_id = c.circuit_id
           WHERE m.user_id = ? AND m.is_valid = 1
           ORDER BY m.created_at DESC
           LIMIT ?;
@@ -380,8 +380,8 @@ export default {
 
         const matches = (results || []).map((m: any) => ({
           matchCode: m.match_code,
-          trackId: m.track_id,
-          trackName: m.track_name,
+          circuitId: m.circuit_id,
+          circuitName: m.circuit_name,
           vehicleId: m.vehicle_id,
           totalLaps: m.total_laps,
           totalTimeMs: m.total_time_ms,
@@ -414,7 +414,7 @@ export default {
     if (method === 'POST' && url.pathname === '/api/matches') {
       try {
         const meta = await request.json() as any;
-        const circuitId = meta.circuitId || meta.trackId;
+        const circuitId = meta.circuitId;
         if (!meta.matchCode || !meta.userId || !circuitId) {
           return new Response(JSON.stringify({ error: 'Missing required match fields' }), {
             status: 400,
@@ -436,7 +436,7 @@ export default {
         // 2) 매치 메타데이터 INSERT
         await env.DB.prepare(`
           INSERT INTO matches (
-            match_id, match_code, user_id, track_id, vehicle_id,
+            match_id, match_code, user_id, circuit_id, vehicle_id,
             total_laps, total_time_ms, best_lap_ms, top_speed_kmh, avg_speed_kmh,
             is_valid, replay_r2_key, raw_json_bytes, compressed_bytes, compression_ratio
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?);
@@ -555,7 +555,7 @@ export default {
         customMetadata: {
           uploadedAt: new Date().toISOString(),
           byteLength: body.byteLength.toString(),
-          circuitId: request.headers.get('X-Circuit-Id') || request.headers.get('X-Track-Id') || 'circuit_monaco',
+          circuitId: request.headers.get('X-Circuit-Id') || 'circuit_monaco',
         },
       });
 

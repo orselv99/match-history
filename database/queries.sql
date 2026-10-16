@@ -3,28 +3,28 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- [Query 1] 트랙별 글로벌 랩타임 리더보드 (Top 100 랭킹)
+-- [Query 1] 서킷별 글로벌 랩타임 리더보드 (Top 100 랭킹)
 -- 목적: Astro 블로그 또는 전적 대시보드 메인 랭킹 노출
 -- 특징: 유저당 개인 최고 기록(Personal Best)만 1건씩 추출하여 DENSE_RANK() 부여,
 --       Cloudflare R2 리플레이 링크를 즉시 바인딩.
 -- ---------------------------------------------------------------------
-WITH user_best_per_track AS (
+WITH user_best_per_circuit AS (
     SELECT 
         m.match_id,
         m.match_code,
         m.user_id,
-        m.track_id,
+        m.circuit_id,
         m.vehicle_id,
         m.best_lap_ms,
         m.top_speed_kmh,
         m.replay_r2_key,
         m.created_at,
         ROW_NUMBER() OVER (
-            PARTITION BY m.user_id, m.track_id 
+            PARTITION BY m.user_id, m.circuit_id 
             ORDER BY m.best_lap_ms ASC, m.created_at ASC
         ) as rn
     FROM matches m
-    WHERE m.track_id = 'circuit_monaco'
+    WHERE m.circuit_id = 'circuit_monaco'
       AND m.is_valid = TRUE
 )
 SELECT 
@@ -38,7 +38,7 @@ SELECT
     -- Cloudflare Worker / R2 CDN 리플레이 다운로드 URL 생성
     'https://match-history-api.orsel.workers.dev/api/replays/' || ub.match_code AS replay_url,
     ub.created_at
-FROM user_best_per_track ub
+FROM user_best_per_circuit ub
 JOIN users u ON ub.user_id = u.user_id
 WHERE ub.rn = 1
 ORDER BY rank ASC
@@ -51,7 +51,7 @@ LIMIT 100;
 -- ---------------------------------------------------------------------
 SELECT 
     m.match_code,
-    t.track_name,
+    c.circuit_name,
     m.vehicle_id,
     m.total_laps,
     TO_CHAR(INTERVAL '1 millisecond' * m.total_time_ms, 'MI:SS.MS') AS total_time,
@@ -64,7 +64,7 @@ SELECT
     'https://match-history-api.orsel.workers.dev/api/replays/' || m.match_code AS replay_url,
     m.created_at
 FROM matches m
-JOIN tracks t ON m.track_id = t.track_id
+JOIN circuits c ON m.circuit_id = c.circuit_id
 WHERE m.user_id = 'user_demo_pilot'
   AND m.is_valid = TRUE
 ORDER BY m.created_at DESC
@@ -74,10 +74,10 @@ LIMIT 10;
 -- ---------------------------------------------------------------------
 -- [Query 3] 이론상 최적 랩타임 (Ideal / Theoretical Best Lap) 산출
 -- 목적: 전체 경기 중 각 섹터(S1, S2, S3)의 최단 구간 기록을 조합하여 
---       해당 트랙의 인간 한계 최단 가능 랩타임 산출
+--       해당 서킷의 인간 한계 최단 가능 랩타임 산출
 -- ---------------------------------------------------------------------
 SELECT 
-    m.track_id,
+    m.circuit_id,
     MIN(l.sector_1_ms) AS best_s1_ms,
     MIN(l.sector_2_ms) AS best_s2_ms,
     MIN(l.sector_3_ms) AS best_s3_ms,
@@ -91,9 +91,9 @@ SELECT
     (MIN(m.best_lap_ms) - (MIN(l.sector_1_ms) + MIN(l.sector_2_ms) + MIN(l.sector_3_ms))) AS potential_gain_ms
 FROM match_laps l
 JOIN matches m ON l.match_id = m.match_id
-WHERE m.track_id = 'circuit_monaco'
+WHERE m.circuit_id = 'circuit_monaco'
   AND m.is_valid = TRUE
-GROUP BY m.track_id;
+GROUP BY m.circuit_id;
 
 
 -- ---------------------------------------------------------------------

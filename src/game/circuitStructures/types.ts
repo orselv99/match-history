@@ -9,6 +9,7 @@ export interface StructureMaterials {
   glassMat: THREE.MeshStandardMaterial;
   emissiveRedMat: THREE.MeshStandardMaterial;
   emissiveCyanMat: THREE.MeshStandardMaterial;
+  floodlightBulbMat: THREE.MeshStandardMaterial;
 }
 
 export function createStructureMaterials(): StructureMaterials {
@@ -37,5 +38,13 @@ export function createStructureMaterials(): StructureMaterials {
       emissiveIntensity: 1.8,
       roughness: 0.2,
     }),
+    floodlightBulbMat: new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      emissive: 0xfffbeb,
+      emissiveIntensity: 0.05,
+      roughness: 0.15,
+      metalness: 0.1,
+    }),
   };
 }
+

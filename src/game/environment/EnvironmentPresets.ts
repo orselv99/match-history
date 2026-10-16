@@ -155,14 +155,14 @@ export function getEnvironmentPreset(timeOfDay: TimeOfDay, weather: WeatherType)
   } else if (timeOfDay === 'night') {
     bgColor = 0x070a14;
     fogColor = 0x070a14;
-    fogDensity = 0.0032;
-    dirColor = 0x60a5fa;
-    dirIntensity = 0.55;
-    dirPos.set(60, 120, 40);
-    ambColor = 0x0f172a;
-    ambIntensity = 0.45;
-    hemiSky = 0x1e293b;
-    hemiGround = 0x050811;
+    fogDensity = 0.0020; // 야간 서킷 시야 확보를 위해 안개 농도 최적화
+    dirColor = 0x93c5fd; // 서킷 조명 및 은빛 달빛 반사광
+    dirIntensity = 1.15; // 야간 서킷 조명 대폭 강화
+    dirPos.set(60, 120, -80);
+    ambColor = 0x24324a; // 앰비언트 광량 상향으로 아스팔트 및 도로 시설물 시인성 확보
+    ambIntensity = 0.75;
+    hemiSky = 0x3b82f6;
+    hemiGround = 0x1e293b;
 
     skyTop = 0x03050a;
     skyUpperMid = 0x070b16;
@@ -182,7 +182,7 @@ export function getEnvironmentPreset(timeOfDay: TimeOfDay, weather: WeatherType)
   let playRainAudio = false;
   let roadRoughness = 0.68;
   let roadMetalness = 0.16;
-  let roadColor = 0x2e323b;
+  let roadColor = timeOfDay === 'night' ? 0x343946 : 0x2e323b;
 
   if (weather === 'rain') {
     isRaining = true;
@@ -303,7 +303,7 @@ export function getEnvironmentPreset(timeOfDay: TimeOfDay, weather: WeatherType)
   let sunHorizonHaloColor = 0xf97316;
   let sunHorizonHaloOpacity = 0.0;
 
-  const moonOffset = new THREE.Vector3(140, 260, -220);
+  const moonOffset = new THREE.Vector3(160, 56, -240);
   let moonVisible = false;
 
   let starsVisible = false;

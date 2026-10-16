@@ -73,5 +73,51 @@ export function buildPitComplex(materials: StructureMaterials, circuitWidth: num
   vipGlass.position.set(pitBaseX - 2.5 - 3.2 + 0.1, 5.2, pitZ);
   pitGroup.add(vipGlass);
 
+  // D. 피트 빌딩 옥상 대형 스타디움 투광 조명 마스트 타워 (3기)
+  const mastZPositions = [-14.0, 0.0, 14.0];
+  const mastX = pitBaseX - 5.7 + 0.3;
+  const mastGeom = new THREE.CylinderGeometry(0.12, 0.15, 3.2, 8);
+  const gantryGeom = new THREE.BoxGeometry(0.2, 0.2, 2.2);
+  const flHousingGeom = new THREE.BoxGeometry(0.5, 0.7, 1.8);
+  const flBulbGeom = new THREE.BoxGeometry(0.08, 0.24, 0.44);
+
+  for (let m = 0; m < mastZPositions.length; m++) {
+    const mZ = pitZ + mastZPositions[m];
+    // 마스트 기둥
+    const mast = new THREE.Mesh(mastGeom, materials.steelMat);
+    mast.position.set(mastX, 8.6, mZ);
+    // 상단 갠트리 크로스바
+    const gantry = new THREE.Mesh(gantryGeom, materials.steelMat);
+    gantry.position.set(mastX, 10.2, mZ);
+    pitGroup.add(mast, gantry);
+
+    // 하향 틸트 조명 헤드
+    const flHead = new THREE.Group();
+    flHead.position.set(mastX + 0.2, 10.2, mZ);
+    flHead.rotation.z = 0.45; // 트랙 및 피트레인 방향으로 하향 조사
+    const housing = new THREE.Mesh(flHousingGeom, materials.steelMat);
+    flHead.add(housing);
+
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 2; col++) {
+        const bulb = new THREE.Mesh(flBulbGeom, materials.floodlightBulbMat);
+        bulb.position.set(0.26, (row - 0.5) * 0.3, (col - 0.5) * 0.7);
+        flHead.add(bulb);
+      }
+    }
+    pitGroup.add(flHead);
+
+    // 피트 레인 및 메인 스트레이트 노면을 비추는 투광 스포트라이트 (야간 점등)
+    const spot = new THREE.SpotLight(0xfff7ed, 0, 52, Math.PI / 2.5, 0.55, 1.2);
+    spot.position.set(mastX + 0.2, 10.2, mZ);
+    const target = new THREE.Object3D();
+    target.position.set(0, 0, mZ);
+    pitGroup.add(target);
+    spot.target = target;
+    spot.userData = { isStadiumFloodlight: true, baseIntensity: 50.0 };
+    pitGroup.add(spot);
+  }
+
   return pitGroup;
 }
+

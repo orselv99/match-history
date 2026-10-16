@@ -7,7 +7,9 @@ import {
   buildControlTower,
   buildOverpassBridge,
   buildArchGate,
+  type StructureMaterials,
 } from './circuitStructures/index.ts';
+
 
 /**
  * 3D 서킷 환경 조형물 및 노면 마킹 생성 전담 빌더
@@ -346,11 +348,16 @@ export class CircuitDecorations {
    * - 2층 피트 빌딩 & 피트 월 & 피트 레인 (Pit Complex & Pit Wall)
    * - 4층 레이스 컨트롤 타워 & 대형 전광판 (Race Control Tower & Live Timing Board)
    */
-  public static buildCircuitStructures(circuitCurve: THREE.CatmullRomCurve3, circuitWidth: number): THREE.Group {
+  public static buildCircuitStructures(
+    circuitCurve: THREE.CatmullRomCurve3,
+    circuitWidth: number,
+    sharedMaterials?: StructureMaterials
+  ): THREE.Group {
     const root = new THREE.Group();
 
     const totalL = circuitCurve.getLength();
-    const materials = createStructureMaterials();
+    const materials = sharedMaterials || createStructureMaterials();
+
 
     // 1. 출발선 갠트리 (F1 Start Lights & Race Gantry, t = 0)
     const startPt = circuitCurve.getPointAt(0);

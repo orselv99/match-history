@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { CIRCUIT_DEFINITIONS, type CircuitId, type CircuitMetadata } from '../data/circuits.ts';
 import { CircuitDecorations } from './CircuitDecorations.ts';
+import { createStructureMaterials, type StructureMaterials } from './circuitStructures/index.ts';
+
 
 export interface CheckpointTrigger {
   id: number;
@@ -29,6 +31,9 @@ export class Circuit {
   public checkpoints: CheckpointTrigger[] = [];
   public circuitPoints2D: { x: number; z: number }[] = [];
   public currentCircuitId: CircuitId = 'circuit_monaco';
+  public structureMaterials: StructureMaterials = createStructureMaterials();
+  public circuitStructuresGroup?: THREE.Group;
+
 
   private samplePoints: THREE.Vector3[] = [];
   private sampleTangents: THREE.Vector3[] = [];
@@ -76,8 +81,10 @@ export class Circuit {
     // 4. 지오메트리 및 환경 재빌드
     this.buildCircuitMesh(def.bridgeSpan);
     this.group.add(CircuitDecorations.buildGround());
-    this.group.add(CircuitDecorations.buildCircuitStructures(this.circuitCurve, this.circuitWidth));
+    this.circuitStructuresGroup = CircuitDecorations.buildCircuitStructures(this.circuitCurve, this.circuitWidth, this.structureMaterials);
+    this.group.add(this.circuitStructuresGroup);
     this.setupCheckpoints();
+
 
     return def;
   }
@@ -87,6 +94,23 @@ export class Circuit {
     roughness: 0.68,
     metalness: 0.16,
   });
+
+  /**
+   * 야간 환경 시 서킷 구조물(그랜드스탠드, 피트 빌딩, 컨트롤 타워)의 대형 스타디움 투광 조명 일괄 점등
+   */
+  public setNightMode(isNight: boolean): void {
+    if (this.structureMaterials?.floodlightBulbMat) {
+      this.structureMaterials.floodlightBulbMat.emissiveIntensity = isNight ? 9.5 : 0.05;
+    }
+    if (this.circuitStructuresGroup) {
+      this.circuitStructuresGroup.traverse((child) => {
+        if (child instanceof THREE.Light && child.userData?.isStadiumFloodlight) {
+          child.intensity = isNight ? (child.userData.baseIntensity || 45.0) : 0;
+        }
+      });
+    }
+  }
+
 
   private buildCircuitMesh(bridgeSpan?: [number, number]): void {
     const segments = 300;

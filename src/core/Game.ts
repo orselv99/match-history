@@ -258,6 +258,7 @@ export class Game {
       this.opponentManager,
       this.audio
     );
+    this.circuit?.setNightMode(timeOfDay === 'night');
   }
 
   public toggleHeadlights(): boolean {
@@ -279,9 +280,11 @@ export class Game {
   public loadCircuit(circuitId: CircuitId): void {
     this.currentCircuitId = circuitId;
     this.circuit.loadCircuit(circuitId);
+    this.circuit.setNightMode(this.currentTimeOfDay === 'night');
     this.resetVehicleToStart();
     this.drawMinimap();
   }
+
 
   public resetVehicleToStart(): void {
     // 플레이어 차량을 스타팅 그리드 1번 슬롯(Pole Position, Y: 0.055m 노면 밀착)에 정렬!
@@ -1213,7 +1216,11 @@ export class Game {
         : 1.0;
     this.renderer.setPixelRatio(targetRatio);
     this.speedFX.resize(width, height);
+
+    const isFullscreen = !!(document.fullscreenElement || (document as any).webkitFullscreenElement);
+    document.documentElement.classList.toggle('is-fullscreen', isFullscreen);
   }
+
 
   /**
    * 그래픽 성능 및 퀄리티 옵션 일괄 적용

@@ -42,6 +42,33 @@ export function buildControlTower(materials: StructureMaterials, circuitWidth: n
     towerGroup.add(ledLine);
   }
 
+  // 트랙 및 스타트 라인 대형 스타디움 투광 조명 (야간 점등)
+  const flHead = new THREE.Group();
+  flHead.position.set(towerX + 3.6, 10.8, towerZ);
+  flHead.rotation.z = 0.45;
+  const housing = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 2.2), materials.steelMat);
+  flHead.add(housing);
+
+  const flBulbGeom = new THREE.BoxGeometry(0.08, 0.24, 0.44);
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 3; col++) {
+      const bulb = new THREE.Mesh(flBulbGeom, materials.floodlightBulbMat);
+      bulb.position.set(0.26, (row - 0.5) * 0.3, (col - 1.0) * 0.65);
+      flHead.add(bulb);
+    }
+  }
+  towerGroup.add(flHead);
+
+  const spot = new THREE.SpotLight(0xfff7ed, 0, 52, Math.PI / 2.4, 0.55, 1.2);
+  spot.position.set(towerX + 3.6, 10.8, towerZ);
+  const target = new THREE.Object3D();
+  target.position.set(0, 0, towerZ);
+  towerGroup.add(target);
+  spot.target = target;
+  spot.userData = { isStadiumFloodlight: true, baseIntensity: 50.0 };
+  towerGroup.add(spot);
+
   towerGroup.add(towerBody, obsDeck, spire, board);
   return towerGroup;
 }
+

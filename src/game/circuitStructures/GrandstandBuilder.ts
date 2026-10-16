@@ -123,5 +123,43 @@ export function buildGrandstand(
     grandstand.add(visor);
   }
 
+  // 6. 캔틸레버 루프 전면 경기장 대형 투광 조명 (Stadium Floodlight Clusters)
+  const floodlightCount = Math.max(2, Math.round(gsLength / 18.0));
+  const flStep = (gsLength - 8.0) / Math.max(1, floodlightCount - 1);
+  const flHousingGeom = new THREE.BoxGeometry(0.5, 0.7, 1.8);
+  const flBulbGeom = new THREE.BoxGeometry(0.08, 0.24, 0.44);
+
+  for (let f = 0; f < floodlightCount; f++) {
+    const flZ = gsZ - (gsLength - 8.0) / 2 + f * flStep;
+    const flGroup = new THREE.Group();
+    flGroup.position.set(gsBaseX - 0.95, 8.0, flZ);
+    flGroup.rotation.z = -0.42; // 트랙 노면을 향해 하향 조사
+
+    // 조명 하우징 바디
+    const housing = new THREE.Mesh(flHousingGeom, materials.steelMat);
+    flGroup.add(housing);
+
+    // 4구 고휘도 스타디움 LED 발광 렌즈 (2 x 2)
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 2; col++) {
+        const bulb = new THREE.Mesh(flBulbGeom, materials.floodlightBulbMat);
+        bulb.position.set(-0.26, (row - 0.5) * 0.3, (col - 0.5) * 0.7);
+        flGroup.add(bulb);
+      }
+    }
+    grandstand.add(flGroup);
+
+    // 트랙 노면을 직접 비추는 대형 투광 스포트라이트 (야간 경기 점등)
+    const spot = new THREE.SpotLight(0xfff7ed, 0, 52, Math.PI / 2.6, 0.55, 1.2);
+    spot.position.set(gsBaseX - 0.95, 8.0, flZ);
+    const target = new THREE.Object3D();
+    target.position.set(halfW * 0.2, 0, flZ);
+    grandstand.add(target);
+    spot.target = target;
+    spot.userData = { isStadiumFloodlight: true, baseIntensity: 45.0 };
+    grandstand.add(spot);
+  }
+
   return grandstand;
 }
+

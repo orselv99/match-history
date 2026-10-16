@@ -95,12 +95,14 @@
   color: var(--text-primary);
 }
 
-/* 위저드 본문 영역 (스크롤 공간 사전 확보) */
+/* 위저드 본문 영역 (스크롤은 좌측 칼럼 및 단일 패널 내부로 한정) */
 .wizard-content-body {
   flex: 1;
-  overflow-y: scroll;
-  scrollbar-gutter: stable;
+  min-height: 0;
+  overflow: hidden;
   padding: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
 .wizard-step-panel {
@@ -108,28 +110,60 @@
 }
 
 .wizard-step-panel.active {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
 }
 
-/* 2컬럼 분할 레이아웃 */
+/* 2컬럼 분할 레이아웃: Step 1 & Step 2 */
 .wizard-split-layout {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
-  align-items: start;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  align-items: stretch;
 }
 
+/* 우측 프리뷰 칼럼: 100% 완전 고정 (스크롤 절대 불가) */
 .wizard-preview-col {
-  position: sticky;
-  top: 0;
-  align-self: start;
-  z-index: 5;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  position: static;
+  display: flex;
+  flex-direction: column;
 }
 
+/* 좌측 선택 칼럼: 내용 초과 시 좌측만 독립 스크롤 */
 .wizard-choice-col {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-right: 8px;
+}
+
+/* 리버리 컬러 팔레트 섹션: 제목과 컨트롤러 간 12px 여백 및 상단 마진 */
+.wizard-color-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+/* Step 3, 4 단일 패널 스크롤 */
+#wizard-step-3,
+#wizard-step-4 {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-right: 6px;
 }
 
 .wizard-col-title {

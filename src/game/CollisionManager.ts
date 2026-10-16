@@ -90,6 +90,9 @@ export class CollisionManager {
   }
 
   private checkAndResolveCollision(v1: Vehicle, v2: Vehicle, playerVehicle?: Vehicle): void {
+    // 입체 교차로(다리 상판 vs 하부 도로)에서 고도 차이가 큰 차량끼리는 충돌 판정 제외
+    if (Math.abs(v1.position.y - v2.position.y) > 2.2) return;
+
     // 1차 거리 컬링 (차체 대각선 6.2m 이내일 때 정밀 검사)
     const distSq = v1.position.distanceToSquared(v2.position);
     if (distSq > 38.44) return;

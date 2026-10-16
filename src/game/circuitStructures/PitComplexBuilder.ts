@@ -35,12 +35,13 @@ export function buildPitComplex(materials: StructureMaterials, trackWidth: numbe
     pitGroup.add(perch, screen);
   }
 
-  // B. 피트 레인 아스팔트 바닥
+  // B. 피트 레인 아스팔트 바닥 (메인 서킷 노면과 동일한 아스팔트 톤 및 그림자 동기화)
   const pitRoadGeom = new THREE.PlaneGeometry(6.4, pitLength);
-  const pitRoadMat = new THREE.MeshStandardMaterial({ color: 0x22262e, roughness: 0.8, metalness: 0.1 });
+  const pitRoadMat = new THREE.MeshStandardMaterial({ color: 0x2e323b, roughness: 0.68, metalness: 0.16 });
   const pitRoad = new THREE.Mesh(pitRoadGeom, pitRoadMat);
   pitRoad.rotation.x = -Math.PI / 2;
   pitRoad.position.set(pitBaseX - 2.5, 0.052, pitZ);
+  pitRoad.receiveShadow = true;
   pitGroup.add(pitRoad);
 
   // C. 2층 레이싱팀 피트 가레지 빌딩

@@ -74,7 +74,7 @@ export class CircuitTrack {
     }
 
     // 4. 지오메트리 및 환경 재빌드
-    this.buildTrackMesh();
+    this.buildTrackMesh(def.bridgeSpan);
     this.group.add(TrackDecorations.buildGround());
     this.group.add(TrackDecorations.buildCircuitStructures(this.trackCurve, this.trackWidth));
     this.setupCheckpoints();
@@ -84,11 +84,11 @@ export class CircuitTrack {
 
   public roadMaterial: THREE.MeshStandardMaterial = new THREE.MeshStandardMaterial({
     color: 0x2e323b,
-    roughness: 0.7,
-    metalness: 0.15,
+    roughness: 0.68,
+    metalness: 0.16,
   });
 
-  private buildTrackMesh(): void {
+  private buildTrackMesh(bridgeSpan?: [number, number]): void {
     const segments = 300;
     const rawPoints = this.trackCurve.getSpacedPoints(segments);
     const roadPoints = rawPoints.slice(0, segments);
@@ -139,8 +139,8 @@ export class CircuitTrack {
     roadMesh.receiveShadow = true;
     this.group.add(roadMesh);
 
-    // 연석(Curbs), 성토 옹벽 및 트랙 도로 마킹 추가
-    this.group.add(TrackDecorations.buildCurbs(roadPoints, halfWidth));
+    // 연석(Curbs), 성토 옹벽, 입체 고가 다리(Overpass Bridge) 및 트랙 도로 마킹 추가
+    this.group.add(TrackDecorations.buildCurbs(roadPoints, halfWidth, bridgeSpan));
     this.buildRoadMarkings(roadPoints, halfWidth);
   }
 
@@ -346,13 +346,14 @@ export class CircuitTrack {
     }
 
     let bestIdx = 0;
-    let minDistSq = Infinity;
+    let minScore = Infinity;
 
     for (let i = 0; i < n; i++) {
       const p = this.samplePoints[i];
-      const dSq = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2;
-      if (dSq < minDistSq) {
-        minDistSq = dSq;
+      // 상/하부 입체 교차로(Overpass Bridge)에서 상부 교량 차량과 하부 도로 차량이 서로의 고도로 스냅되지 않도록 Y 고도 가중치 결합
+      const score = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2 + (p.y - pos.y) ** 2 * 6.0;
+      if (score < minScore) {
+        minScore = score;
         bestIdx = i;
       }
     }

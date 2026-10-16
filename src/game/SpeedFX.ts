@@ -40,17 +40,19 @@ const RadialBlurShader = {
     void main() {
       if (uStrength <= 0.001) {
         gl_FragColor = texture2D(tDiffuse, vUv);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
         return;
       }
 
       vec2 toCenter = uCenter - vUv;
 
-      // 1. 차량 및 전방 시야 보존용 타원형 마스크 (중앙 주행 시야는 100% 선명도 유지)
-      vec2 maskVec = vec2(toCenter.x * 1.0, toCenter.y * 1.45);
+      // 1. 차량 중심(uCenter)을 기준으로 차체 영역(0.07 이내)만 선명하게 보존하고, 차량 바로 주변부터 방사형 블러 생성
+      vec2 maskVec = vec2(toCenter.x * 1.15, toCenter.y * 1.65);
       float maskDist = length(maskVec);
 
-      float blurMask = smoothstep(0.26, 0.68, maskDist);
-      float totalStrength = pow(uStrength, 1.35) * blurMask * 0.15;
+      float blurMask = smoothstep(0.07, 0.34, maskDist);
+      float totalStrength = pow(uStrength, 1.25) * blurMask * 0.20;
 
       float sampleCount = float(clamp(uSamples, 4, 16));
       vec2 stepVec = (toCenter / sampleCount) * totalStrength;
@@ -69,7 +71,7 @@ const RadialBlurShader = {
       }
       accumColor /= sampleCount;
 
-      // 2. 외곽부 미세 광학 색수차 (165km/h 이상 초고속 시 가장자리에만 은은하게 적용)
+      // 2. 차량 중심 방사형 미세 광학 색수차 (165km/h 이상 초고속 시)
       if (uEnableChrom > 0.5 && uStrength > 0.58) {
         float chromFactor = (uStrength - 0.58) / 0.42;
         float chromOffset = maskDist * chromFactor * 0.007 * blurMask;
@@ -88,6 +90,8 @@ const RadialBlurShader = {
       finalColor = mix(finalColor * (1.0 - vignetteFactor * 0.15), finalColor, vignette);
 
       gl_FragColor = vec4(finalColor, 1.0);
+      #include <tonemapping_fragment>
+      #include <colorspace_fragment>
     }
   `
 };
@@ -179,22 +183,23 @@ export class SpeedFX {
     this.blurPass.uniforms.uStrength.value = this.smoothStrength;
     this.blurPass.uniforms.uTime.value = this.elapsedTime;
 
-    // 차량 3D 위치를 2D 화면 좌표계(UV: 0.0 ~ 1.0)로 투영하여 블러 소실점 센터 실시간 동기화
+    // 차량 3D 위치를 2D 화면 좌표계(UV: 0.0 ~ 1.0)로 투영하여 블러 소실점 센터를 차량 중심에 정확히 동기화
     if (targetVehicle) {
+      this.camera.updateMatrixWorld();
       this.tempProjPos.copy(targetVehicle.position);
-      this.tempProjPos.y += 0.6; // 차체 중심 높이
+      this.tempProjPos.y += 0.55; // 차체 중심 높이
       this.tempProjPos.project(this.camera);
 
       // 카메라 전방에 있는 경우에만 유효 NDC -> UV 매핑 (후방에 있으면 기본 중앙)
       if (this.tempProjPos.z <= 1.0 && this.tempProjPos.z >= -1.0) {
-        const uvX = THREE.MathUtils.clamp((this.tempProjPos.x + 1.0) * 0.5, 0.25, 0.75);
-        const uvY = THREE.MathUtils.clamp((this.tempProjPos.y + 1.0) * 0.5, 0.25, 0.75);
+        const uvX = THREE.MathUtils.clamp((this.tempProjPos.x + 1.0) * 0.5, 0.15, 0.85);
+        const uvY = THREE.MathUtils.clamp((this.tempProjPos.y + 1.0) * 0.5, 0.15, 0.85);
         this.blurPass.uniforms.uCenter.value.set(uvX, uvY);
       } else {
-        this.blurPass.uniforms.uCenter.value.set(0.5, 0.42);
+        this.blurPass.uniforms.uCenter.value.set(0.5, 0.36);
       }
     } else {
-      this.blurPass.uniforms.uCenter.value.set(0.5, 0.42);
+      this.blurPass.uniforms.uCenter.value.set(0.5, 0.36);
     }
   }
 

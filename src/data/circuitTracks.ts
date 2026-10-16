@@ -12,6 +12,7 @@ export interface TrackMetadata {
   record: string;
   type: string;
   trackWidth: number;
+  bridgeSpan?: [number, number];
   controlPoints: THREE.Vector3[];
 }
 
@@ -114,35 +115,36 @@ export const TRACK_DEFINITIONS: Record<string, TrackMetadata> = {
     record: '01:41.252',
     type: 'ARDENNES ROLLERCOASTER',
     trackWidth: 14.5,
+    bridgeSpan: [0.135, 0.275],            // 하부 도로(t≈0.98) 위를 가로지르는 상부 고가 대교(Overpass Viaduct) 구간
     controlPoints: [
       new THREE.Vector3(-105, 0, 75),      // Start / Finish Line (Pit Straight, 0m)
       new THREE.Vector3(-135, 0, 105),     // Braking for La Source (0m)
-      new THREE.Vector3(-165, 1.5, 135),   // Turn 1 (La Source Hairpin entry, +1.5m)
-      new THREE.Vector3(-180, 3.0, 155),   // La Source apex (+3.0m)
-      new THREE.Vector3(-160, 2.2, 170),   // La Source exit (+2.2m)
-      new THREE.Vector3(-125, 0.6, 140),   // Downhill plunge towards Eau Rouge (+0.6m)
-      new THREE.Vector3(-90, 0, 95),       // Turn 2 (Eau Rouge bottom dip - heavy compression, 0m)
-      new THREE.Vector3(-65, 6.5, 60),     // Turn 3-4 (Raidillon steep uphill wall, +6.5m)
-      new THREE.Vector3(-35, 12.5, 20),    // Kemmel Straight crest entry (+12.5m)
-      new THREE.Vector3(15, 14.5, -45),    // Kemmel Straight mid summit (+14.5m)
+      new THREE.Vector3(-165, 3.8, 135),   // Turn 1 (La Source Hairpin entry climb, +3.8m)
+      new THREE.Vector3(-180, 7.8, 155),   // La Source elevated apex (+7.8m)
+      new THREE.Vector3(-160, 11.5, 170),  // La Source exit onto Viaduct Bridge ramp (+11.5m)
+      new THREE.Vector3(-125, 13.8, 140),  // Entering Spa Overpass Bridge (+13.8m)
+      new THREE.Vector3(-90, 14.8, 95),    // Turn 2 (Spa Overpass Bridge Center Span - 하부 도로 위 14.8m 통과!)
+      new THREE.Vector3(-65, 15.2, 60),    // Turn 3-4 (Bridge exit onto Raidillon high plateau, +15.2m)
+      new THREE.Vector3(-35, 15.6, 20),    // Kemmel Straight crest (+15.6m)
+      new THREE.Vector3(15, 16.0, -45),    // Kemmel Straight mid summit (+16.0m)
       new THREE.Vector3(65, 15.0, -115),   // Kemmel Straight peak braking zone (+15.0m)
-      new THREE.Vector3(95, 13.8, -145),   // Turn 5 (Les Combes right, +13.8m)
-      new THREE.Vector3(120, 12.2, -140),  // Turn 6 (Les Combes left, +12.2m)
-      new THREE.Vector3(145, 10.5, -115),  // Turn 7 (Malmedy right, +10.5m)
-      new THREE.Vector3(135, 8.8, -75),    // Approach to Bruxelles downhill (+8.8m)
-      new THREE.Vector3(150, 6.8, -45),    // Turn 8 (Bruxelles / Rivage 180 deg hairpin, +6.8m)
-      new THREE.Vector3(135, 5.2, -20),    // Bruxelles exit (+5.2m)
-      new THREE.Vector3(110, 4.0, -5),     // Turn 9 (Speaker's Corner left, +4.0m)
-      new THREE.Vector3(85, 2.8, 25),      // Turn 10 (Pouhon fast downhill entry, +2.8m)
-      new THREE.Vector3(95, 1.8, 65),      // Turn 11 (Pouhon double-left apex, +1.8m)
+      new THREE.Vector3(95, 13.5, -145),   // Turn 5 (Les Combes right, +13.5m)
+      new THREE.Vector3(120, 11.8, -140),  // Turn 6 (Les Combes left, +11.8m)
+      new THREE.Vector3(145, 10.0, -115),  // Turn 7 (Malmedy right, +10.0m)
+      new THREE.Vector3(135, 8.2, -75),    // Approach to Bruxelles downhill (+8.2m)
+      new THREE.Vector3(150, 6.2, -45),    // Turn 8 (Bruxelles / Rivage 180 deg hairpin, +6.2m)
+      new THREE.Vector3(135, 4.8, -20),    // Bruxelles exit (+4.8m)
+      new THREE.Vector3(110, 3.5, -5),     // Turn 9 (Speaker's Corner left, +3.5m)
+      new THREE.Vector3(85, 2.2, 25),      // Turn 10 (Pouhon fast downhill entry, +2.2m)
+      new THREE.Vector3(95, 1.5, 65),      // Turn 11 (Pouhon double-left dip compression, +1.5m)
       new THREE.Vector3(80, 2.5, 100),     // Pouhon exit (+2.5m)
-      new THREE.Vector3(65, 3.8, 130),     // Turn 12-13 (Fagnes / Pif-Paf chicane climb, +3.8m)
-      new THREE.Vector3(55, 4.5, 160),     // Turn 14 (Campus right crest, +4.5m)
+      new THREE.Vector3(65, 4.0, 130),     // Turn 12-13 (Fagnes / Pif-Paf chicane climb, +4.0m)
+      new THREE.Vector3(55, 4.8, 160),     // Turn 14 (Campus right crest, +4.8m)
       new THREE.Vector3(40, 3.2, 185),     // Turn 15 (Stavelot apex, +3.2m)
-      new THREE.Vector3(0, 2.2, 180),      // Turn 16 (Courbe Paul Frère, +2.2m)
-      new THREE.Vector3(-40, 1.2, 140),    // Turn 17 (Blanchimont 1 flat-out left descent, +1.2m)
-      new THREE.Vector3(-65, 0.4, 115),    // Turn 18 (Blanchimont 2, +0.4m)
-      new THREE.Vector3(-80, 0, 95),       // Turn 19 (Bus Stop entry, 0m)
+      new THREE.Vector3(0, 2.0, 180),      // Turn 16 (Courbe Paul Frère, +2.0m)
+      new THREE.Vector3(-40, 1.0, 140),    // Turn 17 (Blanchimont 1 flat-out left descent, +1.0m)
+      new THREE.Vector3(-65, 0.2, 115),    // Turn 18 (Blanchimont 2 approaching underpass, +0.2m)
+      new THREE.Vector3(-80, 0, 95),       // Turn 19 (Bus Stop Underpass beneath the Overpass Bridge, 0m)
       new THREE.Vector3(-90, 0, 85),       // Turn 20 (Bus Stop exit onto pit straight, 0m)
     ],
   },

@@ -55,12 +55,13 @@ export class CircuitDecorations {
 
         const quadGeom = new THREE.BufferGeometry();
         quadGeom.setAttribute('position', new THREE.Float32BufferAttribute([
-          p1.x, p1.y + 0.08, p1.z,
-          p2.x, p2.y + 0.08, p2.z,
-          p3.x, p3.y + 0.08, p3.z,
-          p4.x, p4.y + 0.08, p4.z
+          p1.x, Math.max(0, p1.y) + 0.095, p1.z,
+          p2.x, Math.max(0, p2.y) + 0.095, p2.z,
+          p3.x, Math.max(0, p3.y) + 0.095, p3.z,
+          p4.x, Math.max(0, p4.y) + 0.095, p4.z
         ], 3));
         quadGeom.setIndex([0, 1, 2, 1, 3, 2]);
+
         quadGeom.computeVertexNormals();
         const blockMesh = new THREE.Mesh(quadGeom, mat);
         group.add(blockMesh);
@@ -124,12 +125,13 @@ export class CircuitDecorations {
 
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.Float32BufferAttribute([
-      p1.x, p1.y + 0.08, p1.z,
-      p2.x, p2.y + 0.08, p2.z,
-      p3.x, p3.y + 0.08, p3.z,
-      p4.x, p4.y + 0.08, p4.z
+      p1.x, Math.max(0, p1.y) + 0.095, p1.z,
+      p2.x, Math.max(0, p2.y) + 0.095, p2.z,
+      p3.x, Math.max(0, p3.y) + 0.095, p3.z,
+      p4.x, Math.max(0, p4.y) + 0.095, p4.z
     ], 3));
     geom.setIndex([0, 1, 2, 1, 3, 2]);
+
     geom.computeVertexNormals();
 
     return new THREE.Mesh(geom, mat);
@@ -180,11 +182,12 @@ export class CircuitDecorations {
       const rightInner = new THREE.Vector3().copy(pt).addScaledVector(right, halfWidth);
       const rightOuter = new THREE.Vector3().copy(pt).addScaledVector(right, halfWidth + curbWidth);
 
+      const safeY = Math.max(0, pt.y);
       positions.push(
-        leftInner.x, pt.y + curbHeight, leftInner.z,
-        leftOuter.x, pt.y + 0.06, leftOuter.z,
-        rightInner.x, pt.y + curbHeight, rightInner.z,
-        rightOuter.x, pt.y + 0.06, rightOuter.z
+        leftInner.x, safeY + curbHeight + 0.08, leftInner.z,
+        leftOuter.x, safeY + 0.085, leftOuter.z,
+        rightInner.x, safeY + curbHeight + 0.08, rightInner.z,
+        rightOuter.x, safeY + 0.085, rightOuter.z
       );
       colors.push(r, g, b, r, g, b, r, g, b, r, g, b);
 
@@ -204,9 +207,9 @@ export class CircuitDecorations {
         // 다리(Overpass Bridge) 구간: 하부 통과 도로를 막지 않도록 지면(0m) 대신 상판 하부(pt.y - 1.25m)까지만 박스 거더 생성
         const deckBottomY = Math.max(0.2, pt.y - 1.25);
         skirtPos.push(
-          leftOuter.x, pt.y + 0.05, leftOuter.z,
+          leftOuter.x, safeY + 0.08, leftOuter.z,
           leftOuter.x, deckBottomY, leftOuter.z,
-          rightOuter.x, pt.y + 0.05, rightOuter.z,
+          rightOuter.x, safeY + 0.08, rightOuter.z,
           rightOuter.x, deckBottomY, rightOuter.z
         );
       } else {
@@ -215,12 +218,13 @@ export class CircuitDecorations {
         const leftBase = new THREE.Vector3().copy(leftOuter).addScaledVector(right, -spread);
         const rightBase = new THREE.Vector3().copy(rightOuter).addScaledVector(right, spread);
         skirtPos.push(
-          leftOuter.x, pt.y + 0.05, leftOuter.z,
-          leftBase.x, 0, leftBase.z,
-          rightOuter.x, pt.y + 0.05, rightOuter.z,
-          rightBase.x, 0, rightBase.z
+          leftOuter.x, safeY + 0.08, leftOuter.z,
+          leftBase.x, -0.05, leftBase.z,
+          rightOuter.x, safeY + 0.08, rightOuter.z,
+          rightBase.x, -0.05, rightBase.z
         );
       }
+
 
       // 다리 시작/끝 경계에서는 수직 절단면이 꼬이지 않도록 동일 속성 구간끼리만 스커트 연결
       if (isBridge === isNextBridge) {
@@ -333,8 +337,10 @@ export class CircuitDecorations {
     });
     const ground = new THREE.Mesh(groundGeom, groundMat);
     ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.02; // 잔디 대지를 도로/연석(+0.08m)보다 낮게 배치하여 잔디 침범 원천 방지
     ground.receiveShadow = true;
     group.add(ground);
+
 
     return group;
   }

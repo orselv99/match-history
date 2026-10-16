@@ -52,9 +52,7 @@ const RadialBlurShader = {
       float maskDist = length(maskVec);
 
       float blurMask = smoothstep(0.07, 0.34, maskDist);
-      // 하늘/상공 영역은 방사형 모션 블러를 완전히 제외하여 별과 달이 떨어지는 광선처럼 왜곡되는 현상 원천 차단
-      float skyAttenuation = smoothstep(uCenter.y + 0.18, uCenter.y + 0.02, vUv.y);
-      float totalStrength = pow(uStrength, 1.25) * blurMask * 0.20 * skyAttenuation;
+      float totalStrength = pow(uStrength, 1.25) * blurMask * 0.20;
 
       float sampleCount = float(clamp(uSamples, 4, 16));
       vec2 stepVec = (toCenter / sampleCount) * totalStrength;
@@ -73,16 +71,17 @@ const RadialBlurShader = {
       }
       accumColor /= sampleCount;
 
-      // 2. 차량 중심 방사형 미세 광학 색수차 (165km/h 이상 초고속 시, 지면 및 장애물 영역 한정)
-      if (uEnableChrom > 0.5 && uStrength > 0.58 && skyAttenuation > 0.05) {
+      // 2. 차량 중심 방사형 미세 광학 색수차 (165km/h 이상 초고속 시)
+      if (uEnableChrom > 0.5 && uStrength > 0.58) {
         float chromFactor = (uStrength - 0.58) / 0.42;
-        float chromOffset = maskDist * chromFactor * 0.007 * blurMask * skyAttenuation;
+        float chromOffset = maskDist * chromFactor * 0.007 * blurMask;
         vec2 chromDir = normalize(toCenter + vec2(0.0001));
         float r = texture2D(tDiffuse, clamp(vUv + chromDir * chromOffset, 0.0, 1.0)).r;
         float b = texture2D(tDiffuse, clamp(vUv - chromDir * chromOffset, 0.0, 1.0)).b;
         accumColor.r = mix(accumColor.r, r, 0.32);
         accumColor.b = mix(accumColor.b, b, 0.32);
       }
+
 
       vec3 finalColor = accumColor.rgb;
 
@@ -206,9 +205,9 @@ export class SpeedFX {
   }
 
   public isActive(): boolean {
-    if (this.quality === 'OFF') return false;
-    return this.smoothStrength > 0.005;
+    return this.quality !== 'OFF';
   }
+
 
   public render(): void {
     this.composer.render();

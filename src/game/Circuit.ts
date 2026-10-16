@@ -140,9 +140,11 @@ export class Circuit {
       const leftPos = new THREE.Vector3().copy(pt).addScaledVector(right, -halfWidth);
       const rightPos = new THREE.Vector3().copy(pt).addScaledVector(right, halfWidth);
 
-      // 3D 고도(pt.y) 반영 + 0.05m 오프셋으로 평지 지면과 z-fighting 방지
-      positions.push(leftPos.x, pt.y + 0.05, leftPos.z);
-      positions.push(rightPos.x, pt.y + 0.05, rightPos.z);
+      // 3D 고도(pt.y) 반영: 음수 오버슈트 방지 및 지면(+0.08m) 상시 돌출로 잔디 침범 원천 방지
+      const roadY = Math.max(0, pt.y) + 0.08;
+      positions.push(leftPos.x, roadY, leftPos.z);
+      positions.push(rightPos.x, roadY, rightPos.z);
+
 
       const u = (i / segments) * 20;
       uvs.push(0, u, 1, u);
@@ -205,8 +207,9 @@ export class Circuit {
         const pOuter = new THREE.Vector3().copy(curr).addScaledVector(rgt, outerDist);
         const pInner = new THREE.Vector3().copy(curr).addScaledVector(rgt, innerDist);
 
-        pos.push(pOuter.x, curr.y + 0.085, pOuter.z);
-        pos.push(pInner.x, curr.y + 0.085, pInner.z);
+        const lineY = Math.max(0, curr.y) + 0.095;
+        pos.push(pOuter.x, lineY, pOuter.z);
+        pos.push(pInner.x, lineY, pInner.z);
 
         const v0 = i * 2;
         const v1 = i * 2 + 1;
@@ -243,8 +246,10 @@ export class Circuit {
         const pOuter = new THREE.Vector3().copy(curr).addScaledVector(rgt, outerDist);
         const pInner = new THREE.Vector3().copy(curr).addScaledVector(rgt, innerDist);
 
-        pos.push(pInner.x, curr.y + 0.085, pInner.z);
-        pos.push(pOuter.x, curr.y + 0.085, pOuter.z);
+        const lineY = Math.max(0, curr.y) + 0.095;
+        pos.push(pInner.x, lineY, pInner.z);
+        pos.push(pOuter.x, lineY, pOuter.z);
+
 
         const v0 = i * 2;
         const v1 = i * 2 + 1;
@@ -285,10 +290,10 @@ export class Circuit {
         const p4 = new THREE.Vector3().copy(next).addScaledVector(rgt, halfW);
 
         cPos.push(
-          p1.x, curr.y + 0.085, p1.z,
-          p2.x, curr.y + 0.085, p2.z,
-          p3.x, next.y + 0.085, p3.z,
-          p4.x, next.y + 0.085, p4.z
+          p1.x, Math.max(0, curr.y) + 0.095, p1.z,
+          p2.x, Math.max(0, curr.y) + 0.095, p2.z,
+          p3.x, Math.max(0, next.y) + 0.095, p3.z,
+          p4.x, Math.max(0, next.y) + 0.095, p4.z
         );
         cIdx.push(cVertexIdx, cVertexIdx + 1, cVertexIdx + 2, cVertexIdx + 1, cVertexIdx + 3, cVertexIdx + 2);
         cVertexIdx += 4;
@@ -330,9 +335,10 @@ export class Circuit {
       .copy(startPt)
       .addScaledVector(tangent, localZ)
       .addScaledVector(localXDir, localX);
-    position.y = Math.max(0, startPt.y) + 0.055;
+    position.y = Math.max(0, startPt.y) + 0.08;
 
     return { position, heading };
+
   }
 
   private setupCheckpoints(): void {
@@ -422,7 +428,7 @@ export class Circuit {
     const normTz = tz / tLen;
 
     const roadEdge = halfWidth + 1.3;
-    const onCircuitY = Math.max(0, closestY) + 0.055;
+    const onCircuitY = Math.max(0, closestY) + 0.08;
 
     let groundY: number;
     let slopeSin: number;
@@ -431,7 +437,7 @@ export class Circuit {
       // 고가/언덕 구간: 하부 지면에서 상부 도로 옹벽으로 비정상 등판 원천 차단
       const isBelowStructure = pos.y < (closestY - 1.8) && distFromCenter > roadEdge;
       if (isBelowStructure) {
-        groundY = 0.02;
+        groundY = 0.035;
         slopeSin = 0;
       } else if (distFromCenter <= roadEdge + 0.6) {
         groundY = onCircuitY;
@@ -441,15 +447,16 @@ export class Circuit {
         const cosAlign = (fwdX * normTx + fwdZ * normTz) / horizLen;
         slopeSin = normTy * cosAlign;
       } else {
-        // 고가 이탈 시 지면(0m)으로 낙하
+        // 고가 이탈 시 지면(-0.02m)으로 낙하
         const dropBlend = THREE.MathUtils.clamp((distFromCenter - (roadEdge + 0.6)) / 1.5, 0, 1);
-        groundY = THREE.MathUtils.lerp(onCircuitY, 0.02, dropBlend);
+        groundY = THREE.MathUtils.lerp(onCircuitY, 0.035, dropBlend);
         slopeSin = 0;
       }
     } else {
       // 평지 일반 코스
       const offroadBlend = THREE.MathUtils.clamp((distFromCenter - roadEdge) / 3.0, 0, 1);
-      groundY = THREE.MathUtils.lerp(onCircuitY, 0.02, offroadBlend);
+      groundY = THREE.MathUtils.lerp(onCircuitY, 0.035, offroadBlend);
+
       const horizLen = Math.hypot(normTx, normTz) || 1;
       const fwdX = Math.sin(heading);
       const fwdZ = Math.cos(heading);

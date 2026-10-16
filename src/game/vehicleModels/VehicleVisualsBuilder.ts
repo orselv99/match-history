@@ -28,7 +28,9 @@ export function createLensGlowSprite(): THREE.Sprite {
     ctx.fill();
   }
   const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   const mat = new THREE.SpriteMaterial({
+
     map: tex,
     transparent: true,
     blending: THREE.AdditiveBlending,
@@ -90,7 +92,9 @@ export function createGroundBeamMesh(): THREE.Mesh {
     ctx.restore();
   }
   const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   const geom = new THREE.PlaneGeometry(8.5, 32);
+
   geom.rotateX(-Math.PI / 2);
   geom.translate(0, 0.04, 16.5);
 

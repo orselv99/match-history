@@ -14,11 +14,11 @@ export function buildPitComplex(materials: StructureMaterials, circuitWidth: num
   const halfW = circuitWidth / 2;
   const pitBaseX = -(halfW + 3.0);
   const pitLength = 46.0;
-  const pitZ = 34.0; // Z: 11.0 ~ 57.0 (메인 스트레이트 구간에 안전 배치하여 마지막 코너 간섭 배제)
+  const pitZ = 0.0; // 트랙 전용 앵커 프레임 기준 Z=0 중심 대칭 배치
 
   // A. 피트 월 (트랙과 피트 레인 분리 방호벽)
   const pitWallLength = 32.0;
-  const pitWallZ = 30.0; // Z: 14.0 ~ 46.0
+  const pitWallZ = 0.0;
   const pitWallGeom = new THREE.BoxGeometry(0.7, 1.15, pitWallLength);
   const pitWall = new THREE.Mesh(pitWallGeom, materials.concreteMat);
   pitWall.position.set(pitBaseX + 1.2, 0.575, pitWallZ);

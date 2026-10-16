@@ -76,7 +76,7 @@ export class Vehicle {
   // 스펙 상수 (가변)
   private MAX_SPEED_MS = 58.3; // 약 210 km/h
   private REVERSE_MAX_SPEED_MS = -12.0; // 약 -43 km/h
-  private ACCELERATION = 14.0; // m/s^2
+  private ACCELERATION = 15.5; // m/s^2 (강력한 발진 가속)
   private BRAKING = 26.0; // m/s^2
   private DRAG = 0.45; // 공기 저항
   private readonly OFFROAD_DRAG = 2.5; // 오프로드 잔디 저항
@@ -180,7 +180,7 @@ export class Vehicle {
 
     if (throttle > 0) {
       // 현실적인 고출력 터보 엔진 토크 곡선: 저속 폭발 가속 + 고속 지속 견인
-      const powerCurve = Math.max(0.42, 1.0 - topSpeedRatio * 0.58);
+      const powerCurve = Math.max(0.48, 1.0 - topSpeedRatio * 0.52);
       appliedAccel += throttle * this.ACCELERATION * powerCurve;
     }
 
@@ -284,29 +284,33 @@ export class Vehicle {
       // 언덕 마루(Crest) 고속 통과 후 체공 상태: 중력 가속도로 낙하
       this.verticalVelocity -= 26.0 * delta;
       this.position.y += this.verticalVelocity * delta;
-    }
-
-    if (this.position.y <= targetGroundY + 0.04) {
-      // 착지 또는 급경사 변곡점(Eau Rouge 등 Dip) 진입 시 수직 충격량 계산
+      if (this.position.y <= targetGroundY) {
+        this.position.y = targetGroundY;
+        this.verticalVelocity = surfaceVerticalRate;
+      }
+    } else {
+      // 착지 또는 노면 밀착 주행: 즉각적인 고도 추종 및 아스팔트 하한선 보장
       const impactVel = surfaceVerticalRate - this.verticalVelocity;
       if (impactVel > 1.8 && Math.abs(this.speed) > 8.0) {
         const shock = Math.min(1.0, (impactVel - 1.8) / 7.5);
         this.suspensionVelocity -= shock * 2.6;
-        // 강한 착지/바닥 압축 시 하부 마찰로 인한 미세 감속
         if (shock > 0.35) {
           this.speed *= (1.0 - shock * 0.03);
         }
         this.lastLandingImpact = shock;
       }
-      this.position.y += (targetGroundY - this.position.y) * Math.min(1.0, 22.0 * delta);
+      this.position.y = targetGroundY;
       this.verticalVelocity = surfaceVerticalRate;
     }
+
+    // 도로 관통 원천 차단
+    this.position.y = Math.max(targetGroundY, this.position.y);
 
     // 스프링-댐퍼 서스펜션 바운스 시뮬레이션
     this.suspensionVelocity += (-115.0 * this.suspensionOffset - 14.0 * this.suspensionVelocity) * delta;
     this.suspensionOffset = THREE.MathUtils.clamp(
       this.suspensionOffset + this.suspensionVelocity * delta,
-      -0.14,
+      -0.08,
       0.10
     );
 
@@ -314,11 +318,13 @@ export class Vehicle {
     const dynamicPitch = (brake * 0.035) - (throttle * 0.022) - (this.suspensionVelocity * 0.016);
     const targetPitch = roadPitch + dynamicPitch;
     this.pitch += (targetPitch - this.pitch) * Math.min(1.0, 14.0 * delta);
+    this.pitch = THREE.MathUtils.clamp(this.pitch, -0.32, 0.32);
 
-    // 4. 3D 메시 Transform 적용 (YXZ 오일러 순서로 Yaw -> Pitch -> Roll 정확히 반영)
+    // 4. 3D 메시 Transform 적용 (바퀴와 차체가 도로 속으로 파묻히지 않도록 노면 하한선 강제 클램핑)
+    const visualY = Math.max(targetGroundY, this.position.y + Math.max(-0.03, this.suspensionOffset));
     this.mesh.position.set(
       this.position.x,
-      this.position.y + this.suspensionOffset,
+      visualY,
       this.position.z
     );
     this.mesh.rotation.order = 'YXZ';

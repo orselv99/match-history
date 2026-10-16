@@ -27,16 +27,16 @@ export function buildArchGate(
   rightPillar.position.copy(new THREE.Vector3().addScaledVector(right, halfW));
   rightPillar.position.y = 3;
 
-  // 상단 듀얼 빔 (y=4.9, y=5.8): 피니시는 로즈(0xc45a72), 일반 섹터는 스카이블루(0x7dd3fc)
-  const beamGeom = new THREE.BoxGeometry(circuitWidth + 4, 0.35, 0.75);
-  const beamColor = isFinish ? 0xc45a72 : 0x7dd3fc;
-  const beamEmissive = isFinish ? 0xc45a72 : 0x38bdf8;
+  // 상단 듀얼 빔 (y=4.9, y=5.8): 고속 모션 블러 환경에서도 즉각 식별 가능한 초고휘도 네온 마젠타 & 네온 라임
+  const beamGeom = new THREE.BoxGeometry(circuitWidth + 4, 0.42, 0.85);
+  const beamColor = isFinish ? 0xff0066 : 0x10b981;
+  const beamEmissive = isFinish ? 0xff0055 : 0x00ff66;
 
   const beamMat = new THREE.MeshStandardMaterial({
     color: beamColor,
     emissive: beamEmissive,
-    emissiveIntensity: 1.4,
-    roughness: 0.3,
+    emissiveIntensity: 4.8,
+    roughness: 0.15,
   });
 
   const beam1 = new THREE.Mesh(beamGeom, beamMat);

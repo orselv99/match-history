@@ -108,7 +108,7 @@ export class OpponentManager {
     this.isAllFinished = false;
 
     const circuitLength = this.circuit.circuitCurve.getLength();
-    const slotDistances = [4.5, 11.5, 18.5, 25.5];
+    const slotDistances = [5.0, 16.0, 27.0, 38.0];
     const slotLanes = [-2.2, 2.2, -2.2, 2.2];
 
     this.raceTimeMs = 0;

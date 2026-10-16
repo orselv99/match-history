@@ -93,15 +93,16 @@ export function simulateOpponentAI(
     dynamicBonus += 4.5;
   }
 
-  // B. 슬립스트림 견인 가속 (전방 38m 이내 추격 시 강력한 가속)
+  // B. 슬립스트림 견인 가속 (전방 38m 이내 추격 시 가속, 10m 이내 동일 차선 충돌 방지)
   agent.isDrafting = false;
-  if (vehicleAhead && nearestAheadDist < 38.0) {
+  const isSameLaneAsAhead = vehicleAhead ? Math.abs(agent.laneOffset - vehicleAhead.laneOffset) < 1.8 : false;
+  if (vehicleAhead && nearestAheadDist < 38.0 && (!isSameLaneAsAhead || nearestAheadDist >= 10.0)) {
     agent.isDrafting = true;
     const draftFactor = 1.0 - (nearestAheadDist / 38.0);
-    dynamicBonus += 3.2 + draftFactor * 5.8;
+    dynamicBonus += 2.5 + draftFactor * 5.0;
 
-    // C. 능동적 추월 차선 기동 (20m 이내 접근 시 후미 추돌 방지 및 슬링샷 스위칭)
-    if (nearestAheadDist < 20.0) {
+    // C. 능동적 추월 차선 기동 (24m 이내 접근 시 후미 추돌 방지 및 신속한 슬링샷 스위칭)
+    if (nearestAheadDist < 24.0) {
       // 코너 선회 중이면 인코너 다이브, 직선주로면 반대 차선 추월
       if (turnDir !== 0) {
         agent.targetLaneOffset = turnDir > 0 ? 2.4 : -2.4;
@@ -181,13 +182,14 @@ export function simulateOpponentAI(
     ? basePace * 0.76
     : (curveAngle > 0.12 ? basePace * 0.90 : basePace * 1.18);
 
-  // 동일 차선 전방 차량 근접 시 후미 추돌 완충 감속 (안전 차간 거리 유지)
-  if (vehicleAhead && nearestAheadDist < 8.0 && Math.abs(agent.laneOffset - vehicleAhead.laneOffset) < 1.8) {
-    targetSpeed = Math.min(targetSpeed, Math.max(8.0, vehicleAhead.speedMs * 0.94));
+  // 동일 차선 전방 차량 근접 시 후미 추돌 완충 감속 (안전 차간 거리 적극 유지)
+  if (vehicleAhead && nearestAheadDist < 16.0 && Math.abs(agent.laneOffset - vehicleAhead.laneOffset) < 1.9) {
+    const safetyPace = nearestAheadDist < 7.0 ? vehicleAhead.speedMs * 0.82 : vehicleAhead.speedMs * 0.94;
+    targetSpeed = Math.min(targetSpeed, Math.max(0, safetyPace));
   }
 
-  // 가속 반응성: 출발 그리드 급발진 방지(저속 8.5 m/s²) 및 고속 드래프팅 12.5 m/s²
-  const maxAccel = agent.isDrafting ? 12.5 : (agent.attackTimer > 0 ? 11.0 : (agent.speedMs < 14.0 ? 8.5 : 10.0));
+  // 가속 반응성: 출발 그리드 급발진 방지(저속 5.8 m/s²) 및 고속 드래프팅 12.0 m/s²
+  const maxAccel = agent.isDrafting ? 12.0 : (agent.attackTimer > 0 ? 10.5 : (agent.speedMs < 15.0 ? 5.8 : 9.8));
   const maxBrake = 24.0;
   const speedDelta = targetSpeed - agent.speedMs;
 

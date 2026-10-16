@@ -513,10 +513,10 @@ export class Game {
       this.cameraController.triggerShake(this.playerVehicle.lastLandingImpact * 0.45);
     }
 
-    // 오프로드 2초 이상 이탈 시 서킷 복귀 안내 토스트 표시
+    // 오프로드 3초 이상 이탈 시 서킷 복귀 안내 토스트 표시
     if (isOffroad && isRunning) {
       this.offroadTimer += delta;
-      if (this.offroadTimer >= 2.0 && !this.offroadHintShown) {
+      if (this.offroadTimer >= 3.0 && !this.offroadHintShown) {
         this.offroadHintShown = true;
         showToast('⚠️ 서킷 이탈! [R] 키를 누르면 트랙으로 즉시 복귀합니다.', 4000);
       }
@@ -1145,8 +1145,7 @@ export class Game {
   }
 
   private updateNameTags(): void {
-    const isPhotoMode = document.body.classList.contains('in-photo-mode');
-    const allowNametags = this.showNametagsSetting && !isPhotoMode;
+    const allowNametags = this.showNametagsSetting;
     const focused = this.getFocusedVehicle();
 
     // 상대 및 리플레이 경쟁 차량들: 카메라가 포커싱 중인 차량을 제외한 나머지 활성 차량 상단에 이름 표시

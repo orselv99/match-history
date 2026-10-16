@@ -11,8 +11,8 @@ import type { StructureMaterials } from './types.ts';
 export function buildControlTower(materials: StructureMaterials, circuitWidth: number): THREE.Group {
   const towerGroup = new THREE.Group();
   const halfW = circuitWidth / 2;
-  const towerX = -(halfW + 10.5);
-  const towerZ = 5.0; // 출발선 통과 직후 메인 스트레이트 초입에 배치하여 마지막 코너 간섭 원천 배제
+  const towerX = -(halfW + 6.5);
+  const towerZ = 0.0; // 앵커 프레임 기준 Z=0 중심 대칭 배치
 
   // 타워 1~3층 메인 본체
   const towerBodyGeom = new THREE.BoxGeometry(6.8, 11.0, 6.8);

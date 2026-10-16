@@ -68,9 +68,9 @@ export class CircuitDecorations {
     // 2) 4개 슬롯 코너 브래킷 「 」 마킹
     const slotConfigs = [
       { distBehind: 5.0, lane: -2.2 },
-      { distBehind: 12.0, lane: 2.2 },
-      { distBehind: 19.0, lane: -2.2 },
-      { distBehind: 26.0, lane: 2.2 },
+      { distBehind: 16.0, lane: 2.2 },
+      { distBehind: 27.0, lane: -2.2 },
+      { distBehind: 38.0, lane: 2.2 },
     ];
 
     const localXDir = new THREE.Vector3(startTangent.z, 0, -startTangent.x).normalize();
@@ -301,32 +301,63 @@ export class CircuitDecorations {
   public static buildCircuitStructures(circuitCurve: THREE.CatmullRomCurve3, circuitWidth: number): THREE.Group {
     const root = new THREE.Group();
 
+    const totalL = circuitCurve.getLength();
+    const materials = createStructureMaterials();
+
+    // 1. 출발선 갠트리 (F1 Start Lights & Race Gantry, t = 0)
     const startPt = circuitCurve.getPointAt(0);
     const startTangent = circuitCurve.getTangentAt(0).normalize();
     const heading = Math.atan2(startTangent.x, startTangent.z);
 
-    const startGroup = new THREE.Group();
-    startGroup.position.copy(startPt);
-    startGroup.rotation.y = heading;
+    const gantryGroup = new THREE.Group();
+    gantryGroup.position.copy(startPt);
+    gantryGroup.rotation.y = heading;
+    gantryGroup.add(buildStartGantry(materials, circuitWidth));
+    root.add(gantryGroup);
 
-    // 공통 구조물 머티리얼 인스턴스화
-    const materials = createStructureMaterials();
+    // 2. 메인 스트레이트 그랜드스탠드 (출발선 통과 28m 지점 트랙 바깥쪽 + 안전펜스 + 맞은편 대형 전광판)
+    {
+      const t = (28.0 / totalL + 1.0) % 1.0;
+      const pt = circuitCurve.getPointAt(t);
+      const tangent = circuitCurve.getTangentAt(t).normalize();
+      const h = Math.atan2(tangent.x, tangent.z);
 
-    // 1. 출발선 갠트리 (F1 Start Lights & Race Gantry)
-    startGroup.add(buildStartGantry(materials, circuitWidth));
+      const gsGroup = new THREE.Group();
+      gsGroup.position.copy(pt);
+      gsGroup.rotation.y = h;
+      gsGroup.add(buildGrandstand(materials, circuitWidth, 52.0, 0.0, true));
+      root.add(gsGroup);
+    }
 
-    // 2. 메인 스트레이트 그랜드스탠드 (Main Straight Grandstand - 출발선 통과 후 Z > 0 구간에 안전 배치)
-    startGroup.add(buildGrandstand(materials, circuitWidth, 52.0, 30.0));
+    // 3. 메인 스트레이트 피트 콤플렉스 (출발선 통과 30m 지점 트랙 외곽 -X)
+    {
+      const t = (30.0 / totalL + 1.0) % 1.0;
+      const pt = circuitCurve.getPointAt(t);
+      const tangent = circuitCurve.getTangentAt(t).normalize();
+      const h = Math.atan2(tangent.x, tangent.z);
 
-    // 3. 메인 스트레이트 피트 콤플렉스 (Pit Building & Pit Wall & Pit Lane - 메인 스트레이트 Z=34m)
-    startGroup.add(buildPitComplex(materials, circuitWidth));
+      const pitGroup = new THREE.Group();
+      pitGroup.position.copy(pt);
+      pitGroup.rotation.y = h;
+      pitGroup.add(buildPitComplex(materials, circuitWidth));
+      root.add(pitGroup);
+    }
 
-    // 4. 레이스 컨트롤 타워 (Race Control Tower & Timing Board - 출발선 통과 직후 Z=5m)
-    startGroup.add(buildControlTower(materials, circuitWidth));
+    // 4. 레이스 컨트롤 타워 (출발선 통과 5m 지점 트랙 외곽 -X)
+    {
+      const t = (5.0 / totalL + 1.0) % 1.0;
+      const pt = circuitCurve.getPointAt(t);
+      const tangent = circuitCurve.getTangentAt(t).normalize();
+      const h = Math.atan2(tangent.x, tangent.z);
 
-    root.add(startGroup);
+      const towerGroup = new THREE.Group();
+      towerGroup.position.copy(pt);
+      towerGroup.rotation.y = h;
+      towerGroup.add(buildControlTower(materials, circuitWidth));
+      root.add(towerGroup);
+    }
 
-    // 5. 서킷 중간 주요 섹터(S1, S2, 고속 코너) 외곽 그랜드스탠드 추가 (코스 횡함 해소)
+    // 5. 서킷 중간 주요 섹터(S1, S2, 고속 코너) 외곽 그랜드스탠드 추가 (코스 횡함 해소 및 전광판 설치)
     const intermediateTs = [0.28, 0.55, 0.82];
     intermediateTs.forEach((t) => {
       const pt = circuitCurve.getPointAt(t);
@@ -337,8 +368,8 @@ export class CircuitDecorations {
       sectorGroup.position.copy(pt);
       sectorGroup.rotation.y = h;
 
-      // 중간 관중석은 길이 38m, Z=0 중심으로 트랙 바깥쪽에 배치
-      sectorGroup.add(buildGrandstand(materials, circuitWidth, 38.0, 0.0));
+      // 중간 관중석은 길이 38m, 안전펜스 및 맞은편 전광판과 함께 트랙 외곽에 배치
+      sectorGroup.add(buildGrandstand(materials, circuitWidth, 38.0, 0.0, true));
       root.add(sectorGroup);
     });
 

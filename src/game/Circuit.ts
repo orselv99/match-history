@@ -284,7 +284,7 @@ export class Circuit {
    * 스타팅 그리드 슬롯 인덱스(0: Pole, 1, 2, 3)의 위치 및 헤딩각 반환
    */
   public getGridPosition(slotIndex: number): { position: THREE.Vector3; heading: number } {
-    const slotDistances = [-5.0, -12.0, -19.0, -26.0];
+    const slotDistances = [-5.0, -16.0, -27.0, -38.0];
     const slotLanes = [-2.2, 2.2, -2.2, 2.2];
 
     const distZ = slotDistances[Math.min(3, Math.max(0, slotIndex))] ?? -5.0;
@@ -397,22 +397,44 @@ export class Circuit {
     const normTy = ty / tLen;
     const normTz = tz / tLen;
 
-    // 서킷 연석 바깥(오프로드 성토 사면)으로 벗어날 경우 지면(0m)으로 부드럽게 고도 감쇠
     const roadEdge = halfWidth + 1.3;
-    const offroadBlend = THREE.MathUtils.clamp((distFromCenter - roadEdge) / 2.2, 0, 1);
-
     const onCircuitY = Math.max(0, closestY) + 0.055;
-    const groundY = THREE.MathUtils.lerp(onCircuitY, 0.02, offroadBlend);
 
-    // 차량 진행 방향과 서킷 수평 접선의 정렬도에 따른 실제 체감 경사(sin θ) 계산
-    const horizLen = Math.hypot(normTx, normTz) || 1;
-    const fwdX = Math.sin(heading);
-    const fwdZ = Math.cos(heading);
-    const cosAlign = (fwdX * normTx + fwdZ * normTz) / horizLen;
+    let groundY: number;
+    let slopeSin: number;
 
-    const slopeSin = normTy * cosAlign * (1 - offroadBlend);
+    if (closestY > 1.0) {
+      // 고가/언덕 구간: 하부 지면에서 상부 도로 옹벽으로 비정상 등판 원천 차단
+      const isBelowStructure = pos.y < (closestY - 1.8) && distFromCenter > roadEdge;
+      if (isBelowStructure) {
+        groundY = 0.02;
+        slopeSin = 0;
+      } else if (distFromCenter <= roadEdge + 0.6) {
+        groundY = onCircuitY;
+        const horizLen = Math.hypot(normTx, normTz) || 1;
+        const fwdX = Math.sin(heading);
+        const fwdZ = Math.cos(heading);
+        const cosAlign = (fwdX * normTx + fwdZ * normTz) / horizLen;
+        slopeSin = normTy * cosAlign;
+      } else {
+        // 고가 이탈 시 지면(0m)으로 낙하
+        const dropBlend = THREE.MathUtils.clamp((distFromCenter - (roadEdge + 0.6)) / 1.5, 0, 1);
+        groundY = THREE.MathUtils.lerp(onCircuitY, 0.02, dropBlend);
+        slopeSin = 0;
+      }
+    } else {
+      // 평지 일반 코스
+      const offroadBlend = THREE.MathUtils.clamp((distFromCenter - roadEdge) / 3.0, 0, 1);
+      groundY = THREE.MathUtils.lerp(onCircuitY, 0.02, offroadBlend);
+      const horizLen = Math.hypot(normTx, normTz) || 1;
+      const fwdX = Math.sin(heading);
+      const fwdZ = Math.cos(heading);
+      const cosAlign = (fwdX * normTx + fwdZ * normTz) / horizLen;
+      slopeSin = normTy * cosAlign * (1 - offroadBlend);
+    }
+
     // Three.js 로컬 +Z 전면 기준 오르막(slopeSin > 0)일 때 rotation.x < 0 이 되어야 노즈가 들림
-    const roadPitch = -Math.asin(THREE.MathUtils.clamp(slopeSin, -0.45, 0.45));
+    const roadPitch = -Math.asin(THREE.MathUtils.clamp(slopeSin, -0.32, 0.32));
 
     return {
       distFromCenter,

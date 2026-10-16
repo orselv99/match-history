@@ -1,4 +1,4 @@
-import { RawReplayTick } from './ReplayTypes.ts';
+import type { RawReplayTick } from './ReplayTypes.ts';
 import { Vehicle } from '../game/Vehicle.ts';
 
 /**
@@ -46,7 +46,7 @@ export class ReplayRecorder {
         y: Number(vehicle.position.y.toFixed(3)),
         z: Number(vehicle.position.z.toFixed(3)),
         yaw: Number(vehicle.heading.toFixed(4)),
-        pitch: 0,
+        pitch: Number(vehicle.pitch.toFixed(4)),
         roll: Number(vehicle.mesh.rotation.z.toFixed(4)),
         speedKmh: Number(vehicle.getSpeedKmh().toFixed(1)),
         steer: Number(steerInput.toFixed(2)),
@@ -60,6 +60,7 @@ export class ReplayRecorder {
               y: Number(opp.position.y.toFixed(3)),
               z: Number(opp.position.z.toFixed(3)),
               yaw: Number(opp.heading.toFixed(4)),
+              pitch: Number(opp.pitch.toFixed(4)),
               speedKmh: Number(opp.getSpeedKmh().toFixed(1)),
               isDrifting: opp.isDrifting,
             }))

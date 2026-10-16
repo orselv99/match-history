@@ -146,6 +146,9 @@ export class SkidMarkManager {
       const wheels = vehicle.getRearWheelWorldPositions();
       const leftWheelPos = wheels.left;
       const rightWheelPos = wheels.right;
+      // 3D 고저차 노면 바로 위(+0.012m)에 스키드마크가 밀착되도록 Y좌표 동기화
+      leftWheelPos.y = vehicle.position.y + 0.012;
+      rightWheelPos.y = vehicle.position.y + 0.012;
 
       let last = this.lastPoints.get(vehicle);
       if (!last) {
@@ -158,8 +161,8 @@ export class SkidMarkManager {
           const distL = leftWheelPos.distanceTo(last.leftPos);
           if (distL > 0.2 && distL < 8.0) {
             // 좌/우 타이어 각각에 대해 스키드 쿼드 생성
-            this.addSkidQuad(last.leftPos, leftWheelPos, tireWidth, markElevation, vehicle.heading);
-            this.addSkidQuad(last.rightPos, rightWheelPos, tireWidth, markElevation, vehicle.heading);
+            this.addSkidQuad(last.leftPos, leftWheelPos, tireWidth);
+            this.addSkidQuad(last.rightPos, rightWheelPos, tireWidth);
 
             last.leftPos.copy(leftWheelPos);
             last.rightPos.copy(rightWheelPos);
@@ -185,9 +188,7 @@ export class SkidMarkManager {
   private addSkidQuad(
     p1: THREE.Vector3,
     p2: THREE.Vector3,
-    width: number,
-    elevation: number,
-    heading: number
+    width: number
   ): void {
     const halfW = width * 0.5;
     // 진행 방향에 수직인 횡방향 벡터
@@ -199,10 +200,10 @@ export class SkidMarkManager {
     const v2 = new THREE.Vector3().copy(p2).addScaledVector(perp, -halfW);
     const v3 = new THREE.Vector3().copy(p2).addScaledVector(perp, halfW);
 
-    v0.y = elevation;
-    v1.y = elevation;
-    v2.y = elevation;
-    v3.y = elevation;
+    v0.y = p1.y;
+    v1.y = p1.y;
+    v2.y = p2.y;
+    v3.y = p2.y;
 
     const baseV = this.quadIndex * 4;
     const pos = this.positions;
@@ -242,7 +243,7 @@ export class SkidMarkManager {
       const backZ = -Math.cos(heading) * 0.4 + (Math.random() - 0.5) * 0.3;
 
       this.smokeParticles.push({
-        pos: new THREE.Vector3(pos.x + (Math.random() - 0.5) * 0.2, 0.15, pos.z + (Math.random() - 0.5) * 0.2),
+        pos: new THREE.Vector3(pos.x + (Math.random() - 0.5) * 0.2, pos.y + 0.1, pos.z + (Math.random() - 0.5) * 0.2),
         vel: new THREE.Vector3(backX * 1.5, 0.8 + Math.random() * 0.8, backZ * 1.5),
         life: 0,
         maxLife: 0.45 + Math.random() * 0.3,

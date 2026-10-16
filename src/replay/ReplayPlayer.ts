@@ -165,9 +165,9 @@ export class ReplayPlayer {
     this.ghostVehicle.position.set(interpX, interpY, interpZ);
     this.ghostVehicle.mesh.position.copy(this.ghostVehicle.position);
 
-    // 회전: 각도 언래핑 후 Slerp 보간
-    const q1 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), t1.yaw);
-    const q2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), t2.yaw);
+    // 회전: YXZ 오일러 각(Yaw, Pitch, Roll)을 쿼터니언 Slerp 보간하여 오르막/내리막 경사 각도까지 복원
+    const q1 = new THREE.Quaternion().setFromEuler(new THREE.Euler(t1.pitch || 0, t1.yaw, t1.roll || 0, 'YXZ'));
+    const q2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(t2.pitch || 0, t2.yaw, t2.roll || 0, 'YXZ'));
     const interpQuat = new THREE.Quaternion().slerpQuaternions(q1, q2, alpha);
 
     this.ghostVehicle.mesh.quaternion.copy(interpQuat);
@@ -175,6 +175,7 @@ export class ReplayPlayer {
     // 카메라 및 HUD 동기화를 위한 물리 변수 갱신
     const euler = new THREE.Euler().setFromQuaternion(interpQuat, 'YXZ');
     this.ghostVehicle.heading = euler.y;
+    this.ghostVehicle.pitch = euler.x;
 
     const interpSpeedKmh = THREE.MathUtils.lerp(t1.speedKmh, t2.speedKmh, alpha);
     this.ghostVehicle.speed = interpSpeedKmh / 3.6;
@@ -200,12 +201,13 @@ export class ReplayPlayer {
         oppVehicle.position.set(oppX, oppY, oppZ);
         oppVehicle.mesh.position.copy(oppVehicle.position);
 
-        const qOpp1 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), opp1.yaw);
-        const qOpp2 = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), opp2.yaw);
+        const qOpp1 = new THREE.Quaternion().setFromEuler(new THREE.Euler(opp1.pitch || 0, opp1.yaw, 0, 'YXZ'));
+        const qOpp2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(opp2.pitch || 0, opp2.yaw, 0, 'YXZ'));
         oppVehicle.mesh.quaternion.slerpQuaternions(qOpp1, qOpp2, alpha);
 
         const eulerOpp = new THREE.Euler().setFromQuaternion(oppVehicle.mesh.quaternion, 'YXZ');
         oppVehicle.heading = eulerOpp.y;
+        oppVehicle.pitch = eulerOpp.x;
 
         const oppSpeedKmh = THREE.MathUtils.lerp(opp1.speedKmh, opp2.speedKmh, alpha);
         oppVehicle.speed = oppSpeedKmh / 3.6;

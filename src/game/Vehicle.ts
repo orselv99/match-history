@@ -36,11 +36,18 @@ export class Vehicle {
   public position: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
   public speed: number = 0; // m/s (1 m/s = 3.6 km/h)
   public heading: number = 0; // Yaw 각도 (라디안)
+  public pitch: number = 0; // Pitch 각도 (라디안, 오르막 음수 / 내리막 양수)
   public slipAngle: number = 0; // 드리프트 시 횡방향 미끄러짐 각도
   public isDrifting: boolean = false;
   public driftStamina: number = 100.0; // 스태미나 (0~100%)
   public isSpinningOut: boolean = false; // 스핀아웃 페널티 상태
   public spinoutTimer: number = 0; // 스핀아웃 지속 타이머
+
+  // 3D 고저차 중력/서스펜션 충격 물리 상태
+  public verticalVelocity: number = 0;
+  public suspensionOffset: number = 0;
+  public suspensionVelocity: number = 0;
+  public lastLandingImpact: number = 0;
 
   // 바퀴 메시 레퍼런스 (회전 및 조향 애니메이션용)
   public frontLeftWheel!: THREE.Mesh;
@@ -80,6 +87,7 @@ export class Vehicle {
     this.isGhost = isGhost;
     this.ghostColor = ghostColor;
     this.currentModelId = initialModel;
+    this.mesh.rotation.order = 'YXZ';
     this.buildCarMesh(isGhost, ghostColor, initialModel);
   }
 
@@ -390,7 +398,7 @@ export class Vehicle {
    * - 슬림한 노즈 콘, 좌우 사이드포드, 드라이버 헤일로(Halo), 노출형 서스펜션 암, 광폭 슬릭 타이어
    */
   /**
-   * 프레임별 물리 시뮬레이션 업데이트
+   * 프레임별 물리 시뮬레이션 업데이트 (3D 고저차 중력 가감속, 체공/착지 압축 충격 및 차체 피치 연동)
    */
   public update(
     delta: number,
@@ -398,9 +406,14 @@ export class Vehicle {
     brake: number,
     steerInput: number,
     handbrake: boolean,
-    isOffroad: boolean
+    isOffroad: boolean,
+    groundY: number = 0.055,
+    slopeSin: number = 0,
+    roadPitch: number = 0
   ): void {
-    // 1. 가속 및 감속 연산
+    this.lastLandingImpact = 0;
+
+    // 1. 가속, 감속 및 경사면 중력 가감속(Gravity Slope Effect) 연산
     let appliedAccel = 0;
     if (throttle > 0) {
       // 속도가 오를수록 가속도 완만하게 감소 (토크 곡선)
@@ -416,20 +429,25 @@ export class Vehicle {
       }
     }
 
+    // 경사면 중력 성분: 오르막(slopeSin > 0) 감속 부하, 내리막(slopeSin < 0) 중력 가속
+    const gravitySlopeAccel = -slopeSin * 18.5;
+    if (Math.abs(this.speed) > 0.3 || throttle > 0) {
+      appliedAccel += gravitySlopeAccel;
+    }
+
     // 오프로드 잔디 감속 또는 기본 공기 저항
     const currentDrag = isOffroad ? this.OFFROAD_DRAG : this.DRAG;
     this.speed += (appliedAccel - Math.sign(this.speed) * (this.speed ** 2 * 0.005 + Math.abs(this.speed) * currentDrag)) * delta;
 
-    // 최고 속도 클램핑
-    const maxAllowedSpeed = isOffroad ? 16.7 : this.MAX_SPEED_MS; // 오프로드 60km/h 제한
+    // 최고 속도 클램핑 (내리막 중력 가속 시 최고속도 보너스 허용, 오르막은 중력 부하 반영)
+    const slopeTopSpeedMod = slopeSin < 0 ? -slopeSin * 26.0 : -slopeSin * 10.0;
+    const maxAllowedSpeed = isOffroad ? 16.7 : (this.MAX_SPEED_MS + slopeTopSpeedMod);
     this.speed = Math.max(this.REVERSE_MAX_SPEED_MS, Math.min(maxAllowedSpeed, this.speed));
 
-    if (Math.abs(this.speed) < 0.05 && throttle === 0 && brake === 0) {
+    if (Math.abs(this.speed) < 0.05 && throttle === 0 && brake === 0 && Math.abs(slopeSin) < 0.02) {
       this.speed = 0;
     }
 
-    // 2. 조향 및 드리프트 연산
-    // 고속일수록 조향각을 줄여 스티어링 락 안정화
     // 2. 스태미나 기반 드리프트 및 스핀아웃 페널티 연산
     const speedRatio = Math.min(1.0, Math.abs(this.speed) / 25.0);
     const steerAngle = steerInput * (0.65 - speedRatio * 0.35);
@@ -452,54 +470,91 @@ export class Vehicle {
       }
     } else if (wantsDrift) {
       if (this.driftStamina <= 0) {
-        // 스태미나 고갈 상태에서 무리한 드리프트 시도 -> 차량 스핀아웃 페널티 발동!
         this.isSpinningOut = true;
         this.spinoutTimer = 1.5;
         this.isDrifting = true;
       } else {
-        // 정상 드리프트: 스태미나 소모 (-26%/s)
         this.isDrifting = true;
         this.driftStamina = Math.max(0, this.driftStamina - 26.0 * delta);
         if (this.driftStamina <= 0) {
-          // 드리프트 도중 스태미나 소진 -> 스핀아웃 즉시 발생!
           this.isSpinningOut = true;
           this.spinoutTimer = 1.5;
         }
       }
     } else {
       this.isDrifting = false;
-      // 드리프트 미사용 시 스태미나 자동 충전 (+24%/s)
       this.driftStamina = Math.min(100.0, this.driftStamina + 24.0 * delta);
     }
 
     if (!this.isSpinningOut) {
       const driftFactor = this.isDrifting ? 2.2 : 1.0;
       const turnRate = steerAngle * (this.speed / 4.0) * driftFactor;
-      // 우회전 시 heading 감소(-), 좌회전 시 heading 증가(+)로 정상 조향
       this.heading -= turnRate * delta;
 
-      // 드리프트 시 차체 슬립 각도
       const targetSlip = this.isDrifting ? steerInput * 0.45 : 0;
       this.slipAngle += (targetSlip - this.slipAngle) * Math.min(1.0, 10.0 * delta);
     }
 
-    // 3. 위치 업데이트 (주행 방향 벡터)
+    // 3. 위치 업데이트 (경사각 코사인 투영 반영 수평 이동 + 수직 중력/서스펜션 물리)
     const moveHeading = this.heading + this.slipAngle;
-    const forwardX = Math.sin(moveHeading);
-    const forwardZ = Math.cos(moveHeading);
+    const cosSlope = Math.sqrt(Math.max(0.75, 1.0 - slopeSin * slopeSin));
+    const forwardX = Math.sin(moveHeading) * cosSlope;
+    const forwardZ = Math.cos(moveHeading) * cosSlope;
 
     this.position.x += forwardX * this.speed * delta;
     this.position.z += forwardZ * this.speed * delta;
 
-    // 지면 접지 서스펜션: 온로드 0.055m 밀착, 오프로드 잔디 진동 반영
-    const targetY = isOffroad
-      ? 0.02 + (Math.random() - 0.5) * 0.008 * Math.min(1.0, Math.abs(this.speed) / 20.0)
-      : 0.055;
-    this.position.y += (targetY - this.position.y) * Math.min(1.0, 18.0 * delta);
+    // 노면 목표 고도 및 주행에 따른 노면 상승/하강 수직 변화율
+    const offroadJitter = isOffroad
+      ? (Math.random() - 0.5) * 0.012 * Math.min(1.0, Math.abs(this.speed) / 20.0)
+      : 0;
+    const targetGroundY = groundY + offroadJitter;
+    const surfaceVerticalRate = this.speed * slopeSin;
 
-    // 4. 3D 메시 Transform 적용
-    this.mesh.position.copy(this.position);
+    if (this.position.y > targetGroundY + 0.04) {
+      // 언덕 마루(Crest) 고속 통과 후 체공 상태: 중력 가속도로 낙하
+      this.verticalVelocity -= 26.0 * delta;
+      this.position.y += this.verticalVelocity * delta;
+    }
+
+    if (this.position.y <= targetGroundY + 0.04) {
+      // 착지 또는 급경사 변곡점(Eau Rouge 등 Dip) 진입 시 수직 충격량 계산
+      const impactVel = surfaceVerticalRate - this.verticalVelocity;
+      if (impactVel > 1.8 && Math.abs(this.speed) > 8.0) {
+        const shock = Math.min(1.0, (impactVel - 1.8) / 7.5);
+        this.suspensionVelocity -= shock * 2.6;
+        // 강한 착지/바닥 압축 시 하부 마찰로 인한 미세 감속
+        if (shock > 0.35) {
+          this.speed *= (1.0 - shock * 0.03);
+        }
+        this.lastLandingImpact = shock;
+      }
+      this.position.y += (targetGroundY - this.position.y) * Math.min(1.0, 22.0 * delta);
+      this.verticalVelocity = surfaceVerticalRate;
+    }
+
+    // 스프링-댐퍼 서스펜션 바운스 시뮬레이션
+    this.suspensionVelocity += (-115.0 * this.suspensionOffset - 14.0 * this.suspensionVelocity) * delta;
+    this.suspensionOffset = THREE.MathUtils.clamp(
+      this.suspensionOffset + this.suspensionVelocity * delta,
+      -0.14,
+      0.10
+    );
+
+    // 차체 피치(Pitch): 도로 경사각 + 가감속 하중 이동(Squat/Dive) + 서스펜션 진동
+    const dynamicPitch = (brake * 0.035) - (throttle * 0.022) - (this.suspensionVelocity * 0.016);
+    const targetPitch = roadPitch + dynamicPitch;
+    this.pitch += (targetPitch - this.pitch) * Math.min(1.0, 14.0 * delta);
+
+    // 4. 3D 메시 Transform 적용 (YXZ 오일러 순서로 Yaw -> Pitch -> Roll 정확히 반영)
+    this.mesh.position.set(
+      this.position.x,
+      this.position.y + this.suspensionOffset,
+      this.position.z
+    );
+    this.mesh.rotation.order = 'YXZ';
     this.mesh.rotation.y = this.heading + this.slipAngle;
+    this.mesh.rotation.x = this.pitch;
 
     // 드리프트/급선회 시 차체 롤링(기울기)
     const targetRoll = steerInput * Math.min(0.08, (Math.abs(this.speed) / 40.0) * 0.08);
@@ -570,17 +625,23 @@ export class Vehicle {
 
   public reset(pos: THREE.Vector3, heading: number = 0): void {
     this.position.copy(pos);
-    if (this.position.y < 0.04 || this.position.y > 0.1) {
+    if (this.position.y < 0.04) {
       this.position.y = 0.055;
     }
     this.speed = 0;
     this.heading = heading;
+    this.pitch = 0;
     this.slipAngle = 0;
     this.isDrifting = false;
     this.driftStamina = 100.0;
     this.isSpinningOut = false;
     this.spinoutTimer = 0;
+    this.verticalVelocity = 0;
+    this.suspensionOffset = 0;
+    this.suspensionVelocity = 0;
+    this.lastLandingImpact = 0;
     this.mesh.position.copy(this.position);
+    this.mesh.rotation.order = 'YXZ';
     this.mesh.rotation.set(0, this.heading, 0);
   }
 

@@ -357,7 +357,8 @@ export class AICarManager {
           }
         }
 
-        const basePace = agent.baseSpeedMs + dynamicBonus;
+        const slopeMod = -currTangent.y * 12.0;
+        const basePace = agent.baseSpeedMs + dynamicBonus + slopeMod;
         const targetSpeed = curveAngle > 0.24
           ? basePace * 0.76
           : (curveAngle > 0.12 ? basePace * 0.90 : basePace * 1.18);
@@ -441,13 +442,18 @@ export class AICarManager {
     const carPos = new THREE.Vector3()
       .copy(pt)
       .addScaledVector(right, agent.laneOffset);
-    carPos.y = 0.055; // 지면 노면 밀착
+    carPos.y = Math.max(0, pt.y) + 0.055; // 3D 트랙 노면 고도 밀착
 
     agent.vehicle.position.copy(carPos);
     agent.vehicle.mesh.position.copy(carPos);
 
     const heading = Math.atan2(tangent.x, tangent.z);
     agent.vehicle.heading = heading;
+
+    const targetPitch = -Math.asin(THREE.MathUtils.clamp(tangent.y, -0.45, 0.45));
+    agent.vehicle.pitch = delta > 0
+      ? agent.vehicle.pitch + (targetPitch - agent.vehicle.pitch) * Math.min(1.0, 14.0 * delta)
+      : targetPitch;
 
     // 드리프트 차체 슬립 각도 및 롤링 반영 (스핀아웃 시 360도 회전 연출)
     let displayHeading = heading;
@@ -462,7 +468,9 @@ export class AICarManager {
       rollZ = agent.vehicle.isDrifting ? agent.steerDir * 0.05 : 0;
     }
 
+    agent.vehicle.mesh.rotation.order = 'YXZ';
     agent.vehicle.mesh.rotation.y = displayHeading;
+    agent.vehicle.mesh.rotation.x = agent.vehicle.pitch;
     agent.vehicle.mesh.rotation.z = rollZ;
     agent.vehicle.speed = agent.speedMs;
 

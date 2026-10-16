@@ -21,6 +21,7 @@ export class CameraController {
     const heading = targetVehicle.heading + targetVehicle.slipAngle;
     const sinH = Math.sin(heading);
     const cosH = Math.cos(heading);
+    const pitchLookOffset = -Math.sin(targetVehicle.pitch) * 3.5;
 
     this.camera.position.set(
       targetVehicle.position.x - sinH * 8.5,
@@ -30,7 +31,7 @@ export class CameraController {
 
     this.cameraLookTarget.set(
       targetVehicle.position.x + sinH * 4.0,
-      targetVehicle.position.y + 1.2,
+      targetVehicle.position.y + 1.2 + pitchLookOffset,
       targetVehicle.position.z + cosH * 4.0
     );
     this.camera.lookAt(this.cameraLookTarget);
@@ -40,6 +41,7 @@ export class CameraController {
     const heading = targetVehicle.heading + targetVehicle.slipAngle;
     const sinH = Math.sin(heading);
     const cosH = Math.cos(heading);
+    const pitchLookOffset = -Math.sin(targetVehicle.pitch) * 3.5;
 
     const targetCamPos = new THREE.Vector3(
       targetVehicle.position.x - sinH * 8.5,
@@ -51,7 +53,7 @@ export class CameraController {
 
     this.cameraLookTarget.set(
       targetVehicle.position.x + sinH * 4.0,
-      targetVehicle.position.y + 1.2,
+      targetVehicle.position.y + 1.2 + pitchLookOffset,
       targetVehicle.position.z + cosH * 4.0
     );
     this.camera.lookAt(this.cameraLookTarget);

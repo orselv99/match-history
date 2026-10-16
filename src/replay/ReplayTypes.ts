@@ -3,6 +3,7 @@ export interface ReplayOpponentState {
   y: number;
   z: number;
   yaw: number;
+  pitch?: number;
   speedKmh: number;
   isDrifting?: boolean;
 }

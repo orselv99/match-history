@@ -634,9 +634,9 @@ export class Game {
     const isRunning = this.raceState === 'RUNNING';
     const isFinished = this.raceState === 'FINISHED';
 
-    // 트랙 이탈 감지 (오프로드 마찰 저항)
-    const distFromCenter = this.track.getDistanceFromCenter(this.playerVehicle.position);
-    const isOffroad = distFromCenter > (this.track.trackWidth / 2 + 1.2);
+    // 트랙 3D 표면 정보 조회 (고도, 종방향 경사율, 노면 피치 각도, 중심선 이탈 거리)
+    const surface = this.track.getTrackSurfaceInfo(this.playerVehicle.position, this.playerVehicle.heading);
+    const isOffroad = surface.distFromCenter > (this.track.trackWidth / 2 + 1.2);
 
     // 레이스 시작 전에는 스로틀 입력 락 (엔진 공회전 RPM만 가능), 완주 시에는 쿨다운 순항
     let activeThrottle = isRunning ? this.input.throttle : 0;
@@ -653,15 +653,24 @@ export class Game {
       activeBrake = this.playerVehicle.speed > 0.2 ? 0.35 : 0;
     }
 
-    // 차량 물리 업데이트
+    // 차량 물리 업데이트 (중력 가감속, 고도 추종, 서스펜션 바운스 반영)
     this.playerVehicle.update(
       delta,
       activeThrottle,
       activeBrake,
       activeSteer,
       isFinished ? false : this.input.handbrake,
-      isOffroad
+      isOffroad,
+      surface.groundY,
+      surface.slopeSin,
+      surface.roadPitch
     );
+
+    // 언덕 정점 통과 후 착지 또는 급격한 오르막 전환(컴프레션) 시 하부 스파크 및 카메라 충격 연출
+    if (this.playerVehicle.lastLandingImpact > 0.3) {
+      this.collisionManager.emitBottomingSparks(this.playerVehicle, this.playerVehicle.lastLandingImpact);
+      this.cameraController.triggerShake(this.playerVehicle.lastLandingImpact * 0.45);
+    }
 
     // 라이벌 AI 차량 업데이트 (3대 그리드 경쟁 및 완주 후 쿨다운 주행)
     this.aiManager.update(delta, isRunning || isFinished);
@@ -826,14 +835,16 @@ export class Game {
       if (leadVehicle.speed > 0) {
         leadVehicle.speed = Math.max(0, leadVehicle.speed - 10.0 * delta);
       }
-      leadVehicle.update(delta, 0, 0, 0, false, false);
+      const leadSurf = this.track.getTrackSurfaceInfo(leadVehicle.position, leadVehicle.heading);
+      leadVehicle.update(delta, 0, 0, 0, false, false, leadSurf.groundY, leadSurf.slopeSin, leadSurf.roadPitch);
 
       this.replayPlayer.opponentVehicles.forEach(opp => {
         if (opp.mesh.visible) {
           if (opp.speed > 0) {
             opp.speed = Math.max(0, opp.speed - 9.0 * delta);
           }
-          opp.update(delta, 0, 0, 0, false, false);
+          const oppSurf = this.track.getTrackSurfaceInfo(opp.position, opp.heading);
+          opp.update(delta, 0, 0, 0, false, false, oppSurf.groundY, oppSurf.slopeSin, oppSurf.roadPitch);
         }
       });
 
@@ -1461,10 +1472,11 @@ export class Game {
       rightFrame.classList.remove('danger');
     }
 
-    // 3D 백미러 카메라 위치 및 시선 각도 설정
+    // 3D 백미러 카메라 위치 및 시선 각도 설정 (경사로 주행 시 후방 노면 각도에 맞춰 시선 피치 보정)
     const mirrorHeight = targetPos.y + 0.82;
     const mirrorFore = 0.25;
     const mirrorSpan = 0.98;
+    const rearSlopeOffset = Math.sin(targetVehicle.pitch) * 25.0;
 
     // 좌측 미러 카메라: 차량 좌측에 위치(-right), 좌측 뒤편을 향하며 바깥쪽으로 약 10도 펼침
     const leftCamPos = new THREE.Vector3(
@@ -1474,7 +1486,7 @@ export class Game {
     );
     const leftLookTarget = new THREE.Vector3(
       leftCamPos.x - fwdX * 25.0 - rightX * 4.5,
-      mirrorHeight - 0.2,
+      mirrorHeight - 0.2 + rearSlopeOffset,
       leftCamPos.z - fwdZ * 25.0 - rightZ * 4.5
     );
     this.leftMirrorCamera.position.copy(leftCamPos);
@@ -1488,7 +1500,7 @@ export class Game {
     );
     const rightLookTarget = new THREE.Vector3(
       rightCamPos.x - fwdX * 25.0 + rightX * 4.5,
-      mirrorHeight - 0.2,
+      mirrorHeight - 0.2 + rearSlopeOffset,
       rightCamPos.z - fwdZ * 25.0 + rightZ * 4.5
     );
     this.rightMirrorCamera.position.copy(rightCamPos);

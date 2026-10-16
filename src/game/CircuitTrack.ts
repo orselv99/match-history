@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { TRACK_DEFINITIONS, TrackMetadata } from '../data/circuitTracks.ts';
+import { TRACK_DEFINITIONS, type TrackMetadata } from '../data/circuitTracks.ts';
 import { TrackDecorations } from './TrackDecorations.ts';
 
 export interface CheckpointTrigger {
@@ -10,11 +10,17 @@ export interface CheckpointTrigger {
   isPassed: boolean;
 }
 
+export interface TrackSurfaceInfo {
+  distFromCenter: number;
+  groundY: number;
+  slopeSin: number;
+  roadPitch: number;
+}
+
 /**
  * Three.js 폐루프 서킷 트랙 (Circuit Track)
- * - 아스팔트 노면 + 적백 연석(Curbs) + 3개 섹터 체크포인트
- * - CatmullRomCurve3 기반의 중심선 궤적
- * - 서킷별(Monaco, Silverstone, Nürburgring) 실시간 동적 레이아웃 리빌드 지원
+ * - 3D 고저차(Elevation) 아스팔트 노면 + 양측 적백 연석(Curbs) + 성토 옹벽 + 3개 섹터 체크포인트
+ * - CatmullRomCurve3 기반의 3D 중심선 궤적 및 실시간 노면 고도/경사도(Pitch) 샘플링
  */
 export class CircuitTrack {
   public group: THREE.Group = new THREE.Group();
@@ -23,6 +29,10 @@ export class CircuitTrack {
   public checkpoints: CheckpointTrigger[] = [];
   public trackPoints2D: { x: number; z: number }[] = [];
   public currentTrackId: string = 'circuit_monaco';
+
+  private samplePoints: THREE.Vector3[] = [];
+  private sampleTangents: THREE.Vector3[] = [];
+  private readonly SAMPLE_COUNT = 240;
 
   constructor(trackId: string = 'circuit_monaco') {
     this.loadTrack(trackId);
@@ -51,9 +61,17 @@ export class CircuitTrack {
     this.trackWidth = def.trackWidth;
     this.trackCurve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
 
-    // 3. 미니맵용 2D 샘플 점 추출 (200개 균일 샘플링)
-    const samplePoints = this.trackCurve.getPoints(200);
-    this.trackPoints2D = samplePoints.map(p => ({ x: p.x, z: p.z }));
+    // 3. 미니맵용 2D 샘플 점 및 물리 고도/경사 조회용 3D 샘플 캐싱
+    const miniPoints = this.trackCurve.getPoints(200);
+    this.trackPoints2D = miniPoints.map(p => ({ x: p.x, z: p.z }));
+
+    this.samplePoints = [];
+    this.sampleTangents = [];
+    for (let i = 0; i < this.SAMPLE_COUNT; i++) {
+      const t = i / this.SAMPLE_COUNT;
+      this.samplePoints.push(this.trackCurve.getPointAt(t));
+      this.sampleTangents.push(this.trackCurve.getTangentAt(t).normalize());
+    }
 
     // 4. 지오메트리 및 환경 재빌드
     this.buildTrackMesh();
@@ -91,16 +109,16 @@ export class CircuitTrack {
       const prevPt = roadPoints[prevIdx];
       const nextPt = roadPoints[nextIdx];
 
-      // 접선 벡터(Forward) 및 법선 벡터(Right) - 중앙 차분으로 완벽한 곡률 연속성 확보
+      // 접선 벡터(Forward) 및 수평 법선 벡터(Right) - 중앙 차분으로 완벽한 곡률 연속성 확보
       const forward = new THREE.Vector3().subVectors(nextPt, prevPt).normalize();
       const right = new THREE.Vector3(-forward.z, 0, forward.x).normalize();
 
       const leftPos = new THREE.Vector3().copy(pt).addScaledVector(right, -halfWidth);
       const rightPos = new THREE.Vector3().copy(pt).addScaledVector(right, halfWidth);
 
-      // Y좌표 0.05m 살짝 띄워 z-fighting 방지
-      positions.push(leftPos.x, 0.05, leftPos.z);
-      positions.push(rightPos.x, 0.05, rightPos.z);
+      // 3D 고도(pt.y) 반영 + 0.05m 오프셋으로 평지 지면과 z-fighting 방지
+      positions.push(leftPos.x, pt.y + 0.05, leftPos.z);
+      positions.push(rightPos.x, pt.y + 0.05, rightPos.z);
 
       const u = (i / segments) * 20;
       uvs.push(0, u, 1, u);
@@ -121,14 +139,13 @@ export class CircuitTrack {
     roadMesh.receiveShadow = true;
     this.group.add(roadMesh);
 
-    // 연석(Curbs) 및 트랙 도로 마킹 추가
+    // 연석(Curbs), 성토 옹벽 및 트랙 도로 마킹 추가
     this.group.add(TrackDecorations.buildCurbs(roadPoints, halfWidth));
     this.buildRoadMarkings(roadPoints, halfWidth);
   }
 
   private buildRoadMarkings(points: THREE.Vector3[], halfWidth: number): void {
     const segments = points.length;
-    // 일반도로 양쪽 외곽 흰색 실선 마킹 (DoubleSide로 백페이스 컬링 방지 및 시인성 극대화)
     const boundaryMat = new THREE.MeshBasicMaterial({
       color: 0xf8fafc,
       side: THREE.DoubleSide,
@@ -142,7 +159,7 @@ export class CircuitTrack {
 
     const lineWidth = 0.35; // 35cm 굵기의 선명한 실선
 
-    // 1. 좌측 외곽선 (Left Edge: -halfWidth 부근) - 완벽한 폐루프 연속 연결 (대각선 왜곡 완전 제거)
+    // 1. 좌측 외곽선 (Left Edge: -halfWidth 부근)
     {
       const leftGeom = new THREE.BufferGeometry();
       const pos: number[] = [];
@@ -155,7 +172,6 @@ export class CircuitTrack {
         const prev = points[prevI];
         const next = points[nextI];
 
-        // 중앙 차분 기반 완벽한 법선 계산으로 시작점/결승선에서도 연속성 유지
         const fwd = new THREE.Vector3().subVectors(next, prev).normalize();
         const rgt = new THREE.Vector3(-fwd.z, 0, fwd.x).normalize();
 
@@ -165,8 +181,8 @@ export class CircuitTrack {
         const pOuter = new THREE.Vector3().copy(curr).addScaledVector(rgt, outerDist);
         const pInner = new THREE.Vector3().copy(curr).addScaledVector(rgt, innerDist);
 
-        pos.push(pOuter.x, 0.085, pOuter.z);
-        pos.push(pInner.x, 0.085, pInner.z);
+        pos.push(pOuter.x, curr.y + 0.085, pOuter.z);
+        pos.push(pInner.x, curr.y + 0.085, pInner.z);
 
         const v0 = i * 2;
         const v1 = i * 2 + 1;
@@ -181,7 +197,7 @@ export class CircuitTrack {
       this.group.add(leftLine);
     }
 
-    // 2. 우측 외곽선 (Right Edge: +halfWidth 부근) - 완벽한 폐루프 연속 연결
+    // 2. 우측 외곽선 (Right Edge: +halfWidth 부근)
     {
       const rightGeom = new THREE.BufferGeometry();
       const pos: number[] = [];
@@ -203,8 +219,8 @@ export class CircuitTrack {
         const pOuter = new THREE.Vector3().copy(curr).addScaledVector(rgt, outerDist);
         const pInner = new THREE.Vector3().copy(curr).addScaledVector(rgt, innerDist);
 
-        pos.push(pInner.x, 0.085, pInner.z);
-        pos.push(pOuter.x, 0.085, pOuter.z);
+        pos.push(pInner.x, curr.y + 0.085, pInner.z);
+        pos.push(pOuter.x, curr.y + 0.085, pOuter.z);
 
         const v0 = i * 2;
         const v1 = i * 2 + 1;
@@ -219,7 +235,7 @@ export class CircuitTrack {
       this.group.add(rightLine);
     }
 
-    // 3. 중앙 대시선 (Center Dashed Line - 출발선 및 그리드 구간인 t=0.91~1.0 및 t=0.0~0.05 구간은 제외)
+    // 3. 중앙 대시선 (Center Dashed Line - 출발선 및 그리드 구간 제외)
     const centerGeom = new THREE.BufferGeometry();
     const cPos: number[] = [];
     const cIdx: number[] = [];
@@ -227,7 +243,6 @@ export class CircuitTrack {
 
     for (let i = 0; i < segments; i++) {
       const progress = i / segments;
-      // 출발선 및 그리드 구역 (0.91 ~ 1.0 및 0.0 ~ 0.05)에는 중앙선 제외
       if (progress > 0.91 || progress < 0.05) continue;
 
       if (i % 4 < 2) {
@@ -245,7 +260,12 @@ export class CircuitTrack {
         const p3 = new THREE.Vector3().copy(next).addScaledVector(rgt, -halfW);
         const p4 = new THREE.Vector3().copy(next).addScaledVector(rgt, halfW);
 
-        cPos.push(p1.x, 0.085, p1.z, p2.x, 0.085, p2.z, p3.x, 0.085, p3.z, p4.x, 0.085, p4.z);
+        cPos.push(
+          p1.x, curr.y + 0.085, p1.z,
+          p2.x, curr.y + 0.085, p2.z,
+          p3.x, next.y + 0.085, p3.z,
+          p4.x, next.y + 0.085, p4.z
+        );
         cIdx.push(cVertexIdx, cVertexIdx + 1, cVertexIdx + 2, cVertexIdx + 1, cVertexIdx + 3, cVertexIdx + 2);
         cVertexIdx += 4;
       }
@@ -279,7 +299,6 @@ export class CircuitTrack {
   public getStartStraightWorldPosition(localX: number, localZ: number): { position: THREE.Vector3; heading: number } {
     const startPt = this.trackCurve.getPointAt(0);
     const tangent = this.trackCurve.getTangentAt(0).normalize();
-    // Three.js Object3D(rotation.y = heading) 로컬 X축 단위 벡터는 (tangent.z, 0, -tangent.x)
     const localXDir = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
     const heading = Math.atan2(tangent.x, tangent.z);
 
@@ -287,82 +306,9 @@ export class CircuitTrack {
       .copy(startPt)
       .addScaledVector(tangent, localZ)
       .addScaledVector(localXDir, localX);
-    position.y = 0.055;
+    position.y = Math.max(0, startPt.y) + 0.055;
 
     return { position, heading };
-  }
-
-  private buildCurbs(points: THREE.Vector3[], halfWidth: number): void {
-    const curbWidth = 1.3;
-    const curbHeight = 0.16;
-    const segments = points.length;
-
-    const curbGeom = new THREE.BufferGeometry();
-    const positions: number[] = [];
-    const colors: number[] = [];
-    const indices: number[] = [];
-
-    for (let i = 0; i < segments; i++) {
-      const prevI = (i - 1 + segments) % segments;
-      const nextI = (i + 1) % segments;
-      const pt = points[i];
-      const prevPt = points[prevI];
-      const nextPt = points[nextI];
-
-      const forward = new THREE.Vector3().subVectors(nextPt, prevPt).normalize();
-      const right = new THREE.Vector3(-forward.z, 0, forward.x).normalize();
-
-      // Swiss Technical Accent Spec (#c45a72) / 화이트 (#ededed) 체커
-      const isSpecAccent = Math.floor(i / 3) % 2 === 0;
-      const r = isSpecAccent ? 0.77 : 0.93; // 0xc4 = 196
-      const g = isSpecAccent ? 0.35 : 0.93; // 0x5a = 90
-      const b = isSpecAccent ? 0.45 : 0.93; // 0x72 = 114
-
-      // 외측/내측 연석 버텍스
-      const leftInner = new THREE.Vector3().copy(pt).addScaledVector(right, -halfWidth);
-      const leftOuter = new THREE.Vector3().copy(pt).addScaledVector(right, -halfWidth - curbWidth);
-
-      positions.push(leftInner.x, curbHeight, leftInner.z);
-      positions.push(leftOuter.x, 0.06, leftOuter.z);
-      colors.push(r, g, b, r, g, b);
-
-      const v0 = i * 2;
-      const v1 = i * 2 + 1;
-      const v2 = nextI * 2;
-      const v3 = nextI * 2 + 1;
-      indices.push(v0, v1, v2, v1, v3, v2);
-    }
-
-    curbGeom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    curbGeom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-    curbGeom.setIndex(indices);
-    curbGeom.computeVertexNormals();
-
-    const curbMat = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      roughness: 0.5,
-    });
-    const curbMesh = new THREE.Mesh(curbGeom, curbMat);
-    this.group.add(curbMesh);
-  }
-
-  private buildGround(): void {
-    // 딥 매트 차콜 (Swiss Technical surface-canvas: #121316)
-    const groundGeom = new THREE.PlaneGeometry(600, 600);
-    const groundMat = new THREE.MeshStandardMaterial({
-      color: 0x121316,
-      roughness: 0.95,
-      metalness: 0.05,
-    });
-    const ground = new THREE.Mesh(groundGeom, groundMat);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    this.group.add(ground);
-
-    // 테크니컬 그리드 라인 (#26282f 및 #3a3d47)
-    const grid = new THREE.GridHelper(600, 60, 0x3a3d47, 0x1a1b20);
-    grid.position.y = 0.01;
-    this.group.add(grid);
   }
 
   private setupCheckpoints(): void {
@@ -385,71 +331,123 @@ export class CircuitTrack {
       });
 
       if (cfg.id !== 0) {
-        this.buildArchGate(pos, tangent, false);
+        this.group.add(TrackDecorations.buildArchGate(pos, tangent, false, this.trackWidth));
       }
     });
   }
 
-  private buildArchGate(pos: THREE.Vector3, tangent: THREE.Vector3, isFinish: boolean): void {
-    const archGroup = new THREE.Group();
-    archGroup.position.copy(pos);
+  /**
+   * 임의의 차량 3D 위치 및 진행 방향(heading)에 대한 트랙 중심선 거리, 노면 고도(groundY), 경사도(slopeSin, roadPitch) 반환
+   */
+  public getTrackSurfaceInfo(pos: THREE.Vector3, heading: number = 0): TrackSurfaceInfo {
+    const n = this.samplePoints.length;
+    if (n === 0) {
+      return { distFromCenter: 0, groundY: 0.055, slopeSin: 0, roadPitch: 0 };
+    }
 
-    const right = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-    const halfW = this.trackWidth / 2 + 1.5;
+    let bestIdx = 0;
+    let minDistSq = Infinity;
 
-    // 기둥 2개 (Swiss Technical Hairline Architecture, 0px radius box)
-    const pillarGeom = new THREE.BoxGeometry(0.6, 6, 0.6);
-    const pillarMat = new THREE.MeshStandardMaterial({ color: 0x26282f, roughness: 0.6, metalness: 0.4 });
+    for (let i = 0; i < n; i++) {
+      const p = this.samplePoints[i];
+      const dSq = (p.x - pos.x) ** 2 + (p.z - pos.z) ** 2;
+      if (dSq < minDistSq) {
+        minDistSq = dSq;
+        bestIdx = i;
+      }
+    }
 
-    const leftPillar = new THREE.Mesh(pillarGeom, pillarMat);
-    leftPillar.position.copy(new THREE.Vector3().addScaledVector(right, -halfW));
-    leftPillar.position.y = 3;
+    // 인접 세그먼트 투영 보간으로 매끄러운 연속 고도 및 접선 산출
+    const nextIdx = (bestIdx + 1) % n;
+    const prevIdx = (bestIdx - 1 + n) % n;
+    const pCurr = this.samplePoints[bestIdx];
+    const pNext = this.samplePoints[nextIdx];
+    const pPrev = this.samplePoints[prevIdx];
 
-    const rightPillar = new THREE.Mesh(pillarGeom, pillarMat);
-    rightPillar.position.copy(new THREE.Vector3().addScaledVector(right, halfW));
-    rightPillar.position.y = 3;
+    // 전방 세그먼트 vs 후방 세그먼트 중 더 가까운 투영 선택
+    const segNext = this.projectOnSegmentXZ(pos.x, pos.z, pCurr, pNext);
+    const segPrev = this.projectOnSegmentXZ(pos.x, pos.z, pPrev, pCurr);
 
-    // 상단 빔 (듀얼 빔 구성: y=4.9, y=5.8): 피니시는 로즈(0xc45a72), 일반 섹터는 선명한 파스텔 하늘색(0x7dd3fc) 적용!
-    const beamGeom = new THREE.BoxGeometry(this.trackWidth + 4, 0.35, 0.75);
-    const beamColor = isFinish ? 0xc45a72 : 0x7dd3fc;
-    const beamEmissive = isFinish ? 0xc45a72 : 0x38bdf8;
+    let segStartIndex = bestIdx;
+    let segEndIndex = nextIdx;
+    let alpha = segNext.alpha;
+    let closestX = segNext.x;
+    let closestY = segNext.y;
+    let closestZ = segNext.z;
+    let distSq = segNext.distSq;
 
-    const beamMat = new THREE.MeshStandardMaterial({
-      color: beamColor,
-      emissive: beamEmissive,
-      emissiveIntensity: 1.4, // Bloom 효과 극대화
-      roughness: 0.3,
-    });
+    if (segPrev.distSq < segNext.distSq) {
+      segStartIndex = prevIdx;
+      segEndIndex = bestIdx;
+      alpha = segPrev.alpha;
+      closestX = segPrev.x;
+      closestY = segPrev.y;
+      closestZ = segPrev.z;
+      distSq = segPrev.distSq;
+    }
 
-    const beam1 = new THREE.Mesh(beamGeom, beamMat);
-    beam1.position.y = 4.9;
-    beam1.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), right);
+    const distFromCenter = Math.sqrt(distSq);
+    const halfWidth = this.trackWidth * 0.5;
 
-    const beam2 = new THREE.Mesh(beamGeom, beamMat);
-    beam2.position.y = 5.8;
-    beam2.quaternion.setFromUnitVectors(new THREE.Vector3(1, 0, 0), right);
+    // 트랙 3D 접선 보간
+    const tStart = this.sampleTangents[segStartIndex];
+    const tEnd = this.sampleTangents[segEndIndex];
+    const tx = tStart.x + (tEnd.x - tStart.x) * alpha;
+    const ty = tStart.y + (tEnd.y - tStart.y) * alpha;
+    const tz = tStart.z + (tEnd.z - tStart.z) * alpha;
+    const tLen = Math.hypot(tx, ty, tz) || 1;
+    const normTx = tx / tLen;
+    const normTy = ty / tLen;
+    const normTz = tz / tLen;
 
-    archGroup.add(leftPillar);
-    archGroup.add(rightPillar);
-    archGroup.add(beam1);
-    archGroup.add(beam2);
+    // 트랙 연석 바깥(오프로드 성토 사면)으로 벗어날 경우 지면(0m)으로 부드럽게 고도 감쇠
+    const roadEdge = halfWidth + 1.3;
+    const offroadBlend = THREE.MathUtils.clamp((distFromCenter - roadEdge) / 2.2, 0, 1);
 
-    this.group.add(archGroup);
+    const onTrackY = Math.max(0, closestY) + 0.055;
+    const groundY = THREE.MathUtils.lerp(onTrackY, 0.02, offroadBlend);
+
+    // 차량 진행 방향과 트랙 수평 접선의 정렬도에 따른 실제 체감 경사(sin θ) 계산
+    const horizLen = Math.hypot(normTx, normTz) || 1;
+    const fwdX = Math.sin(heading);
+    const fwdZ = Math.cos(heading);
+    const cosAlign = (fwdX * normTx + fwdZ * normTz) / horizLen;
+
+    const slopeSin = normTy * cosAlign * (1 - offroadBlend);
+    // Three.js 로컬 +Z 전면 기준 오르막(slopeSin > 0)일 때 rotation.x < 0 이 되어야 노즈가 들림
+    const roadPitch = -Math.asin(THREE.MathUtils.clamp(slopeSin, -0.45, 0.45));
+
+    return {
+      distFromCenter,
+      groundY,
+      slopeSin,
+      roadPitch,
+    };
+  }
+
+  private projectOnSegmentXZ(
+    px: number,
+    pz: number,
+    a: THREE.Vector3,
+    b: THREE.Vector3
+  ): { alpha: number; x: number; y: number; z: number; distSq: number } {
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const lenSq = dx * dx + dz * dz;
+    const alpha = lenSq > 1e-6
+      ? THREE.MathUtils.clamp(((px - a.x) * dx + (pz - a.z) * dz) / lenSq, 0, 1)
+      : 0;
+    const x = a.x + dx * alpha;
+    const y = a.y + (b.y - a.y) * alpha;
+    const z = a.z + dz * alpha;
+    const distSq = (px - x) ** 2 + (pz - z) ** 2;
+    return { alpha, x, y, z, distSq };
   }
 
   /**
    * 차량 위치가 트랙 중심선으로부터 얼마나 벗어났는지 확인 (오프로드/잔디 감지)
    */
   public getDistanceFromCenter(pos: THREE.Vector3): number {
-    let minDistSq = Infinity;
-    const sampleCount = 120;
-
-    for (let i = 0; i < sampleCount; i++) {
-      const sample = this.trackCurve.getPointAt(i / sampleCount);
-      const dSq = (sample.x - pos.x) ** 2 + (sample.z - pos.z) ** 2;
-      if (dSq < minDistSq) minDistSq = dSq;
-    }
-
-    return Math.sqrt(minDistSq);
+    return this.getTrackSurfaceInfo(pos, 0).distFromCenter;
   }
 }

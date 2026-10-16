@@ -53,10 +53,10 @@ export class TrackDecorations {
 
         const quadGeom = new THREE.BufferGeometry();
         quadGeom.setAttribute('position', new THREE.Float32BufferAttribute([
-          p1.x, 0.08, p1.z,
-          p2.x, 0.08, p2.z,
-          p3.x, 0.08, p3.z,
-          p4.x, 0.08, p4.z
+          p1.x, p1.y + 0.08, p1.z,
+          p2.x, p2.y + 0.08, p2.z,
+          p3.x, p3.y + 0.08, p3.z,
+          p4.x, p4.y + 0.08, p4.z
         ], 3));
         quadGeom.setIndex([0, 1, 2, 1, 3, 2]);
         quadGeom.computeVertexNormals();
@@ -80,7 +80,6 @@ export class TrackDecorations {
         .copy(startPt)
         .addScaledVector(startTangent, -slot.distBehind)
         .addScaledVector(localXDir, slot.lane);
-      center.y = 0.052;
       const halfW = 1.35;
       const halfL = 2.4;
       const bracketArm = 0.7;
@@ -123,10 +122,10 @@ export class TrackDecorations {
 
     const geom = new THREE.BufferGeometry();
     geom.setAttribute('position', new THREE.Float32BufferAttribute([
-      p1.x, 0.08, p1.z,
-      p2.x, 0.08, p2.z,
-      p3.x, 0.08, p3.z,
-      p4.x, 0.08, p4.z
+      p1.x, p1.y + 0.08, p1.z,
+      p2.x, p2.y + 0.08, p2.z,
+      p3.x, p3.y + 0.08, p3.z,
+      p4.x, p4.y + 0.08, p4.z
     ], 3));
     geom.setIndex([0, 1, 2, 1, 3, 2]);
     geom.computeVertexNormals();
@@ -135,9 +134,10 @@ export class TrackDecorations {
   }
 
   /**
-   * 도로 양쪽 적백 연석(Curbs) 메시 빌드
+   * 도로 양쪽 적백 연석(Curbs) 및 고저차 입체 성토 옹벽(Embankment Skirt) 빌드
    */
-  public static buildCurbs(points: THREE.Vector3[], halfWidth: number): THREE.Mesh {
+  public static buildCurbs(points: THREE.Vector3[], halfWidth: number): THREE.Group {
+    const group = new THREE.Group();
     const curbWidth = 1.3;
     const curbHeight = 0.16;
     const segments = points.length;
@@ -146,6 +146,11 @@ export class TrackDecorations {
     const positions: number[] = [];
     const colors: number[] = [];
     const indices: number[] = [];
+
+    // 고가/언덕 구간 하부를 받쳐주는 다크 콘크리트 성토 옹벽(Embankment) 버퍼
+    const skirtGeom = new THREE.BufferGeometry();
+    const skirtPos: number[] = [];
+    const skirtIdx: number[] = [];
 
     for (let i = 0; i < segments; i++) {
       const prevI = (i - 1 + segments) % segments;
@@ -162,18 +167,41 @@ export class TrackDecorations {
       const g = isSpecAccent ? 0.35 : 0.93;
       const b = isSpecAccent ? 0.45 : 0.93;
 
+      // 좌측 연석 (Left Curb)
       const leftInner = new THREE.Vector3().copy(pt).addScaledVector(right, -halfWidth);
       const leftOuter = new THREE.Vector3().copy(pt).addScaledVector(right, -halfWidth - curbWidth);
+      // 우측 연석 (Right Curb)
+      const rightInner = new THREE.Vector3().copy(pt).addScaledVector(right, halfWidth);
+      const rightOuter = new THREE.Vector3().copy(pt).addScaledVector(right, halfWidth + curbWidth);
 
-      positions.push(leftInner.x, curbHeight, leftInner.z);
-      positions.push(leftOuter.x, 0.06, leftOuter.z);
-      colors.push(r, g, b, r, g, b);
+      positions.push(
+        leftInner.x, pt.y + curbHeight, leftInner.z,
+        leftOuter.x, pt.y + 0.06, leftOuter.z,
+        rightInner.x, pt.y + curbHeight, rightInner.z,
+        rightOuter.x, pt.y + 0.06, rightOuter.z
+      );
+      colors.push(r, g, b, r, g, b, r, g, b, r, g, b);
 
-      const v0 = i * 2;
-      const v1 = i * 2 + 1;
-      const v2 = nextI * 2;
-      const v3 = nextI * 2 + 1;
-      indices.push(v0, v1, v2, v1, v3, v2);
+      const base = i * 4;
+      const nextBase = nextI * 4;
+      // 좌측 연석 쿼드
+      indices.push(base, base + 1, nextBase, base + 1, nextBase + 1, nextBase);
+      // 우측 연석 쿼드
+      indices.push(base + 2, nextBase + 2, base + 3, base + 3, nextBase + 2, nextBase + 3);
+
+      // 성토 옹벽 스커트 (연석 바깥쪽 끝단 -> 지면 y=0까지 사선으로 지지)
+      const leftBase = new THREE.Vector3().copy(leftOuter).addScaledVector(right, -1.8);
+      const rightBase = new THREE.Vector3().copy(rightOuter).addScaledVector(right, 1.8);
+      skirtPos.push(
+        leftOuter.x, pt.y + 0.05, leftOuter.z,
+        leftBase.x, 0, leftBase.z,
+        rightOuter.x, pt.y + 0.05, rightOuter.z,
+        rightBase.x, 0, rightBase.z
+      );
+      skirtIdx.push(
+        base, nextBase, base + 1, base + 1, nextBase, nextBase + 1,
+        base + 2, base + 3, nextBase + 2, base + 3, nextBase + 3, nextBase + 2
+      );
     }
 
     curbGeom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -184,8 +212,22 @@ export class TrackDecorations {
     const curbMat = new THREE.MeshStandardMaterial({
       vertexColors: true,
       roughness: 0.5,
+      side: THREE.DoubleSide,
     });
-    return new THREE.Mesh(curbGeom, curbMat);
+    group.add(new THREE.Mesh(curbGeom, curbMat));
+
+    skirtGeom.setAttribute('position', new THREE.Float32BufferAttribute(skirtPos, 3));
+    skirtGeom.setIndex(skirtIdx);
+    skirtGeom.computeVertexNormals();
+    const skirtMat = new THREE.MeshStandardMaterial({
+      color: 0x1e222a,
+      roughness: 0.9,
+      metalness: 0.1,
+      side: THREE.DoubleSide,
+    });
+    group.add(new THREE.Mesh(skirtGeom, skirtMat));
+
+    return group;
   }
 
   /**

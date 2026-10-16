@@ -183,7 +183,7 @@ export class CollisionManager {
     }
 
     const contact = deepestCorner.clone();
-    contact.y = 0.35; // 바퀴/허브 높이
+    contact.y = (v1.position.y + v2.position.y) * 0.5 + 0.3; // 3D 노면 고도 기반 바퀴/허브 높이
 
     const aIsFront = new THREE.Vector3().subVectors(contact, v1.position).dot(fwd1) > 0;
     const bIsFront = new THREE.Vector3().subVectors(contact, v2.position).dot(fwd2) > 0;
@@ -244,6 +244,35 @@ export class CollisionManager {
           isPlayerInvolved,
         });
       }
+    }
+  }
+
+  /**
+   * 급경사 바닥 압축(Eau Rouge 등)이나 언덕 점프 착지 시 하부 디퓨저 마찰 스파크 방출
+   */
+  public emitBottomingSparks(vehicle: Vehicle, shockIntensity: number): void {
+    const count = Math.min(18, Math.floor(6 + shockIntensity * 14));
+    const backX = -Math.sin(vehicle.heading);
+    const backZ = -Math.cos(vehicle.heading);
+
+    for (let i = 0; i < count; i++) {
+      if (this.sparks.length >= this.MAX_SPARKS) break;
+      const spread = (Math.random() - 0.5) * 1.4;
+      const spd = 5.0 + Math.random() * 8.0;
+      this.sparks.push({
+        pos: new THREE.Vector3(
+          vehicle.position.x + backX * 1.6 + spread * 0.5,
+          vehicle.position.y + 0.08,
+          vehicle.position.z + backZ * 1.6 + spread * 0.5
+        ),
+        vel: new THREE.Vector3(
+          backX * spd + spread * 2.5,
+          1.2 + Math.random() * 2.8,
+          backZ * spd + spread * 2.5
+        ),
+        life: 0,
+        maxLife: 0.22 + Math.random() * 0.18,
+      });
     }
   }
 

@@ -74,7 +74,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const matchHistoryModal = new MatchHistoryModal({
     onPlayReplay: (record) => {
       // 1. 다른 서킷일 경우 서킷 로드
-      const recCircuitId = record.metadata.circuitId || (record.metadata as any).trackId;
+      const recCircuitId = record.metadata.circuitId || 'circuit_monaco';
       if (recCircuitId && recCircuitId !== game.currentCircuitId) {
         game.loadCircuit(recCircuitId);
         const circuitMeta = CIRCUIT_DEFINITIONS[recCircuitId];

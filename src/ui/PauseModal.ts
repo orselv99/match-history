@@ -36,8 +36,8 @@ export class PauseModal extends BaseModal<PauseModalInfo> {
     this.btnSettings = document.getElementById('pause-btn-settings');
     this.btnExit = document.getElementById('pause-btn-exit');
 
-    this.infoCircuit = document.getElementById('pause-info-track');
-    this.infoVehicle = document.getElementById('pause-info-vehicle') || document.getElementById('pause-info-car');
+    this.infoCircuit = document.getElementById('pause-info-circuit');
+    this.infoVehicle = document.getElementById('pause-info-vehicle');
     this.infoLap = document.getElementById('pause-info-lap');
     this.infoTime = document.getElementById('pause-info-time');
 

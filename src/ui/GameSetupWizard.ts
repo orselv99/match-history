@@ -109,17 +109,17 @@ export class GameSetupWizard extends BaseModal {
     this.stepPanels = document.querySelectorAll<HTMLElement>('.wizard-step-panel');
 
     // Step 1
-    this.circuitCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-circuit], .wizard-choice-card[data-track]');
-    this.circuitSvgMonaco = document.getElementById('track-svg-monaco');
-    this.circuitSvgMonza = document.getElementById('track-svg-monza');
-    this.circuitSvgSpa = document.getElementById('track-svg-spa');
-    this.circuitShowcaseTitle = document.getElementById('track-showcase-title');
-    this.circuitShowcaseBadge = document.getElementById('track-showcase-badge');
-    this.circuitShowcaseDesc = document.getElementById('track-showcase-desc');
-    this.circuitSpecLen = document.getElementById('track-spec-len');
-    this.circuitSpecCorners = document.getElementById('track-spec-corners');
-    this.circuitSpecRecord = document.getElementById('track-spec-record');
-    this.circuitSpecType = document.getElementById('track-spec-type');
+    this.circuitCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-circuit]');
+    this.circuitSvgMonaco = document.getElementById('circuit-svg-monaco');
+    this.circuitSvgMonza = document.getElementById('circuit-svg-monza');
+    this.circuitSvgSpa = document.getElementById('circuit-svg-spa');
+    this.circuitShowcaseTitle = document.getElementById('circuit-showcase-title');
+    this.circuitShowcaseBadge = document.getElementById('circuit-showcase-badge');
+    this.circuitShowcaseDesc = document.getElementById('circuit-showcase-desc');
+    this.circuitSpecLen = document.getElementById('circuit-spec-len');
+    this.circuitSpecCorners = document.getElementById('circuit-spec-corners');
+    this.circuitSpecRecord = document.getElementById('circuit-spec-record');
+    this.circuitSpecType = document.getElementById('circuit-spec-type');
 
     // Step 2
     this.modelCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-model]');
@@ -139,7 +139,7 @@ export class GameSetupWizard extends BaseModal {
     this.driverNameInput = document.getElementById('wizard-driver-name') as HTMLInputElement | null;
     this.btnRandomName = document.getElementById('wizard-btn-random-name');
     this.chkAutodrive = document.getElementById('wizard-chk-autodrive') as HTMLInputElement | null;
-    this.briefingCircuit = document.getElementById('briefing-track');
+    this.briefingCircuit = document.getElementById('briefing-circuit');
     this.briefingModel = document.getElementById('briefing-model');
     this.briefingColorDot = document.getElementById('briefing-color-dot');
     this.briefingEnv = document.getElementById('briefing-env');
@@ -183,9 +183,9 @@ export class GameSetupWizard extends BaseModal {
     list.forEach(({ id, el }) => {
       if (!el) return;
       const data = getCircuitSvgData(id);
-      const pathEl = el.querySelector<SVGPathElement>('.track-svg-outline');
-      const circleEl = el.querySelector<SVGCircleElement>('.track-start-pin');
-      const textEl = el.querySelector<SVGTextElement>('.track-start-text');
+      const pathEl = el.querySelector<SVGPathElement>('.circuit-svg-outline');
+      const circleEl = el.querySelector<SVGCircleElement>('.circuit-start-pin');
+      const textEl = el.querySelector<SVGTextElement>('.circuit-start-text');
 
       if (pathEl) pathEl.setAttribute('d', data.pathD);
       if (circleEl) {
@@ -234,7 +234,7 @@ export class GameSetupWizard extends BaseModal {
     // Step 1: 서킷 카드
     this.circuitCards.forEach(card => {
       card.addEventListener('click', () => {
-        this.selectedCircuit = ((card.dataset.circuit || card.dataset.track) as CircuitId) || 'circuit_monaco';
+        this.selectedCircuit = (card.dataset.circuit as CircuitId) || 'circuit_monaco';
         this.updateCircuitShowcase();
       });
     });
@@ -362,7 +362,7 @@ export class GameSetupWizard extends BaseModal {
 
   public updateCircuitShowcase(): void {
     this.circuitCards.forEach(c => {
-      const cardId = c.dataset.circuit || c.dataset.track;
+      const cardId = c.dataset.circuit;
       c.classList.toggle('active', cardId === this.selectedCircuit);
     });
 

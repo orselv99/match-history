@@ -16,6 +16,8 @@ import { MinimapRenderer } from '../game/MinimapRenderer.ts';
 import { CameraController } from './CameraController.ts';
 import { SpeedFX } from '../game/SpeedFX.ts';
 import { GraphicsSettings, graphicsSettingsManager } from './GraphicsSettingsManager.ts';
+import { MirrorRenderer } from './MirrorRenderer.ts';
+import { StartCutsceneController } from './StartCutsceneController.ts';
 
 export type GameMode = 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO';
 export type RaceState = 'READY' | 'START_CUTSCENE' | 'COUNTDOWN' | 'RUNNING' | 'FINISHED';
@@ -79,20 +81,12 @@ export class Game {
   private countdownTimer: number = 3.0;
   private lastBeepNumber: number = -1;
 
-  // 시작 컷씬 (피트 출차 -> 출발선 정렬 및 직접 운전 지원)
-  private startCutsceneTimer: number = 0;
-  private readonly startCutsceneDuration: number = 4.2;
-  private isManualPitDriving: boolean = false;
-
-  // 카메라 & 환경 전담 매니저
+  // 카메라, 환경, 컷씬 & 백미러 매니저
   public cameraController!: CameraController;
   public environmentManager!: EnvironmentManager;
   public speedFX: SpeedFX;
-
-  // 좌/우 백미러 카메라 및 렌더링 상태
-  private leftMirrorCamera: THREE.PerspectiveCamera;
-  private rightMirrorCamera: THREE.PerspectiveCamera;
-  private shouldRenderMirrors: boolean = false;
+  public startCutsceneController!: StartCutsceneController;
+  public mirrorRenderer!: MirrorRenderer;
 
   // 게임 세션 설정 메타데이터
   public currentDriverName: string = 'Apex Hunter';
@@ -122,10 +116,6 @@ export class Game {
     // 2. 카메라
     this.cameraController = new CameraController(65, initWidth / initHeight, 0.1, 1000);
     this.camera = this.cameraController.camera;
-
-    // 좌/우 백미러 카메라 (사이드 미러 비율 220:116, FOV 52도)
-    this.leftMirrorCamera = new THREE.PerspectiveCamera(52, 220 / 116, 0.2, 140);
-    this.rightMirrorCamera = new THREE.PerspectiveCamera(52, 220 / 116, 0.2, 140);
 
     // 3. 렌더러
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -188,6 +178,8 @@ export class Game {
     this.lapTimer = new LapTimer(3); // 3랩 완주
     this.recorder = new ReplayRecorder();
     this.speedFX = new SpeedFX(this.renderer, this.scene, this.camera);
+    this.mirrorRenderer = new MirrorRenderer(this.renderer);
+    this.startCutsceneController = new StartCutsceneController(this.circuit, this.cameraController, this.input);
     this.applyGraphicsSettings(graphicsSettingsManager.getSettings());
 
     this.clock = new THREE.Clock();
@@ -329,74 +321,10 @@ export class Game {
     }
   }
 
-  /**
-   * 4대 레이스 머신 각각의 피트 베이 출차 -> 피트 레인 주행 -> 지정 그리드 슬롯 안착 궤적 연산
-   * - 슬롯 0: Pole (X: -2.2, Z: -5.0)
-   * - 슬롯 1: 2nd  (X: +2.2, Z: -12.0)
-   * - 슬롯 2: 3rd  (X: -2.2, Z: -19.0)
-   * - 슬롯 3: 4th  (X: +2.2, Z: -26.0)
-   */
-  private computePitRolloutState(
-    i: number,
-    progress: number,
-    halfW: number
-  ): { x: number; z: number; headingOffset: number; speed: number } {
-    const slotX = (i % 2 === 0) ? -2.2 : 2.2;
-    const slotZ = -5.0 - i * 7.0; // -5.0, -12.0, -19.0, -26.0 (그리드 브래킷 위치와 100% 일치)
-    const startX = -(halfW + 6.8);
-    const startZ = -28.0 - i * 8.0; // 피트 가레지 베이 앞 대기열 (-28, -36, -44, -52)
-    const mergeZ = -18.0 - (3 - i) * 1.5;
-
-    let curX = -(halfW + 5.5);
-    let curZ = slotZ;
-    let headingOffset = 0.0;
-    let speed = 0.0;
-
-    // 1구간: 피트 베이에서 피트 레인 중앙으로 조향 진입 (0.0 ~ 0.25)
-    if (progress < 0.25) {
-      const p1 = progress / 0.25;
-      const ease1 = p1 * p1;
-      curX = THREE.MathUtils.lerp(startX, -(halfW + 5.5), ease1);
-      curZ = THREE.MathUtils.lerp(startZ, startZ + 8.0, p1);
-      headingOffset = THREE.MathUtils.lerp(0.26, 0.0, ease1);
-      speed = 7.0;
-    }
-    // 2구간: 피트 레인 직선 직진 주행 (0.25 ~ 0.58)
-    else if (progress < 0.58) {
-      const p2 = (progress - 0.25) / 0.33;
-      curX = -(halfW + 5.5);
-      curZ = THREE.MathUtils.lerp(startZ + 8.0, mergeZ, p2);
-      headingOffset = 0.0;
-      speed = 9.0;
-    }
-    // 3구간: 피트 출구 방호벽 개방 구간을 통해 메인 스트레이트 각 슬롯으로 합류 (0.58 ~ 0.88)
-    else if (progress < 0.88) {
-      const p3 = (progress - 0.58) / 0.30;
-      const ease3 = 0.5 - 0.5 * Math.cos(p3 * Math.PI);
-      curX = THREE.MathUtils.lerp(-(halfW + 5.5), slotX, ease3);
-      curZ = THREE.MathUtils.lerp(mergeZ, slotZ, ease3);
-      headingOffset = Math.sin(p3 * Math.PI) * 0.16;
-      speed = THREE.MathUtils.lerp(9.0, 1.5, ease3);
-    }
-    // 4구간: 각 슬롯 화이트 브래킷 박스 안에 반듯하게 도킹 정차 (0.88 ~ 1.0)
-    else {
-      curX = slotX;
-      curZ = slotZ;
-      headingOffset = 0.0;
-      speed = 0.0;
-    }
-
-    return { x: curX, z: curZ, headingOffset, speed };
-  }
-
   public setupStartCutscene(): void {
     this.raceState = 'START_CUTSCENE';
-    this.startCutsceneTimer = 0;
-    this.isManualPitDriving = false;
     this.recorder.stop();
     this.recorder.clear();
-
-    const halfW = this.circuit.circuitWidth / 2;
 
     if (this.mode === 'DRIVING') {
       this.opponentManager.resetToGrids(true);
@@ -404,121 +332,32 @@ export class Game {
       this.opponentManager.resetToGrids(false);
     }
 
-    // 모든 출전 차량(슬롯 0~3)을 그리드가 아닌 피트 가레지/피트 레인 대기열에 순서대로 배치
-    for (let i = 0; i < 4; i++) {
-      const v = this.getVehicleForSlot(i);
-      if (!v) continue;
-      const startState = this.computePitRolloutState(i, 0, halfW);
-      const worldPos = this.circuit.getStartStraightWorldPosition(startState.x, startState.z);
-      v.reset(worldPos.position, worldPos.heading + startState.headingOffset);
-      v.speed = (i === 0 && this.mode === 'DRIVING') ? 4.0 : startState.speed;
-    }
-
-    const leadVehicle = this.getVehicleForSlot(0) || this.playerVehicle;
-    this.cameraController.updateStartCutscene(0.016, leadVehicle, 0);
+    this.startCutsceneController.setup((i) => this.getVehicleForSlot(i), this.mode === 'DRIVING');
   }
 
   public updateStartCutscene(delta: number): void {
-    const halfW = this.circuit.circuitWidth / 2;
-    const grid0 = this.circuit.getGridPosition(0);
+    const { leadVehicle } = this.startCutsceneController.update(
+      delta,
+      (i) => this.getVehicleForSlot(i),
+      this.mode === 'DRIVING',
+      () => this.skipStartCutscene()
+    );
 
-    // 1. 유저 직접 운전 감지 (W/A/S/D 키 입력 시 피트 출차 직접 운전 모드로 즉시 전환)
-    if (this.mode === 'DRIVING') {
-      this.input.update(delta);
-      if (
-        !this.isManualPitDriving &&
-        (this.input.throttle > 0 || this.input.brake > 0 || Math.abs(this.input.steer) > 0.05)
-      ) {
-        this.isManualPitDriving = true;
-      }
+    const target = leadVehicle || this.playerVehicle;
+    if (this.startCutsceneController.isManualPitDriving) {
+      this.environmentManager.update(delta, target.position);
+      this.audio.update(target.getSpeedKmh(), target.isDrifting, this.input.throttle);
+    } else {
+      this.environmentManager.update(delta, target.position);
+      this.audio.update(target.getSpeedKmh(), false, 0.4);
     }
 
-    this.startCutsceneTimer += delta;
-    const progress = Math.min(1.0, this.startCutsceneTimer / this.startCutsceneDuration);
-
-    // 4대 차량 각각 피트 출차 주행 갱신
-    for (let i = 0; i < 4; i++) {
-      const v = this.getVehicleForSlot(i);
-      if (!v) continue;
-
-      if (i === 0 && this.isManualPitDriving) {
-        // 플레이어 직접 운전
-        this.playerVehicle.update(
-          delta,
-          this.input.throttle,
-          this.input.brake,
-          this.input.steer,
-          this.input.handbrake,
-          false
-        );
-      } else {
-        // 롤아웃 주행 (피트 베이 -> 피트 레인 -> 피트 출구 -> 지정 그리드 슬롯 안착)
-        const state = this.computePitRolloutState(i, progress, halfW);
-        const world = this.circuit.getStartStraightWorldPosition(state.x, state.z);
-
-        v.position.copy(world.position);
-        v.heading = world.heading + state.headingOffset;
-        v.mesh.position.copy(v.position);
-        v.mesh.rotation.set(0, v.heading, 0);
-
-        // 휠 회전
-        const wheelRot = (state.speed / 0.38) * delta;
-        v.frontLeftWheel.rotation.x += wheelRot;
-        v.frontRightWheel.rotation.x += wheelRot;
-        v.rearLeftWheel.rotation.x += wheelRot;
-        v.rearRightWheel.rotation.x += wheelRot;
-
-        // 조향 각도
-        const steerAngle = -state.headingOffset * 1.5;
-        v.frontLeftWheel.rotation.y = steerAngle;
-        v.frontRightWheel.rotation.y = steerAngle;
-      }
-    }
-
-    const leadVehicle = this.getVehicleForSlot(0) || this.playerVehicle;
-
-    if (this.isManualPitDriving) {
-      this.cameraController.updateChase(delta, this.playerVehicle);
-      this.environmentManager.update(delta, this.playerVehicle.position);
-      this.audio.update(this.playerVehicle.getSpeedKmh(), this.playerVehicle.isDrifting, this.input.throttle);
-      this.emitUIState();
-
-      // 출발선 1번 그리드 슬롯(폴 포지션) 근처 진입 감지 시 자동 도킹 및 카운트다운 시작
-      const distToGrid = this.playerVehicle.position.distanceTo(grid0.position);
-      if (distToGrid < 4.2 && this.playerVehicle.speed < 14.0) {
-        this.skipStartCutscene();
-      }
-      return;
-    }
-
-    // 자동 컷씬 카메라 추적
-    this.cameraController.updateStartCutscene(delta, leadVehicle, progress);
-
-    // 환경 효과 & 오디오 업데이트
-    this.environmentManager.update(delta, leadVehicle.position);
-    this.audio.update(leadVehicle.getSpeedKmh(), false, 0.4);
     this.emitUIState();
-
-    if (progress >= 1.0) {
-      this.skipStartCutscene();
-    }
   }
 
   public skipStartCutscene(): void {
     if (this.raceState !== 'START_CUTSCENE') return;
-    this.isManualPitDriving = false;
-
-    // 모든 출전 차량(슬롯 0~3)을 각 그리드 위치에 완벽 정렬
-    for (let i = 0; i < 4; i++) {
-      const v = this.getVehicleForSlot(i);
-      if (!v) continue;
-      const grid = this.circuit.getGridPosition(i);
-      v.reset(grid.position, grid.heading);
-      v.speed = 0;
-    }
-
-    const leadVehicle = this.getVehicleForSlot(0) || this.playerVehicle;
-    this.cameraController.updateChase(0.016, leadVehicle);
+    this.startCutsceneController.skip((i) => this.getVehicleForSlot(i));
     this.startCountdown();
   }
 
@@ -592,7 +431,7 @@ export class Game {
     } else {
       this.renderer.render(this.scene, this.camera);
     }
-    this.renderMirrors();
+    this.mirrorRenderer.render(this.scene, this.container);
   }
 
   private updateCountdown(delta: number): void {
@@ -741,7 +580,7 @@ export class Game {
     }
 
     // 후방 추격 차량 감지 및 백미러 업데이트
-    this.updateRearviewMirrors(this.playerVehicle);
+    this.updateMirrors(this.playerVehicle);
 
     // UI 상태 갱신
     this.emitUIState();
@@ -806,7 +645,7 @@ export class Game {
     }
 
     // 후방 추격 차량 감지 및 백미러 업데이트
-    this.updateRearviewMirrors(targetVehicle);
+    this.updateMirrors(targetVehicle);
 
     // 오디오 사운드 업데이트
     if (this.raceState === 'FINISHED') {
@@ -819,7 +658,7 @@ export class Game {
   }
 
   private updateReplay(delta: number, deltaMs: number): void {
-    this.deactivateMirrors();
+    this.mirrorRenderer.deactivate();
 
     if (this.raceState === 'FINISHED') {
       // 일반게임과 동일한 도착 컷씬: 결승선 통과 후 부드럽게 감속하여 정지 및 정면 좌측 앵글 연출
@@ -1110,7 +949,7 @@ export class Game {
   private titleCameraAngle: number = 0;
 
   private updateTitle(delta: number): void {
-    this.deactivateMirrors();
+    this.mirrorRenderer.deactivate();
     this.titleCameraAngle += delta * 0.2;
     const radius = 8.5;
     const height = 2.8;
@@ -1344,50 +1183,9 @@ export class Game {
   }
 
   /**
-   * 백미러 비활성화 처리
+   * 후방 추격 차량 감지 및 백미러 업데이트
    */
-  private deactivateMirrors(): void {
-    if (!this.shouldRenderMirrors) return;
-    this.shouldRenderMirrors = false;
-    const leftFrame = document.getElementById('left-mirror-frame');
-    const rightFrame = document.getElementById('right-mirror-frame');
-    if (leftFrame) leftFrame.classList.remove('active', 'danger');
-    if (rightFrame) rightFrame.classList.remove('active', 'danger');
-  }
-
-  /**
-   * 후방 추격 차량 감지 및 좌/우 백미러 카메라/HUD 업데이트
-   */
-  private updateRearviewMirrors(targetVehicle: Vehicle): void {
-    const leftFrame = document.getElementById('left-mirror-frame');
-    const rightFrame = document.getElementById('right-mirror-frame');
-    const leftDistEl = document.getElementById('left-mirror-dist');
-    const rightDistEl = document.getElementById('right-mirror-dist');
-
-    if (!leftFrame || !rightFrame) {
-      this.shouldRenderMirrors = false;
-      return;
-    }
-
-    if (this.mode !== 'DRIVING' && this.mode !== 'DEMO') {
-      this.deactivateMirrors();
-      return;
-    }
-
-    const heading = targetVehicle.heading + targetVehicle.slipAngle;
-    const fwdX = Math.sin(heading);
-    const fwdZ = Math.cos(heading);
-    // 차량의 우측 방향 벡터: Forward (sin h, 0, cos h) x Up (0, 1, 0) = (-cos h, 0, sin h)
-    const rightX = -Math.cos(heading);
-    const rightZ = Math.sin(heading);
-
-    const targetPos = targetVehicle.position;
-
-    let nearestLeftDist = Infinity;
-    let nearestRightDist = Infinity;
-    let hasVehicleBehind = false;
-
-    // 상대 차량 목록 확인 (현재 타겟 차량 제외)
+  private updateMirrors(targetVehicle: Vehicle): void {
     const opponents = this.opponentManager.agents
       .filter((a) => a.vehicle.mesh.visible && a.vehicle !== targetVehicle)
       .map((a) => a.vehicle);
@@ -1396,163 +1194,6 @@ export class Game {
       opponents.push(this.playerVehicle);
     }
 
-    const myRearFore = 2.25;
-    const oppFrontFore = 2.25;
-
-    for (const opp of opponents) {
-      const dx = opp.position.x - targetPos.x;
-      const dz = opp.position.z - targetPos.z;
-      const fwdProj = dx * fwdX + dz * fwdZ;     // 양수면 전방, 음수면 후방
-      const latProj = dx * rightX + dz * rightZ; // 양수면 우측(+), 음수면 좌측(-)
-
-      // 후방 60m 이내 및 서킷 도로 폭 반경(좌우 12m 이내)에 위치한 후방 차량만 백미러 유효 감지
-      if (fwdProj < 1.0 && fwdProj > -60.0 && Math.abs(latProj) < 12.0) {
-        hasVehicleBehind = true;
-
-        // 내 차량 후방(범퍼)부터 뒷차량 전방(범퍼)까지의 실제 유효 거리 계산 (접촉 시 0.0m)
-        // fwdProj는 음수이므로 -fwdProj는 차량 중심 간 종방향 거리
-        const longitudinalDist = Math.max(0, -fwdProj - (myRearFore + oppFrontFore));
-        const lateralDist = Math.max(0, Math.abs(latProj) - 1.8);
-        const bumperDist = Math.hypot(longitudinalDist, lateralDist);
-
-        // 좌측 미러: 차량의 좌측(latProj <= 0.8) 또는 정후방 차량 감지
-        if (latProj <= 0.8) {
-          if (bumperDist < nearestLeftDist) nearestLeftDist = bumperDist;
-        }
-        // 우측 미러: 차량의 우측(latProj >= -0.8) 또는 정후방 차량 감지
-        if (latProj >= -0.8) {
-          if (bumperDist < nearestRightDist) nearestRightDist = bumperDist;
-        }
-      }
-    }
-
-    this.shouldRenderMirrors = hasVehicleBehind;
-
-    if (!hasVehicleBehind) {
-      leftFrame.classList.remove('active', 'danger');
-      rightFrame.classList.remove('active', 'danger');
-      return;
-    }
-
-    // 백미러 UI 활성화
-    leftFrame.classList.add('active');
-    rightFrame.classList.add('active');
-
-    // 좌측 미러 거리 및 후방 범퍼 10m 이내 위험 경고
-    if (nearestLeftDist < Infinity) {
-      if (leftDistEl) leftDistEl.textContent = `${nearestLeftDist.toFixed(1)}m`;
-      if (nearestLeftDist < 10.0) {
-        leftFrame.classList.add('danger');
-      } else {
-        leftFrame.classList.remove('danger');
-      }
-    } else {
-      if (leftDistEl) leftDistEl.textContent = '--.-m';
-      leftFrame.classList.remove('danger');
-    }
-
-    // 우측 미러 거리 및 후방 범퍼 10m 이내 위험 경고
-    if (nearestRightDist < Infinity) {
-      if (rightDistEl) rightDistEl.textContent = `${nearestRightDist.toFixed(1)}m`;
-      if (nearestRightDist < 10.0) {
-        rightFrame.classList.add('danger');
-      } else {
-        rightFrame.classList.remove('danger');
-      }
-    } else {
-      if (rightDistEl) rightDistEl.textContent = '--.-m';
-      rightFrame.classList.remove('danger');
-    }
-
-    // 3D 백미러 카메라 위치 및 시선 각도 설정 (경사로 주행 시 후방 노면 각도에 맞춰 시선 피치 보정)
-    const mirrorHeight = targetPos.y + 0.82;
-    const mirrorFore = 0.25;
-    const mirrorSpan = 0.98;
-    const rearSlopeOffset = Math.sin(targetVehicle.pitch) * 25.0;
-
-    // 좌측 미러 카메라: 차량 좌측에 위치(-right), 좌측 뒤편을 향하며 바깥쪽으로 약 10도 펼침
-    const leftCamPos = new THREE.Vector3(
-      targetPos.x - rightX * mirrorSpan + fwdX * mirrorFore,
-      mirrorHeight,
-      targetPos.z - rightZ * mirrorSpan + fwdZ * mirrorFore
-    );
-    const leftLookTarget = new THREE.Vector3(
-      leftCamPos.x - fwdX * 25.0 - rightX * 4.5,
-      mirrorHeight - 0.2 + rearSlopeOffset,
-      leftCamPos.z - fwdZ * 25.0 - rightZ * 4.5
-    );
-    this.leftMirrorCamera.position.copy(leftCamPos);
-    this.leftMirrorCamera.lookAt(leftLookTarget);
-
-    // 우측 미러 카메라: 차량 우측에 위치(+right), 우측 뒤편을 향하며 바깥쪽으로 약 10도 펼침
-    const rightCamPos = new THREE.Vector3(
-      targetPos.x + rightX * mirrorSpan + fwdX * mirrorFore,
-      mirrorHeight,
-      targetPos.z + rightZ * mirrorSpan + fwdZ * mirrorFore
-    );
-    const rightLookTarget = new THREE.Vector3(
-      rightCamPos.x - fwdX * 25.0 + rightX * 4.5,
-      mirrorHeight - 0.2 + rearSlopeOffset,
-      rightCamPos.z - fwdZ * 25.0 + rightZ * 4.5
-    );
-    this.rightMirrorCamera.position.copy(rightCamPos);
-    this.rightMirrorCamera.lookAt(rightLookTarget);
-  }
-
-  /**
-   * Three.js 하드웨어 가속 뷰포트/시저(Scissor)를 이용한 초고속 백미러 렌더링
-   */
-  private renderMirrors(): void {
-    if (!this.shouldRenderMirrors) return;
-
-    const leftFrame = document.getElementById('left-mirror-frame');
-    const rightFrame = document.getElementById('right-mirror-frame');
-    if (!leftFrame || !rightFrame) return;
-
-    const leftViewArea = (leftFrame.querySelector('.mirror-view-area') as HTMLElement) || leftFrame;
-    const rightViewArea = (rightFrame.querySelector('.mirror-view-area') as HTMLElement) || rightFrame;
-
-    const containerRect = this.container.getBoundingClientRect();
-    const leftRect = leftViewArea.getBoundingClientRect();
-    const rightRect = rightViewArea.getBoundingClientRect();
-
-    if (leftRect.width <= 0 || leftRect.height <= 0) return;
-
-    const pixelRatio = this.renderer.getPixelRatio();
-
-    this.renderer.setScissorTest(true);
-
-    // 좌측 미러 뷰포트 (WebGL Y좌표는 캔버스 하단 기준)
-    const leftX = Math.round((leftRect.left - containerRect.left) * pixelRatio);
-    const leftY = Math.round((containerRect.bottom - leftRect.bottom) * pixelRatio);
-    const leftW = Math.round(leftRect.width * pixelRatio);
-    const leftH = Math.round(leftRect.height * pixelRatio);
-
-    if (leftW > 0 && leftH > 0) {
-      this.renderer.setViewport(leftX, leftY, leftW, leftH);
-      this.renderer.setScissor(leftX, leftY, leftW, leftH);
-      this.renderer.render(this.scene, this.leftMirrorCamera);
-    }
-
-    // 우측 미러 뷰포트
-    const rightX = Math.round((rightRect.left - containerRect.left) * pixelRatio);
-    const rightY = Math.round((containerRect.bottom - rightRect.bottom) * pixelRatio);
-    const rightW = Math.round(rightRect.width * pixelRatio);
-    const rightH = Math.round(rightRect.height * pixelRatio);
-
-    if (rightW > 0 && rightH > 0) {
-      this.renderer.setViewport(rightX, rightY, rightW, rightH);
-      this.renderer.setScissor(rightX, rightY, rightW, rightH);
-      this.renderer.render(this.scene, this.rightMirrorCamera);
-    }
-
-    // 메인 뷰포트 복원 & 시저 테스트 종료
-    this.renderer.setScissorTest(false);
-    this.renderer.setViewport(
-      0,
-      0,
-      this.renderer.domElement.width,
-      this.renderer.domElement.height
-    );
+    this.mirrorRenderer.update(targetVehicle, opponents, this.mode === 'DRIVING' || this.mode === 'DEMO');
   }
 }

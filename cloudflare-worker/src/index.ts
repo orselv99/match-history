@@ -303,7 +303,7 @@ export default {
     // [API 1] 트랙별 리더보드 순위 조회: GET /api/leaderboard
     // -----------------------------------------------------------------
     if (method === 'GET' && url.pathname === '/api/leaderboard') {
-      const trackId = url.searchParams.get('trackId') || 'circuit_monaco';
+      const circuitId = url.searchParams.get('circuitId') || url.searchParams.get('trackId') || 'circuit_monaco';
       const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || '50')));
 
       try {
@@ -326,7 +326,7 @@ export default {
           ORDER BY rank ASC
           LIMIT ?;
         `;
-        const { results } = await env.DB.prepare(query).bind(trackId, limit).all();
+        const { results } = await env.DB.prepare(query).bind(circuitId, limit).all();
 
         const leaderboard = (results || []).map((row: any) => ({
           rank: row.rank,
@@ -340,7 +340,7 @@ export default {
           createdAt: row.created_at,
         }));
 
-        return new Response(JSON.stringify({ trackId, total: leaderboard.length, leaderboard }), {
+        return new Response(JSON.stringify({ circuitId, total: leaderboard.length, leaderboard }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       } catch (err: any) {
@@ -414,7 +414,8 @@ export default {
     if (method === 'POST' && url.pathname === '/api/matches') {
       try {
         const meta = await request.json() as any;
-        if (!meta.matchCode || !meta.userId || !meta.trackId) {
+        const circuitId = meta.circuitId || meta.trackId;
+        if (!meta.matchCode || !meta.userId || !circuitId) {
           return new Response(JSON.stringify({ error: 'Missing required match fields' }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -443,7 +444,7 @@ export default {
           matchId,
           meta.matchCode,
           meta.userId,
-          meta.trackId,
+          circuitId,
           meta.vehicleModelId || meta.vehicleId || 'gt_turbo',
           meta.totalLaps || 3,
           meta.totalTimeMs || 0,
@@ -554,7 +555,7 @@ export default {
         customMetadata: {
           uploadedAt: new Date().toISOString(),
           byteLength: body.byteLength.toString(),
-          trackId: request.headers.get('X-Track-Id') || 'circuit_monaco',
+          circuitId: request.headers.get('X-Circuit-Id') || request.headers.get('X-Track-Id') || 'circuit_monaco',
         },
       });
 

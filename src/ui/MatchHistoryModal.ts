@@ -64,7 +64,7 @@ export class MatchHistoryModal extends BaseModal {
       btn.addEventListener('click', () => {
         this.tabBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        this.currentCircuitFilter = btn.getAttribute('data-circuit') || btn.getAttribute('data-track') || 'all';
+        this.currentCircuitFilter = btn.getAttribute('data-circuit') || 'all';
         this.renderTable();
       });
     });
@@ -196,7 +196,7 @@ export class MatchHistoryModal extends BaseModal {
 
     // 1. 서킷 및 검색어 필터링
     let filtered = this.allRecords.filter(r => {
-      const recCircuitId = r.metadata?.circuitId || (r.metadata as any)?.trackId;
+      const recCircuitId = r.metadata?.circuitId || 'circuit_monaco';
       if (this.currentCircuitFilter !== 'all' && recCircuitId !== this.currentCircuitFilter) {
         return false;
       }
@@ -249,7 +249,7 @@ export class MatchHistoryModal extends BaseModal {
 
       const driverName = this.escapeHtml(meta?.driverName || (meta as any)?.userNickname || 'Driver');
       const vehicleBadge = this.getVehicleBadge(meta?.vehicleModelId || (meta as any)?.vehicleId || 'gt_turbo');
-      const recCircuitId = meta?.circuitId || (meta as any)?.trackId || 'circuit_monaco';
+      const recCircuitId = meta?.circuitId || 'circuit_monaco';
       const circuitTitle = this.getCircuitTitle(recCircuitId);
       const lapTime = meta?.bestLapMs ? this.formatTime(meta.bestLapMs) : '--:--.---';
       const topSpeed = meta?.topSpeedKmh ? `${meta.topSpeedKmh.toFixed(1)} km/h` : '--.- km/h';

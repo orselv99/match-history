@@ -214,7 +214,7 @@
 }
 
 /* 서킷 쇼케이스 패널 */
-.track-showcase-card {
+.circuit-showcase-card {
   background: var(--surface-subtle);
   border: 1px solid var(--border-subtle);
   display: flex;
@@ -222,7 +222,7 @@
   overflow: hidden;
 }
 
-.track-map-viewport {
+.circuit-map-viewport {
   background: radial-gradient(circle at center, rgba(6, 182, 212, 0.06) 0%, rgba(18, 19, 22, 0.8) 100%);
   border-bottom: 1px solid var(--border-subtle);
   padding: 14px;
@@ -232,17 +232,17 @@
   justify-content: center;
 }
 
-.track-svg {
+.circuit-svg {
   display: none;
   width: 100%;
   height: 100%;
 }
 
-.track-svg.active {
+.circuit-svg.active {
   display: block;
 }
 
-.track-svg-outline {
+.circuit-svg-outline {
   fill: none;
   stroke: #06b6d4;
   stroke-width: 6;
@@ -251,47 +251,47 @@
   filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.5));
 }
 
-.track-start-pin {
+.circuit-start-pin {
   fill: #ef4444;
   stroke: #ffffff;
   stroke-width: 1.5;
 }
 
-.track-start-text {
+.circuit-start-text {
   fill: #ededed;
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
 }
 
-.track-info-detail {
+.circuit-info-detail {
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.track-detail-header {
+.circuit-detail-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-.track-detail-title {
+.circuit-detail-title {
   font-family: var(--font-sans);
   font-size: 14px;
   font-weight: 700;
   color: var(--text-primary);
 }
 
-.track-detail-desc {
+.circuit-detail-desc {
   font-family: var(--font-sans);
   font-size: 11px;
   color: var(--text-secondary);
   line-height: 1.5;
 }
 
-.track-spec-grid,
+.circuit-spec-grid,
 .turntable-specs-footer {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

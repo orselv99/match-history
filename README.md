@@ -56,6 +56,7 @@ match-history/
 │   │   └── schema.ts               # IndexedDB 데이터베이스 스키마 및 마이그레이션 핸들러
 │   ├── ui/                         # DOM UI 컴포넌트, 모달 및 프리뷰 제어기
 │   │   ├── BaseModal.ts            # 공통 모달 베이스 추상 클래스
+│   │   ├── CircuitPreview.ts       # 게임 설정 Step 1용 2D SVG 서킷 맵 & 스펙 쇼케이스
 │   │   ├── FinishModal.ts          # 레이스 완주 및 결과 요약 모달
 │   │   ├── GameSetupWizard.ts      # 4단계 레이스 세팅 위저드 모달 (서킷/머신/환경/모드)
 │   │   ├── HoneycombPicker.ts      # 127셀 헥사곤 허니콤 컬러 팔레트 컴포넌트

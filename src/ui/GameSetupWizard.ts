@@ -1,7 +1,8 @@
 import { BaseModal } from './BaseModal.ts';
+import { CircuitPreview } from './CircuitPreview.ts';
 import { VehiclePreview } from './VehiclePreview.ts';
 import { HoneycombPicker } from './HoneycombPicker.ts';
-import { CIRCUIT_DEFINITIONS, getCircuitSvgData, type CircuitId } from '../data/circuits.ts';
+import { CIRCUIT_DEFINITIONS, type CircuitId } from '../data/circuits.ts';
 import { VEHICLE_MODELS, type VehicleModelId } from '../data/vehicles.ts';
 import type { TimeOfDay, WeatherType } from '../game/EnvironmentManager.ts';
 import { RANDOM_DRIVER_NAMES } from '../data/gameConstants.ts';
@@ -41,18 +42,8 @@ export class GameSetupWizard extends BaseModal {
   private stepTabs: NodeListOf<HTMLElement>;
   private stepPanels: NodeListOf<HTMLElement>;
 
-  // Step 1: 서킷 선택
-  private circuitCards: NodeListOf<HTMLElement>;
-  private circuitSvgMonaco: HTMLElement | null;
-  private circuitSvgMonza: HTMLElement | null;
-  private circuitSvgSpa: HTMLElement | null;
-  private circuitShowcaseTitle: HTMLElement | null;
-  private circuitShowcaseBadge: HTMLElement | null;
-  private circuitShowcaseDesc: HTMLElement | null;
-  private circuitSpecLen: HTMLElement | null;
-  private circuitSpecCorners: HTMLElement | null;
-  private circuitSpecRecord: HTMLElement | null;
-  private circuitSpecType: HTMLElement | null;
+  // Step 1: 서킷 프리뷰 (SVG 트랙맵 & 스펙 쇼케이스)
+  private circuitPreview: CircuitPreview;
 
   // Step 2: 머신 & 컬러
   private modelCards: NodeListOf<HTMLElement>;
@@ -108,18 +99,11 @@ export class GameSetupWizard extends BaseModal {
     this.stepTabs = document.querySelectorAll<HTMLElement>('.wizard-step-tab');
     this.stepPanels = document.querySelectorAll<HTMLElement>('.wizard-step-panel');
 
-    // Step 1
-    this.circuitCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-circuit]');
-    this.circuitSvgMonaco = document.getElementById('circuit-svg-monaco');
-    this.circuitSvgMonza = document.getElementById('circuit-svg-monza');
-    this.circuitSvgSpa = document.getElementById('circuit-svg-spa');
-    this.circuitShowcaseTitle = document.getElementById('circuit-showcase-title');
-    this.circuitShowcaseBadge = document.getElementById('circuit-showcase-badge');
-    this.circuitShowcaseDesc = document.getElementById('circuit-showcase-desc');
-    this.circuitSpecLen = document.getElementById('circuit-spec-len');
-    this.circuitSpecCorners = document.getElementById('circuit-spec-corners');
-    this.circuitSpecRecord = document.getElementById('circuit-spec-record');
-    this.circuitSpecType = document.getElementById('circuit-spec-type');
+    // Step 1: 서킷 프리뷰
+    this.circuitPreview = new CircuitPreview((circuitId) => {
+      this.selectedCircuit = circuitId;
+      this.updateCircuitShowcase();
+    });
 
     // Step 2
     this.modelCards = document.querySelectorAll<HTMLElement>('.wizard-choice-card[data-model]');
@@ -146,7 +130,6 @@ export class GameSetupWizard extends BaseModal {
     this.briefingDriver = document.getElementById('briefing-driver');
 
     this.initTurntableAndPicker();
-    this.initCircuitSvgs();
     this.bindEvents();
     this.pickRandomName();
   }
@@ -171,32 +154,6 @@ export class GameSetupWizard extends BaseModal {
         console.warn('HoneycombPicker init failed', e);
       }
     }
-  }
-
-  private initCircuitSvgs(): void {
-    const list: Array<{ id: CircuitId; el: HTMLElement | null }> = [
-      { id: 'circuit_monaco', el: this.circuitSvgMonaco },
-      { id: 'circuit_monza', el: this.circuitSvgMonza },
-      { id: 'circuit_spa', el: this.circuitSvgSpa },
-    ];
-
-    list.forEach(({ id, el }) => {
-      if (!el) return;
-      const data = getCircuitSvgData(id);
-      const pathEl = el.querySelector<SVGPathElement>('.circuit-svg-outline');
-      const circleEl = el.querySelector<SVGCircleElement>('.circuit-start-pin');
-      const textEl = el.querySelector<SVGTextElement>('.circuit-start-text');
-
-      if (pathEl) pathEl.setAttribute('d', data.pathD);
-      if (circleEl) {
-        circleEl.setAttribute('cx', data.startX.toString());
-        circleEl.setAttribute('cy', data.startY.toString());
-      }
-      if (textEl) {
-        textEl.setAttribute('x', data.textX.toString());
-        textEl.setAttribute('y', data.textY.toString());
-      }
-    });
   }
 
   private bindEvents(): void {
@@ -229,14 +186,6 @@ export class GameSetupWizard extends BaseModal {
       this.updateModelShowcase();
       this.updateEnvironmentShowcase();
       this.updateBriefingCard();
-    });
-
-    // Step 1: 서킷 카드
-    this.circuitCards.forEach(card => {
-      card.addEventListener('click', () => {
-        this.selectedCircuit = (card.dataset.circuit as CircuitId) || 'circuit_monaco';
-        this.updateCircuitShowcase();
-      });
     });
 
     // Step 2: 차량 모델 카드
@@ -361,29 +310,10 @@ export class GameSetupWizard extends BaseModal {
   }
 
   public updateCircuitShowcase(): void {
-    this.circuitCards.forEach(c => {
-      const cardId = c.dataset.circuit;
-      c.classList.toggle('active', cardId === this.selectedCircuit);
-    });
-
-    this.circuitSvgMonaco?.classList.toggle('active', this.selectedCircuit === 'circuit_monaco');
-    this.circuitSvgMonza?.classList.toggle('active', this.selectedCircuit === 'circuit_monza');
-    this.circuitSvgSpa?.classList.toggle('active', this.selectedCircuit === 'circuit_spa');
-
-    const meta = CIRCUIT_DEFINITIONS[this.selectedCircuit];
-    if (meta) {
-      if (this.circuitShowcaseTitle) this.circuitShowcaseTitle.textContent = meta.title;
-      if (this.circuitShowcaseBadge) {
-        this.circuitShowcaseBadge.textContent = meta.badge;
-        this.circuitShowcaseBadge.className = `choice-card-badge ${meta.badgeClass}`;
-      }
-      if (this.circuitShowcaseDesc) this.circuitShowcaseDesc.textContent = meta.desc;
-      if (this.circuitSpecLen) this.circuitSpecLen.textContent = meta.len;
-      if (this.circuitSpecCorners) this.circuitSpecCorners.textContent = meta.corners;
-      if (this.circuitSpecRecord) this.circuitSpecRecord.textContent = meta.record;
-      if (this.circuitSpecType) this.circuitSpecType.textContent = meta.type;
+    this.circuitPreview.update(this.selectedCircuit);
+    if (this.briefingCircuit) {
+      this.briefingCircuit.textContent = CIRCUIT_DEFINITIONS[this.selectedCircuit]?.title || this.selectedCircuit;
     }
-    if (this.briefingCircuit) this.briefingCircuit.textContent = meta?.title || this.selectedCircuit;
   }
 
   public updateModelShowcase(): void {

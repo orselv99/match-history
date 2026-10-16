@@ -6,12 +6,10 @@ import { Vehicle } from './Vehicle.ts';
 import { MotionBlurQuality } from '../core/GraphicsSettingsManager.ts';
 
 /**
- * 3D 환경 방사형 줌 블러(Radial Zoom Blur) 및 고속 가속선 셰이더
- * - 차량 중심부(Center)는 100% 선명도 유지 (타원형 차체 마스킹)
- * - 주변 3D 배경 환경(노면, 가드레일, 건물, 나무, 하늘) 방사형 줌 블러 스트릭
- * - 100 km/h: 주변 배경 방사형 모션블러 시작 + 쿨 에어로 아이스블루 가속선
- * - 200 km/h: 하이퍼스피드 줌 블러 극대화 + 주변부 광학 색수차(RGB 분산) + 터널 비네트 + 크림슨/화이트 가속선
- * - 그래픽 설정(HIGH: 16샘플+색수차, MEDIUM: 8샘플 경량, OFF: 완전 비활성화)
+ * 3D 환경 외곽 방사형 모션 블러(Radial Motion Blur) 셰이더
+ * - 인위적인 2D 속도선(하얀 선)을 완전히 제거하고 순수 광학 효과만으로 속도감 연출
+ * - 차량 및 전방 주행 시야(중앙부)는 100% 선명하게 보존
+ * - 화면 외곽 배경(노면 가장자리, 연석, 건물, 나무)만 속도에 비례해 부드럽게 뒤로 흐르는 모션 블러 적용
  */
 const RadialBlurShader = {
   name: 'RadialBlurShader',
@@ -47,14 +45,12 @@ const RadialBlurShader = {
 
       vec2 toCenter = uCenter - vUv;
 
-      // 1. 차량 형태에 최적화된 타원형 마스킹 (가로로 길고 세로로 콤팩트한 차체 보존)
-      vec2 maskVec = vec2(toCenter.x * 1.0, toCenter.y * 1.55);
+      // 1. 차량 및 전방 시야 보존용 타원형 마스크 (중앙 주행 시야는 100% 선명도 유지)
+      vec2 maskVec = vec2(toCenter.x * 1.0, toCenter.y * 1.45);
       float maskDist = length(maskVec);
 
-      // 차량 및 전방 주행 시야(중앙부 0.25 이내)는 100% 선명하게 보존, 외곽만 부드러운 블러 처리
-      float blurMask = smoothstep(0.24, 0.62, maskDist);
-      // 고속에서만 점진적으로 블러 강도 상승 (과도한 화면 왜곡 방지)
-      float totalStrength = pow(uStrength, 1.4) * blurMask * 0.14;
+      float blurMask = smoothstep(0.26, 0.68, maskDist);
+      float totalStrength = pow(uStrength, 1.35) * blurMask * 0.15;
 
       float sampleCount = float(clamp(uSamples, 4, 16));
       vec2 stepVec = (toCenter / sampleCount) * totalStrength;
@@ -73,43 +69,23 @@ const RadialBlurShader = {
       }
       accumColor /= sampleCount;
 
-      // 2. 외곽부 미세 색수차 (170km/h 이상 초고속 시 테두리에만 은은하게 적용)
-      if (uEnableChrom > 0.5 && uStrength > 0.60) {
-        float chromFactor = (uStrength - 0.60) / 0.40;
-        float chromOffset = maskDist * chromFactor * 0.008 * blurMask;
+      // 2. 외곽부 미세 광학 색수차 (165km/h 이상 초고속 시 가장자리에만 은은하게 적용)
+      if (uEnableChrom > 0.5 && uStrength > 0.58) {
+        float chromFactor = (uStrength - 0.58) / 0.42;
+        float chromOffset = maskDist * chromFactor * 0.007 * blurMask;
         vec2 chromDir = normalize(toCenter + vec2(0.0001));
         float r = texture2D(tDiffuse, clamp(vUv + chromDir * chromOffset, 0.0, 1.0)).r;
         float b = texture2D(tDiffuse, clamp(vUv - chromDir * chromOffset, 0.0, 1.0)).b;
-        accumColor.r = mix(accumColor.r, r, 0.35);
-        accumColor.b = mix(accumColor.b, b, 0.35);
+        accumColor.r = mix(accumColor.r, r, 0.32);
+        accumColor.b = mix(accumColor.b, b, 0.32);
       }
 
-      // 3. 화면 최외곽 테두리(Periphery)에만 은은하게 흐르는 반투명 기류선 (중앙 주행 시야 침범 원천 차단)
-      float edgeStreakMask = smoothstep(0.42, 0.75, maskDist);
-      float angle = atan(toCenter.y, toCenter.x);
+      vec3 finalColor = accumColor.rgb;
 
-      float ray1 = fract(sin(floor(angle * 75.0) * 12.9898 + 45.1) * 43758.5453);
-      float travel1 = fract(maskDist * 2.2 - uTime * (4.5 + ray1 * 3.0));
-      float shape1 = smoothstep(0.0, 0.12, travel1) * smoothstep(0.55, 0.12, travel1);
-      float streak1 = smoothstep(0.91, 0.985, ray1) * shape1 * 0.18 * smoothstep(0.25, 0.65, uStrength);
-
-      float ray2 = fract(sin(floor(angle * 120.0 + 19.0) * 78.233 + 12.3) * 23421.6312);
-      float travel2 = fract(maskDist * 2.8 - uTime * (6.2 + ray2 * 4.0));
-      float shape2 = smoothstep(0.0, 0.10, travel2) * smoothstep(0.45, 0.10, travel2);
-      float streak2 = smoothstep(0.90, 0.98, ray2) * shape2 * 0.25 * smoothstep(0.55, 0.92, uStrength);
-
-      float totalStreak = (streak1 + streak2) * edgeStreakMask;
-
-      vec3 colLow = vec3(0.75, 0.92, 1.0);
-      vec3 colHigh = vec3(1.0, 0.85, 0.75);
-      vec3 streakColor = mix(colLow, colHigh, smoothstep(0.55, 0.95, uStrength));
-
-      vec3 finalColor = accumColor.rgb + streakColor * totalStreak;
-
-      // 4. 주변부 고속 터널 비네트 (180km/h 이상에서 외곽만 은은하게 감싸기)
+      // 3. 주변부 고속 터널 비네트 (180km/h 이상에서 외곽만 자연스럽게 포커싱)
       float vignetteFactor = smoothstep(0.65, 1.0, uStrength);
-      float vignette = smoothstep(1.15, 0.48, maskDist * (0.75 + vignetteFactor * 0.35));
-      finalColor = mix(finalColor * (1.0 - vignetteFactor * 0.18), finalColor, vignette);
+      float vignette = smoothstep(1.18, 0.50, maskDist * (0.75 + vignetteFactor * 0.30));
+      finalColor = mix(finalColor * (1.0 - vignetteFactor * 0.15), finalColor, vignette);
 
       gl_FragColor = vec4(finalColor, 1.0);
     }

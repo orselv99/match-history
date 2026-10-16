@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 export type TimeOfDay = 'morning' | 'noon' | 'sunset' | 'night';
-export type WeatherType = 'clear' | 'rain' | 'wind_fog';
+export type WeatherType = 'clear' | 'rain' | 'wind_fog' | 'snow';
 
 export interface EnvironmentPreset {
   bgColor: number;
@@ -51,6 +51,7 @@ export interface EnvironmentPreset {
 
   isRaining: boolean;
   isFoggy: boolean;
+  isSnowing: boolean;
   playRainAudio: boolean;
   needHeadlights: boolean;
 }
@@ -179,6 +180,7 @@ export function getEnvironmentPreset(timeOfDay: TimeOfDay, weather: WeatherType)
   // 2. 날씨 효과 오버라이드
   let isRaining = false;
   let isFoggy = false;
+  let isSnowing = false;
   let playRainAudio = false;
   let roadRoughness = 0.68;
   let roadMetalness = 0.16;
@@ -292,6 +294,26 @@ export function getEnvironmentPreset(timeOfDay: TimeOfDay, weather: WeatherType)
     roadRoughness = 0.55;
     roadMetalness = 0.25;
     roadColor = 0x282c35;
+  } else if (weather === 'snow') {
+    isSnowing = true;
+    if (timeOfDay === 'morning') fogColor = 0xdde6ed;
+    else if (timeOfDay === 'noon') fogColor = 0xe2e8f0;
+    else if (timeOfDay === 'sunset') fogColor = 0xa37b88;
+    else fogColor = 0x182030;
+
+    bgColor = fogColor;
+    skyTop = fogColor;
+    skyUpperMid = fogColor;
+    skyLowerMid = fogColor;
+    skyHorizon = fogColor;
+    sunGlowStrength = 0.05;
+    fogDensity = 0.032; // 안개보다 강한 블리자드 시야 제한
+    dirIntensity *= 0.40;
+    ambIntensity *= 1.35;
+
+    roadRoughness = 0.85;
+    roadMetalness = 0.08;
+    roadColor = timeOfDay === 'night' ? 0x5a6878 : 0xd5e0ea; // 눈 덮인 연회색/설원 노면
   }
 
   // 3. 천체(해/달/별) 상태
@@ -329,7 +351,7 @@ export function getEnvironmentPreset(timeOfDay: TimeOfDay, weather: WeatherType)
     sunCoronaScale = 95;
     sunHorizonHaloColor = 0xe11d48;
     sunHorizonHaloOpacity = weather === 'clear' ? 0.55 : 0.22;
-    sunVisible = weather !== 'wind_fog';
+    sunVisible = weather === 'clear';
 
     starsVisible = weather === 'clear';
     starsOpacity = 0.42;
@@ -342,8 +364,8 @@ export function getEnvironmentPreset(timeOfDay: TimeOfDay, weather: WeatherType)
   // 야간에는 구름이 별빛을 가로질러 빠르게 날아가지 않도록 미풍(0.4m/s)으로 잔잔하게 연출
   const cloudWindX = timeOfDay === 'night'
     ? (weather === 'clear' ? 0.4 : 1.2)
-    : (weather === 'wind_fog' ? 16.0 : 4.5);
-  const needHeadlights = timeOfDay === 'night' || weather === 'rain' || weather === 'wind_fog';
+    : (weather === 'wind_fog' ? 16.0 : (weather === 'snow' ? 12.0 : 4.5));
+  const needHeadlights = timeOfDay === 'night' || weather === 'rain' || weather === 'wind_fog' || weather === 'snow';
 
   return {
     bgColor,
@@ -384,6 +406,7 @@ export function getEnvironmentPreset(timeOfDay: TimeOfDay, weather: WeatherType)
     roadColor,
     isRaining,
     isFoggy,
+    isSnowing,
     playRainAudio,
     needHeadlights,
   };

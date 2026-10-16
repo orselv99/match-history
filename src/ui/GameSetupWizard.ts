@@ -407,7 +407,7 @@ export class GameSetupWizard extends BaseModal {
     const times: TimeOfDay[] = ['morning', 'noon', 'sunset', 'night'];
     this.selectedTimeOfDay = times[Math.floor(Math.random() * times.length)];
 
-    const weathers: WeatherType[] = ['clear', 'rain', 'wind_fog'];
+    const weathers: WeatherType[] = ['clear', 'rain', 'wind_fog', 'snow'];
     this.selectedWeather = weathers[Math.floor(Math.random() * weathers.length)];
     this.updateEnvironmentShowcase();
     this.callbacks.onEnvironmentChange?.(this.selectedTimeOfDay, this.selectedWeather);

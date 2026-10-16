@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { VEHICLE_MODELS, type VehicleModelId } from '../data/vehicles.ts';
+import type { WeatherType } from './environment/EnvironmentPresets.ts';
 import {
   createNameTagSprite,
   assembleVehicleVisuals,
@@ -170,7 +171,8 @@ export class Vehicle {
     isOffroad: boolean,
     groundY: number = 0.055,
     slopeSin: number = 0,
-    roadPitch: number = 0
+    roadPitch: number = 0,
+    weather: WeatherType = 'clear'
   ): void {
     this.lastLandingImpact = 0;
 
@@ -181,14 +183,19 @@ export class Vehicle {
     if (throttle > 0) {
       // 현실적인 고출력 터보 엔진 토크 곡선: 저속 폭발 가속 + 고속 지속 견인
       const powerCurve = Math.max(0.48, 1.0 - topSpeedRatio * 0.52);
-      appliedAccel += throttle * this.ACCELERATION * powerCurve;
+      // 강설 시 저속 휠스핀 및 우천 시 노면 접지력 감쇄
+      const weatherTraction = weather === 'snow'
+        ? (this.speed < 14.0 ? 0.68 : 0.82)
+        : (weather === 'rain' ? 0.92 : 1.0);
+      appliedAccel += throttle * this.ACCELERATION * powerCurve * weatherTraction;
     }
 
     if (brake > 0) {
+      const brakeFriction = weather === 'snow' ? 0.52 : (weather === 'rain' ? 0.80 : 1.0);
       if (this.speed > 0.5) {
-        appliedAccel -= brake * this.BRAKING; // 감속
+        appliedAccel -= brake * (this.BRAKING * brakeFriction); // 감속 (빙판/우천 제동 거리 증가)
       } else {
-        appliedAccel -= brake * (this.ACCELERATION * 0.6); // 후진 기어
+        appliedAccel -= brake * (this.ACCELERATION * 0.6 * brakeFriction); // 후진 기어
       }
     }
 
@@ -256,11 +263,15 @@ export class Vehicle {
     }
 
     if (!this.isSpinningOut) {
-      const driftFactor = this.isDrifting ? 1.45 : 1.0;
+      const driftFactor = this.isDrifting ? (weather === 'snow' ? 1.6 : 1.45) : 1.0;
       const turnRate = steerAngle * Math.min(7.5, 1.8 + Math.abs(this.speed) * 0.12) * driftFactor;
       this.heading -= turnRate * delta;
 
-      const targetSlip = this.isDrifting ? steerInput * 0.32 : 0;
+      // 기후 노면 미끄러짐: 강설 시 코너링 중 자연스러운 슬라이드/미끄러짐 발생
+      const weatherSlip = weather === 'snow'
+        ? steerInput * Math.min(0.22, (Math.abs(this.speed) / 32.0) * 0.20)
+        : (weather === 'rain' ? steerInput * Math.min(0.06, (Math.abs(this.speed) / 35.0) * 0.06) : 0);
+      const targetSlip = (this.isDrifting ? steerInput * 0.32 : 0) + weatherSlip;
       this.slipAngle += (targetSlip - this.slipAngle) * Math.min(1.0, 10.0 * delta);
     }
 

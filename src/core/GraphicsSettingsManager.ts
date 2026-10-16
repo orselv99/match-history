@@ -20,6 +20,7 @@ export interface GraphicsSettings {
   resolution: ResolutionScale;
   dynamicFov: boolean;
   cameraShake: CameraShakeMode;
+  weatherFx: boolean;
 }
 
 export interface HardwareInfo {
@@ -38,6 +39,7 @@ export const PRESET_CONFIGS: Record<'HIGH' | 'MEDIUM' | 'LOW', Omit<GraphicsSett
     resolution: 'HIGH',
     dynamicFov: true,
     cameraShake: 'FULL',
+    weatherFx: true,
   },
   MEDIUM: {
     motionBlur: 'MEDIUM',
@@ -45,6 +47,7 @@ export const PRESET_CONFIGS: Record<'HIGH' | 'MEDIUM' | 'LOW', Omit<GraphicsSett
     resolution: 'MEDIUM',
     dynamicFov: true,
     cameraShake: 'REDUCED',
+    weatherFx: true,
   },
   LOW: {
     motionBlur: 'OFF',
@@ -52,6 +55,7 @@ export const PRESET_CONFIGS: Record<'HIGH' | 'MEDIUM' | 'LOW', Omit<GraphicsSett
     resolution: 'LOW',
     dynamicFov: false,
     cameraShake: 'OFF',
+    weatherFx: false,
   },
 };
 
@@ -117,6 +121,7 @@ export class GraphicsSettingsManager {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed && parsed.preset && parsed.motionBlur && parsed.shadows) {
+          if (parsed.weatherFx === undefined) parsed.weatherFx = true;
           return parsed;
         }
       }
@@ -160,7 +165,8 @@ export class GraphicsSettingsManager {
         this.settings.shadows === cfg.shadows &&
         this.settings.resolution === cfg.resolution &&
         this.settings.dynamicFov === cfg.dynamicFov &&
-        this.settings.cameraShake === cfg.cameraShake
+        this.settings.cameraShake === cfg.cameraShake &&
+        this.settings.weatherFx === cfg.weatherFx
       ) {
         matchedPreset = p;
         break;

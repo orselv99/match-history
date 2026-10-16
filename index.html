@@ -151,7 +151,9 @@
         <span class="mirror-tag">◀ REAR_L</span>
         <span id="left-mirror-dist" class="mirror-dist">--.-m</span>
       </div>
-      <div class="mirror-view-area"></div>
+      <div class="mirror-view-area">
+        <div class="mirror-weather-overlay"></div>
+      </div>
       <div class="mirror-footer">
         <span class="mirror-blindspot" id="left-blindspot-indicator" data-i18n="hud.blindSpot">BLIND SPOT</span>
       </div>
@@ -162,7 +164,9 @@
         <span id="right-mirror-dist" class="mirror-dist">--.-m</span>
         <span class="mirror-tag">REAR_R ▶</span>
       </div>
-      <div class="mirror-view-area"></div>
+      <div class="mirror-view-area">
+        <div class="mirror-weather-overlay"></div>
+      </div>
       <div class="mirror-footer">
         <span class="mirror-blindspot" id="right-blindspot-indicator" data-i18n="hud.blindSpot">BLIND SPOT</span>
       </div>
@@ -264,6 +268,12 @@
         </div>
       </div>
     </footer>
+
+    <!-- 6. 기후 윈드실드 전면 화면 연출 (우천 빗자국 물방울 & 강설 유리 김서림/서리) -->
+    <div id="weather-screen-overlay" class="weather-screen-overlay">
+      <div class="weather-rain-layer"></div>
+      <div class="weather-frost-layer"></div>
+    </div>
   </div>
 
   <!-- 4. 경기 완주 & 리플레이 데이터 압축 벤치마크 결과 모달 (Swiss Technical Planar Architecture) -->
@@ -600,6 +610,20 @@
                   <option value="REDUCED" data-i18n="settings.graphics.shakeReduced">REDUCED (약하게 / 50% 감쇠)</option>
                   <option value="OFF" data-i18n="settings.graphics.shakeOff">OFF (완전 끄기 / 화면 흔들림 방지)</option>
                 </select>
+              </div>
+            </div>
+
+            <!-- 6. 윈드실드/미러 기후 연출 -->
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name" data-i18n="settings.graphics.weatherFxName">윈드실드/미러 기후 연출</span>
+                <span class="setting-desc" data-i18n="settings.graphics.weatherFxDesc">우천 빗자국 흐름 및 강설 서리/김서림 화면 연출 (저사양 시 끔 가능)</span>
+              </div>
+              <div class="setting-control-col">
+                <label class="switch-container">
+                  <input type="checkbox" id="chk-gfx-weather-fx" checked />
+                  <span class="switch-slider"></span>
+                </label>
               </div>
             </div>
           </div>
@@ -943,6 +967,14 @@
                   <div class="env-chip-info">
                     <strong class="env-name" data-i18n="wizard.windFog">바람/안개</strong>
                     <span class="env-desc" data-i18n="wizard.windFogDesc">짙은 레이싱 안개 & 측풍 시뮬레이션</span>
+                  </div>
+                </button>
+
+                <button type="button" class="env-chip-btn" data-weather="snow">
+                  <span class="env-icon">❄️</span>
+                  <div class="env-chip-info">
+                    <strong class="env-name" data-i18n="wizard.snow">강설</strong>
+                    <span class="env-desc" data-i18n="wizard.snowDesc">눈보라 시야 제한 & 빙판 슬립 극한 난도</span>
                   </div>
                 </button>
               </div>

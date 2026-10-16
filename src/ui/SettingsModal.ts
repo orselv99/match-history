@@ -59,6 +59,7 @@ export class SettingsModal extends BaseModal {
   private selectGfxShadows: HTMLSelectElement | null;
   private chkGfxDynamicFov: HTMLInputElement | null;
   private selectGfxShake: HTMLSelectElement | null;
+  private chkGfxWeatherFx: HTMLInputElement | null;
 
   private listeningAction: KeyAction | null = null;
   private activeKeydownListener: ((e: KeyboardEvent) => void) | null = null;
@@ -114,6 +115,7 @@ export class SettingsModal extends BaseModal {
     this.selectGfxShadows = document.getElementById('setting-gfx-shadows') as HTMLSelectElement | null;
     this.chkGfxDynamicFov = document.getElementById('chk-gfx-dynamic-fov') as HTMLInputElement | null;
     this.selectGfxShake = document.getElementById('setting-gfx-shake') as HTMLSelectElement | null;
+    this.chkGfxWeatherFx = document.getElementById('chk-gfx-weather-fx') as HTMLInputElement | null;
 
     this.bindEvents();
     this.syncUI();
@@ -262,6 +264,13 @@ export class SettingsModal extends BaseModal {
       this.syncUI();
     });
 
+    this.chkGfxWeatherFx?.addEventListener('change', () => {
+      const val = !!this.chkGfxWeatherFx?.checked;
+      const s = graphicsSettingsManager.updateSetting('weatherFx', val);
+      if (this.game) this.game.applyGraphicsSettings(s);
+      this.syncUI();
+    });
+
     this.settingLanguage?.addEventListener('change', () => {
       const lang = (this.settingLanguage?.value || 'ko') as Language;
       i18nManager.setLanguage(lang);
@@ -398,6 +407,7 @@ export class SettingsModal extends BaseModal {
     if (this.selectGfxShadows) this.selectGfxShadows.value = gfx.shadows;
     if (this.chkGfxDynamicFov) this.chkGfxDynamicFov.checked = gfx.dynamicFov;
     if (this.selectGfxShake) this.selectGfxShake.value = gfx.cameraShake;
+    if (this.chkGfxWeatherFx) this.chkGfxWeatherFx.checked = gfx.weatherFx !== false;
 
     if (this.settingLanguage) {
       this.settingLanguage.value = i18nManager.getLanguage();

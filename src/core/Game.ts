@@ -259,6 +259,30 @@ export class Game {
       this.audio
     );
     this.circuit?.setNightMode(timeOfDay === 'night');
+    this.updateWeatherScreenFX();
+  }
+
+  public updateWeatherScreenFX(): void {
+    const isFxEnabled = graphicsSettingsManager.getSettings().weatherFx !== false;
+    const overlay = document.getElementById('weather-screen-overlay');
+    const leftMirror = document.getElementById('left-mirror-frame');
+    const rightMirror = document.getElementById('right-mirror-frame');
+
+    const isRain = isFxEnabled && this.currentWeather === 'rain';
+    const isSnow = isFxEnabled && this.currentWeather === 'snow';
+
+    if (overlay) {
+      overlay.classList.toggle('is-raining', isRain);
+      overlay.classList.toggle('is-snowing', isSnow);
+    }
+    if (leftMirror) {
+      leftMirror.classList.toggle('is-raining', isRain);
+      leftMirror.classList.toggle('is-snowing', isSnow);
+    }
+    if (rightMirror) {
+      rightMirror.classList.toggle('is-raining', isRain);
+      rightMirror.classList.toggle('is-snowing', isSnow);
+    }
   }
 
   public toggleHeadlights(): boolean {
@@ -508,7 +532,8 @@ export class Game {
       isOffroad,
       surface.groundY,
       surface.slopeSin,
-      surface.roadPitch
+      surface.roadPitch,
+      this.currentWeather
     );
 
     // 언덕 정점 통과 후 착지 또는 급격한 오르막 전환(컴프레션) 시 하부 스파크 및 카메라 충격 연출
@@ -1260,6 +1285,9 @@ export class Game {
     // 4. 다이내믹 FOV 왜곡 & 카메라 쉐이크
     this.cameraController.setDynamicFovEnabled(settings.dynamicFov);
     this.cameraController.setShakeMode(settings.cameraShake);
+
+    // 5. 윈드실드/미러 기후 연출 토글
+    this.updateWeatherScreenFX();
   }
 
   /**

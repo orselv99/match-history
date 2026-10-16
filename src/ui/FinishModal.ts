@@ -54,6 +54,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
 
   private latestMetadata: MatchSummaryMetadata | null = null;
   private isPhotoMode: boolean = false;
+  private hintTimeoutId: number | null = null;
 
   constructor(callbacks: FinishModalCallbacks) {
     super('finish-modal');
@@ -94,9 +95,28 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
       callbacks.onTitle();
     });
 
+    // OS 캡처(PrintScreen 단축키) 및 화면 캡처 도구(Win+Shift+S / Snipping Tool 브라우저 블러) 감지 시 토스트 즉각 숨김
+    const hideToastForCapture = () => {
+      if (!this.isPhotoMode) return;
+      const hint = document.getElementById('photo-mode-hint');
+      if (hint) {
+        hint.classList.remove('visible');
+        hint.classList.add('capture-hidden');
+      }
+      const toastContainer = document.getElementById('toast-container');
+      if (toastContainer) {
+        toastContainer.innerHTML = '';
+      }
+    };
+
     // Ctrl + Z 단축키로 포토 모드(UI 숨김) 토글 및 복귀 리스너
     window.addEventListener('keydown', (e) => {
       if (!this.isOpen()) return;
+
+      if (e.key === 'PrintScreen' || e.code === 'PrintScreen') {
+        hideToastForCapture();
+        return;
+      }
 
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ') {
         e.preventDefault();
@@ -104,6 +124,18 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
       } else if (this.isPhotoMode && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
         // 포토 모드 중 아무 일반 키나 누르면 UI 복귀 (Ctrl 등 보조키 단독 입력 제외)
         this.setPhotoMode(false);
+      }
+    });
+
+    // OS 캡처 도구(Win+Shift+S 등) 실행 시 브라우저 포커스 상실(blur)을 감지하여 토스트 숨김
+    window.addEventListener('blur', () => {
+      hideToastForCapture();
+    });
+
+    // 포토 모드 중 마우스 이동 시 힌트를 잠시 표시했다가 자동 페이드아웃
+    window.addEventListener('mousemove', () => {
+      if (this.isOpen() && this.isPhotoMode) {
+        this.showHintTemporarily(1800);
       }
     });
 
@@ -115,6 +147,23 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
     });
   }
 
+  private showHintTemporarily(durationMs: number = 2200): void {
+    const hint = document.getElementById('photo-mode-hint');
+    if (!hint) return;
+
+    hint.classList.remove('capture-hidden');
+    hint.classList.add('visible');
+
+    if (this.hintTimeoutId !== null) {
+      window.clearTimeout(this.hintTimeoutId);
+    }
+
+    this.hintTimeoutId = window.setTimeout(() => {
+      hint.classList.remove('visible');
+      this.hintTimeoutId = null;
+    }, durationMs);
+  }
+
   public togglePhotoMode(): void {
     this.setPhotoMode(!this.isPhotoMode);
   }
@@ -122,6 +171,27 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
   public setPhotoMode(enabled: boolean): void {
     this.isPhotoMode = enabled;
     document.body.classList.toggle('in-photo-mode', enabled);
+
+    const hint = document.getElementById('photo-mode-hint');
+    if (this.hintTimeoutId !== null) {
+      window.clearTimeout(this.hintTimeoutId);
+      this.hintTimeoutId = null;
+    }
+
+    if (enabled) {
+      // 1. 기존 잔여 게임 토스트 즉시 소거
+      const toastContainer = document.getElementById('toast-container');
+      if (toastContainer) {
+        toastContainer.innerHTML = '';
+      }
+      // 2. 포토 모드 진입 시 힌트 토스트를 2.2초간만 표시 후 자동 소거하여 깨끗한 캡처 화면 제공
+      this.showHintTemporarily(2200);
+    } else {
+      if (hint) {
+        hint.classList.remove('visible');
+        hint.classList.remove('capture-hidden');
+      }
+    }
   }
 
   public captureScreenshot(): void {

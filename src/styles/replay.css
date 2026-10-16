@@ -2,22 +2,33 @@
    완주 모달 & 리플레이 컨트롤 스타일 (Finish Modal & Replay Benchmarks)
    ===================================================================== */
 #finish-modal.modal-overlay {
-  background: rgba(8, 12, 18, 0.22); /* 3D 차량과 서킷 시야 확보 */
-  backdrop-filter: none; /* 오버레이 전체 블러를 제거하여 배경 3D 차량 선명도 100% 보존 */
+  background: rgba(8, 12, 18, 0.32); /* 낮은 dimmed 농도로 좌측 주행 1위 차량 완벽 시야 확보 */
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   justify-content: flex-end;
   align-items: center;
   padding-right: 48px;
   pointer-events: none;
-  transition: opacity 0.25s ease;
+  transition: opacity 0.25s ease, backdrop-filter 0.25s ease;
 }
 
-/* 포토 모드 활성화 시 전체 UI 및 레터박스 완전 숨김 */
-body.in-photo-mode #finish-modal,
-body.in-photo-mode #cinematic-bars,
-body.in-photo-mode #ui-overlay {
+/* 포토 모드 활성화 시 전체 UI, 레터박스, 블러 및 토스트 완전 숨김 */
+body.in-photo-mode #finish-modal {
   opacity: 0 !important;
   pointer-events: none !important;
   visibility: hidden !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.in-photo-mode #cinematic-bars,
+body.in-photo-mode #ui-overlay,
+body.in-photo-mode #toast-container,
+body.in-photo-mode .toast-container {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  display: none !important;
 }
 
 .finish-photo-btn {
@@ -43,7 +54,7 @@ body.in-photo-mode #ui-overlay {
   position: fixed;
   bottom: 24px;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, 8px);
   z-index: 9999;
   background: rgba(12, 16, 22, 0.85);
   border: 1px solid var(--accent-spec);
@@ -57,11 +68,18 @@ body.in-photo-mode #ui-overlay {
   pointer-events: none;
   opacity: 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
-  transition: opacity 0.3s ease;
+  transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
-body.in-photo-mode .photo-mode-hint {
+body.in-photo-mode .photo-mode-hint.visible {
   opacity: 0.9;
+  transform: translate(-50%, 0);
+}
+
+body.in-photo-mode .photo-mode-hint.capture-hidden {
+  opacity: 0 !important;
+  display: none !important;
+  transition: none !important;
 }
 
 #finish-modal .finish-modal-card {

@@ -97,7 +97,8 @@ export class Game {
   // 게임 세션 설정 메타데이터
   public currentDriverName: string = 'Apex Hunter';
   public currentCircuitId: string = 'circuit_monaco';
-  public currentWeatherId: string = 'clear';
+  public currentTimeOfDay: TimeOfDay = 'noon';
+  public currentWeather: WeatherType = 'clear';
   public currentReplayMetadata?: MatchSummaryMetadata | null;
 
   // 콜백
@@ -248,20 +249,11 @@ export class Game {
     timeOfDay: TimeOfDay,
     weather: WeatherType
   ): void {
-    this.currentWeatherId = weather;
+    this.currentTimeOfDay = timeOfDay;
+    this.currentWeather = weather;
     this.environmentManager.setEnvironment(
       timeOfDay,
       weather,
-      this.circuit?.roadMaterial,
-      this.playerVehicle,
-      this.opponentManager,
-      this.audio
-    );
-  }
-
-  public setWeather(weatherId: 'clear' | 'sunset' | 'night' | 'rain'): void {
-    this.environmentManager.setWeather(
-      weatherId,
       this.circuit?.roadMaterial,
       this.playerVehicle,
       this.opponentManager,

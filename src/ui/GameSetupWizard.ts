@@ -2,14 +2,12 @@ import { BaseModal } from './BaseModal.ts';
 import { VehiclePreview } from './VehiclePreview.ts';
 import { HoneycombPicker } from './HoneycombPicker.ts';
 import { CIRCUIT_DEFINITIONS, getCircuitSvgData, type CircuitId } from '../data/circuits.ts';
-import { VEHICLE_MODELS } from '../data/vehicles.ts';
+import { VEHICLE_MODELS, type VehicleModelId } from '../data/vehicles.ts';
+import type { TimeOfDay, WeatherType } from '../game/EnvironmentManager.ts';
 import { RANDOM_DRIVER_NAMES } from '../data/gameConstants.ts';
 import { i18nManager, t } from '../i18n/I18nManager.ts';
 
-export type { CircuitId };
-export type VehicleModelId = 'gt_turbo' | 'formula_aero' | 'cyber_speedster';
-export type TimeOfDay = 'morning' | 'noon' | 'sunset' | 'night';
-export type WeatherType = 'clear' | 'rain' | 'wind_fog';
+export type { CircuitId, VehicleModelId, TimeOfDay, WeatherType };
 
 export interface RaceSetupConfig {
   circuitId: CircuitId;
@@ -25,7 +23,7 @@ export interface GameSetupWizardCallbacks {
   onStartRace: (config: RaceSetupConfig) => void | Promise<void>;
   onColorChange?: (hexVal: string) => void;
   onVehicleModelChange?: (vehicleModelId: VehicleModelId) => void;
-  onEnvironmentChange?: (time: TimeOfDay, weather: WeatherType) => void;
+  onEnvironmentChange?: (timeOfDay: TimeOfDay, weather: WeatherType) => void;
 }
 
 /**
@@ -87,7 +85,7 @@ export class GameSetupWizard extends BaseModal {
   public selectedCircuit: CircuitId = 'circuit_monaco';
   public selectedVehicleModel: VehicleModelId = 'gt_turbo';
   public selectedColor: string = '#ef4444';
-  public selectedTime: TimeOfDay = 'noon';
+  public selectedTimeOfDay: TimeOfDay = 'noon';
   public selectedWeather: WeatherType = 'clear';
 
   private getStepTitle(step: number): string {
@@ -253,9 +251,9 @@ export class GameSetupWizard extends BaseModal {
     // Step 3: 환경 칩
     this.envTimeChips.forEach(chip => {
       chip.addEventListener('click', () => {
-        this.selectedTime = (chip.dataset.time as TimeOfDay) || 'noon';
+        this.selectedTimeOfDay = (chip.dataset.time as TimeOfDay) || 'noon';
         this.updateEnvironmentShowcase();
-        this.callbacks.onEnvironmentChange?.(this.selectedTime, this.selectedWeather);
+        this.callbacks.onEnvironmentChange?.(this.selectedTimeOfDay, this.selectedWeather);
       });
     });
 
@@ -263,7 +261,7 @@ export class GameSetupWizard extends BaseModal {
       chip.addEventListener('click', () => {
         this.selectedWeather = (chip.dataset.weather as WeatherType) || 'clear';
         this.updateEnvironmentShowcase();
-        this.callbacks.onEnvironmentChange?.(this.selectedTime, this.selectedWeather);
+        this.callbacks.onEnvironmentChange?.(this.selectedTimeOfDay, this.selectedWeather);
       });
     });
 
@@ -304,7 +302,7 @@ export class GameSetupWizard extends BaseModal {
         circuitId: this.selectedCircuit,
         vehicleModelId: this.selectedVehicleModel,
         color: this.selectedColor,
-        timeOfDay: this.selectedTime,
+        timeOfDay: this.selectedTimeOfDay,
         weather: this.selectedWeather,
         driverName: this.driverNameInput?.value.trim() || 'Apex Hunter',
         isAutoDrive: this.chkAutodrive?.checked ?? false,
@@ -418,13 +416,13 @@ export class GameSetupWizard extends BaseModal {
 
   public updateEnvironmentShowcase(): void {
     this.envTimeChips.forEach(c => {
-      c.classList.toggle('active', c.dataset.time === this.selectedTime);
+      c.classList.toggle('active', c.dataset.time === this.selectedTimeOfDay);
     });
     this.envWeatherChips.forEach(c => {
       c.classList.toggle('active', c.dataset.weather === this.selectedWeather);
     });
 
-    const timeKey = `wizard.${this.selectedTime}`;
+    const timeKey = `wizard.${this.selectedTimeOfDay}`;
     const weatherKey = `wizard.${this.selectedWeather === 'wind_fog' ? 'windFog' : this.selectedWeather}`;
     const envSummary = `${t(timeKey)} + ${t(weatherKey)}`;
 
@@ -441,7 +439,7 @@ export class GameSetupWizard extends BaseModal {
     if (this.briefingModel) this.briefingModel.textContent = VEHICLE_MODELS[this.selectedVehicleModel]?.title || this.selectedVehicleModel;
     if (this.briefingColorDot) this.briefingColorDot.style.backgroundColor = this.selectedColor;
 
-    const timeKey = `wizard.${this.selectedTime}`;
+    const timeKey = `wizard.${this.selectedTimeOfDay}`;
     const weatherKey = `wizard.${this.selectedWeather === 'wind_fog' ? 'windFog' : this.selectedWeather}`;
     if (this.briefingEnv) this.briefingEnv.textContent = `${t(timeKey)} + ${t(weatherKey)}`;
 
@@ -477,12 +475,12 @@ export class GameSetupWizard extends BaseModal {
     this.updateColor(randHex, true);
 
     const times: TimeOfDay[] = ['morning', 'noon', 'sunset', 'night'];
-    this.selectedTime = times[Math.floor(Math.random() * times.length)];
+    this.selectedTimeOfDay = times[Math.floor(Math.random() * times.length)];
 
     const weathers: WeatherType[] = ['clear', 'rain', 'wind_fog'];
     this.selectedWeather = weathers[Math.floor(Math.random() * weathers.length)];
     this.updateEnvironmentShowcase();
-    this.callbacks.onEnvironmentChange?.(this.selectedTime, this.selectedWeather);
+    this.callbacks.onEnvironmentChange?.(this.selectedTimeOfDay, this.selectedWeather);
 
     this.updateBriefingCard();
   }
@@ -491,7 +489,7 @@ export class GameSetupWizard extends BaseModal {
     this.selectedCircuit = 'circuit_monaco';
     this.selectedVehicleModel = 'gt_turbo';
     this.selectedColor = '#ef4444';
-    this.selectedTime = 'noon';
+    this.selectedTimeOfDay = 'noon';
     this.selectedWeather = 'clear';
     if (this.driverNameInput) this.driverNameInput.value = 'Apex Hunter';
     if (this.chkAutodrive) this.chkAutodrive.checked = false;
@@ -509,7 +507,7 @@ export class GameSetupWizard extends BaseModal {
     this.updateBriefingCard();
 
     this.callbacks.onVehicleModelChange?.(this.selectedVehicleModel);
-    this.callbacks.onEnvironmentChange?.(this.selectedTime, this.selectedWeather);
+    this.callbacks.onEnvironmentChange?.(this.selectedTimeOfDay, this.selectedWeather);
   }
 
   public open(): void {

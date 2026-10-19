@@ -31,6 +31,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // 1. 게임 엔진 및 로딩 스크린 초기화
   const game = new Game(container, minimapCanvas);
+  const savedViewMode = localStorage.getItem('apex_camera_view_mode');
+  if (savedViewMode === 'FIRST_PERSON' || savedViewMode === 'THIRD_PERSON') {
+    game.cameraController.viewMode = savedViewMode;
+  }
   const loadingScreen = new LoadingScreen();
 
   // 2. 모듈식 UI 컨트롤러 초기화
@@ -228,11 +232,16 @@ window.addEventListener('DOMContentLoaded', () => {
   const openPauseDialog = () => {
     if (game.mode !== 'DRIVING' && game.mode !== 'DEMO' && game.mode !== 'REPLAY') return;
     game.pause();
+    const isReplay = game.mode === 'REPLAY';
     const circuitTitle = CIRCUIT_DEFINITIONS[currentConfig.circuitId]?.title || game.currentCircuitId;
     const vehicleTitle = VEHICLE_MODELS[currentConfig.vehicleModelId]?.title || game.playerVehicle.currentVehicleModelId;
-    const lapStr = `LAP ${game.lapTimer.currentLap.toString().padStart(2, '0')} / ${game.lapTimer.totalLaps.toString().padStart(2, '0')}`;
-    const timeStr = `${(game.lapTimer.currentLapTimeMs / 1000).toFixed(3)}s`;
-    pauseModal.show({ circuitTitle, vehicleTitle, lapStr, timeStr });
+    const lapStr = isReplay
+      ? `LAP ${game.replayPlayer.currentLap.toString().padStart(2, '0')} / 03`
+      : `LAP ${game.lapTimer.currentLap.toString().padStart(2, '0')} / ${game.lapTimer.totalLaps.toString().padStart(2, '0')}`;
+    const timeStr = isReplay
+      ? `${(game.replayPlayer.currentTimeMs / 1000).toFixed(3)}s`
+      : `${(game.lapTimer.currentLapTimeMs / 1000).toFixed(3)}s`;
+    pauseModal.show({ circuitTitle, vehicleTitle, lapStr, timeStr, isReplay });
   };
 
   // 6. 실시간 게임 상태 구독 -> HUD 및 리플레이 타임라인 동기화

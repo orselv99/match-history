@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { BaseModal } from './BaseModal.ts';
 import { appDB } from '../storage/AppDatabase.ts';
+import { initSeedReplays } from '../storage/ReplaySeedService.ts';
 import type { CachedReplayRecord } from '../storage/schema.ts';
 import { CIRCUIT_DEFINITIONS, type CircuitId } from '../data/circuits.ts';
 import { showToast } from './Toast.ts';
@@ -21,7 +22,7 @@ interface CachedCircuit2D {
 
 /**
  * 로컬 IndexedDB에 저장된 최대 100개 주행 리플레이 목록 및 전적 컨트롤러
- * - 서킷별/시점별 필터링 및 검색어(드라이버/코드) 지원 (검색 시 기존 순위 유지)
+ * - 서킷별 필터링 및 검색어(드라이버/코드) 지원 (검색 시 기존 순위 유지)
  * - 테이블 행 클릭 시 리더보드와 동일한 크기로 전환되는 풀-커버 인스펙터 팝업
  * - 2D 트랙 미니맵 리플레이 (수동 재생, 스크러버 탐색, 3D 리플레이 연동)
  */
@@ -29,13 +30,10 @@ export class MatchHistoryModal extends BaseModal {
   // 메인 리더보드 카드 DOM
   private mainCard: HTMLElement | null;
   private btnClose: HTMLElement | null;
-  private btnCloseBottom: HTMLElement | null;
   private tabBtns: NodeListOf<HTMLElement>;
   private searchInput: HTMLInputElement | null;
   private btnSearch: HTMLElement | null;
-  private btnRefresh: HTMLElement | null;
   private sortSelect: HTMLSelectElement | null;
-  private viewSelect: HTMLSelectElement | null;
   private tableTbody: HTMLElement | null;
 
   private statTotal: HTMLElement | null;
@@ -44,19 +42,15 @@ export class MatchHistoryModal extends BaseModal {
 
   // 인스펙터 풀-커버 카드 DOM
   private inspectorCard: HTMLElement | null;
-  private inspectorBtnBack: HTMLElement | null;
-  private inspectorBtnBackBottom: HTMLElement | null;
   private inspectorBtnClose: HTMLElement | null;
   private inspectorTagMatchcode: HTMLElement | null;
   private inspectorBadgeRank: HTMLElement | null;
   private inspectorContentBody: HTMLElement | null;
-  private inspectorBtn3dAction: HTMLElement | null;
 
   private allRecords: CachedReplayRecord[] = [];
   private currentCircuitFilter: string = 'all';
   private searchQuery: string = '';
   private sortMode: 'best_lap' | 'recent' | 'top_speed' = 'best_lap';
-  private viewModeFilter: 'all' | 'FIRST_PERSON' | 'THIRD_PERSON' = 'all';
 
   // 2D 미니맵 리플레이 및 인스펙터 상태
   public isInspectorViewOpen: boolean = false;
@@ -78,13 +72,10 @@ export class MatchHistoryModal extends BaseModal {
     // 메인 리더보드 카드 요소
     this.mainCard = document.getElementById('history-main-card');
     this.btnClose = document.getElementById('history-btn-close');
-    this.btnCloseBottom = document.getElementById('history-btn-close-bottom');
     this.tabBtns = document.querySelectorAll<HTMLElement>('.history-tab-btn');
     this.searchInput = document.getElementById('history-search-driver') as HTMLInputElement | null;
     this.btnSearch = document.getElementById('history-btn-search');
-    this.btnRefresh = document.getElementById('history-btn-refresh');
     this.sortSelect = document.getElementById('history-sort-select') as HTMLSelectElement | null;
-    this.viewSelect = document.getElementById('history-view-select') as HTMLSelectElement | null;
     this.tableTbody = document.getElementById('history-table-tbody');
 
     this.statTotal = document.getElementById('history-stat-total');
@@ -93,39 +84,25 @@ export class MatchHistoryModal extends BaseModal {
 
     // 인스펙터 카드 요소
     this.inspectorCard = document.getElementById('history-inspector-card');
-    this.inspectorBtnBack = document.getElementById('inspector-btn-back');
-    this.inspectorBtnBackBottom = document.getElementById('inspector-btn-back-bottom');
     this.inspectorBtnClose = document.getElementById('inspector-btn-close');
     this.inspectorTagMatchcode = document.getElementById('inspector-tag-matchcode');
     this.inspectorBadgeRank = document.getElementById('inspector-badge-rank');
     this.inspectorContentBody = document.getElementById('inspector-content-body');
-    this.inspectorBtn3dAction = document.getElementById('inspector-btn-3d-action');
 
     this.bindEvents();
   }
 
   private bindEvents(): void {
-    // 1. 모달 닫기
+    // 1. 메인 모달 닫기 (✕ 버튼)
     const closeAll = () => this.closeEntireModal();
     this.btnClose?.addEventListener('click', closeAll);
-    this.btnCloseBottom?.addEventListener('click', closeAll);
-    this.inspectorBtnClose?.addEventListener('click', closeAll);
 
-    // 2. 인스펙터 뒤로가기 (목록으로 복귀)
-    const backToList = () => this.closeInspector();
-    this.inspectorBtnBack?.addEventListener('click', backToList);
-    this.inspectorBtnBackBottom?.addEventListener('click', backToList);
-
-    // 3. 인스펙터 하단 3D 뷰어 재생 버튼
-    this.inspectorBtn3dAction?.addEventListener('click', () => {
-      if (this.currentInspectorRecord && this.callbacks.onPlayReplay) {
-        const rec = this.currentInspectorRecord;
-        this.closeEntireModal();
-        this.callbacks.onPlayReplay(rec);
-      }
+    // 2. 인스펙터 [✕] 버튼: 뒤로가기(목록으로 복귀)
+    this.inspectorBtnClose?.addEventListener('click', () => {
+      this.closeInspector();
     });
 
-    // 4. 서킷 탭 필터링
+    // 3. 서킷 탭 필터링
     this.tabBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         this.tabBtns.forEach(b => b.classList.remove('active'));
@@ -135,7 +112,7 @@ export class MatchHistoryModal extends BaseModal {
       });
     });
 
-    // 5. 드라이버 및 매치코드 검색
+    // 4. 드라이버 및 매치코드 검색
     const executeSearch = () => {
       this.searchQuery = this.searchInput?.value.trim().toLowerCase() || '';
       this.renderTable();
@@ -146,24 +123,10 @@ export class MatchHistoryModal extends BaseModal {
       if (e.key === 'Enter') executeSearch();
     });
 
-    // 6. 정렬 셀렉트 변경
+    // 5. 정렬 셀렉트 변경
     this.sortSelect?.addEventListener('change', () => {
       this.sortMode = (this.sortSelect?.value as any) || 'best_lap';
       this.renderTable();
-    });
-
-    // 7. 1P/3P 시점 필터 셀렉트 변경
-    this.viewSelect?.addEventListener('change', () => {
-      this.viewModeFilter = (this.viewSelect?.value as any) || 'all';
-      this.renderTable();
-    });
-
-    // 8. 새로고침 버튼
-    this.btnRefresh?.addEventListener('click', async () => {
-      if (this.searchInput) this.searchInput.value = '';
-      this.searchQuery = '';
-      await this.loadAndRender();
-      showToast('🔄 리플레이 목록을 갱신했습니다.');
     });
 
     // 9. 테이블 내 클릭 이벤트 위임
@@ -363,7 +326,18 @@ export class MatchHistoryModal extends BaseModal {
           validRecords.push(r);
         }
       }
-      this.allRecords = validRecords;
+
+      // 3랩 데이터가 40개 미만인 경우(구버전 데이터 정리 후 등) 자동으로 최신 시드 데이터 즉시 일괄 동기화
+      if (validRecords.length < 40) {
+        await initSeedReplays(true);
+        const refreshed = await appDB.listReplays();
+        this.allRecords = refreshed.filter(r => {
+          const lastTick = r.ticks?.[r.ticks.length - 1];
+          return (r.metadata?.totalLaps || 1) >= 3 && (lastTick?.lap || 1) >= 3 && (lastTick?.timeMs || 0) >= 130000;
+        });
+      } else {
+        this.allRecords = validRecords;
+      }
     } catch (e) {
       console.warn('[MatchHistoryModal] Failed to load replays:', e);
       this.allRecords = [];
@@ -422,17 +396,11 @@ export class MatchHistoryModal extends BaseModal {
   private renderTable(): void {
     if (!this.tableTbody) return;
 
-    // 1. 서킷 및 시점 필터링
+    // 1. 서킷 필터링
     const baseList = this.allRecords.filter(r => {
       const recCircuitId = r.metadata?.circuitId || 'circuit_monaco';
       if (this.currentCircuitFilter !== 'all' && recCircuitId !== this.currentCircuitFilter) {
         return false;
-      }
-      if (this.viewModeFilter !== 'all') {
-        const itemMode = r.metadata?.viewMode || 'THIRD_PERSON';
-        if (itemMode !== this.viewModeFilter) {
-          return false;
-        }
       }
       return true;
     });
@@ -492,8 +460,6 @@ export class MatchHistoryModal extends BaseModal {
 
       const driverName = this.escapeHtml(meta?.driverName || (meta as any)?.userNickname || 'Driver');
       const vehicleBadge = this.getVehicleBadge(meta?.vehicleModelId || (meta as any)?.vehicleId || 'gt_turbo');
-      const isFirstPerson = meta?.viewMode === 'FIRST_PERSON';
-      const viewBadge = `<span class="view-mode-badge ${isFirstPerson ? 'badge-1p' : 'badge-3p'}">${isFirstPerson ? '1P' : '3P'}</span>`;
       const recCircuitId = meta?.circuitId || 'circuit_monaco';
       const circuitTitle = this.getCircuitTitle(recCircuitId);
       const lapTime = meta?.bestLapMs ? this.formatTime(meta.bestLapMs) : '--:--.---';
@@ -504,7 +470,7 @@ export class MatchHistoryModal extends BaseModal {
         <tr class="history-data-row ${rankRowClass}" data-match="${rec.matchCode}" title="클릭하여 상세 기록 및 2D 미니맵 인스펙터 열기">
           <td class="col-rank">${rankBadgeHtml}</td>
           <td class="col-driver"><strong class="driver-name-text">${driverName}</strong></td>
-          <td class="col-vehicle"><div class="vehicle-view-col-wrap">${vehicleBadge}${viewBadge}</div></td>
+          <td class="col-vehicle">${vehicleBadge}</td>
           <td class="col-circuit">${circuitTitle}</td>
           <td class="col-lap"><span class="lap-highlight ${rankNum === 1 ? 'gold' : ''}">${lapTime}</span></td>
           <td class="col-speed">${topSpeed}</td>
@@ -580,8 +546,8 @@ export class MatchHistoryModal extends BaseModal {
               <span class="detail-v" style="color: #fff;">${driverName}</span>
             </div>
             <div class="detail-cell">
-              <span class="detail-k">머신 / 시점</span>
-              <span class="detail-v">${vehicleName} <span class="view-mode-badge ${isFirstPerson ? 'badge-1p' : 'badge-3p'}">${isFirstPerson ? '1P' : '3P'}</span></span>
+              <span class="detail-k">머신</span>
+              <span class="detail-v">${vehicleName}</span>
             </div>
             <div class="detail-cell">
               <span class="detail-k">서킷</span>

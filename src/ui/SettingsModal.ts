@@ -37,6 +37,7 @@ export class SettingsModal extends BaseModal {
   private btnClearCache: HTMLElement | null;
   private settingLanguage: HTMLSelectElement | null;
   private chkShowNametags: HTMLInputElement | null;
+  private selectCameraView: HTMLSelectElement | null;
 
   // 키 바인딩 컨트롤 (단일 키 매핑)
   private btnPresetWasd: HTMLButtonElement | null;
@@ -94,6 +95,7 @@ export class SettingsModal extends BaseModal {
     this.btnClearCache = document.getElementById('btn-clear-cache');
     this.settingLanguage = document.getElementById('setting-language') as HTMLSelectElement | null;
     this.chkShowNametags = document.getElementById('chk-show-nametags') as HTMLInputElement | null;
+    this.selectCameraView = document.getElementById('setting-camera-view') as HTMLSelectElement | null;
 
     this.btnPresetWasd = document.getElementById('btn-preset-wasd') as HTMLButtonElement | null;
     this.btnPresetArrows = document.getElementById('btn-preset-arrows') as HTMLButtonElement | null;
@@ -174,6 +176,14 @@ export class SettingsModal extends BaseModal {
       if (this.chkShowNametags && this.game) {
         this.game.setShowNametags(this.chkShowNametags.checked);
       }
+    });
+
+    this.selectCameraView?.addEventListener('change', () => {
+      const val = (this.selectCameraView?.value || 'THIRD_PERSON') as any;
+      if (this.game) {
+        this.game.cameraController.viewMode = val;
+      }
+      localStorage.setItem('apex_camera_view_mode', val);
     });
 
     this.btnClearCache?.addEventListener('click', async () => {
@@ -417,6 +427,12 @@ export class SettingsModal extends BaseModal {
       this.chkShowNametags.checked = this.game
         ? this.game.showNametagsSetting
         : (typeof localStorage !== 'undefined' ? localStorage.getItem('apex_show_nametags') !== 'false' : true);
+    }
+
+    if (this.selectCameraView) {
+      this.selectCameraView.value = this.game
+        ? this.game.cameraController.viewMode
+        : (localStorage.getItem('apex_camera_view_mode') || 'THIRD_PERSON');
     }
   }
 }

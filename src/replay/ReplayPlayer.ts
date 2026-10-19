@@ -15,6 +15,7 @@ export class ReplayPlayer {
   public currentTimeMs: number = 0;
   public totalDurationMs: number = 0;
   public playbackSpeed: number = 1.0; // 0.5x, 1x, 2x
+  public currentLap: number = 1;
 
   private ticks: RawReplayTick[] = [];
 
@@ -182,6 +183,7 @@ export class ReplayPlayer {
     const interpSpeedKmh = THREE.MathUtils.lerp(t1.speedKmh, t2.speedKmh, alpha);
     this.ghostVehicle.speed = interpSpeedKmh / 3.6;
     this.ghostVehicle.isDrifting = t1.isDrifting;
+    this.currentLap = t1.lap || 1;
 
     const steer = THREE.MathUtils.lerp(t1.steer, t2.steer, alpha);
     if (this.ghostVehicle.frontLeftWheel && this.ghostVehicle.frontRightWheel) {

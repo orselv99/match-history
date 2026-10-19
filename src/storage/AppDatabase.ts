@@ -335,6 +335,27 @@ export class AppDatabase {
   }
 
   /**
+   * 여러 리플레이 레코드를 단일 트랜잭션으로 초고속 일괄 저장 (시드 데이터 로딩 전용)
+   */
+  public async saveReplaysBulk(records: CachedReplayRecord[]): Promise<number> {
+    try {
+      const db = await this.getDB();
+      return new Promise<number>((resolve, reject) => {
+        const tx = db.transaction(STORES.REPLAY, 'readwrite');
+        const store = tx.objectStore(STORES.REPLAY);
+        for (const rec of records) {
+          store.put(rec);
+        }
+        tx.oncomplete = () => resolve(records.length);
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (e) {
+      console.warn('[AppDatabase] Failed bulk saving replays:', e);
+      return 0;
+    }
+  }
+
+  /**
    * 특정 리플레이 삭제
    */
   public async deleteReplay(matchCode: string): Promise<boolean> {

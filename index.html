@@ -458,6 +458,19 @@
 
             <div class="setting-row">
               <div class="setting-label-col">
+                <span class="setting-name" data-i18n="settings.gameplay.camView">기본 드라이빙 시점</span>
+                <span class="setting-desc" data-i18n="settings.gameplay.camViewDesc">인게임 주행 시 카메라 시점 (1인칭 콕핏 / 3인칭 체이스)</span>
+              </div>
+              <div class="setting-control-col">
+                <select id="setting-camera-view" class="settings-select">
+                  <option value="THIRD_PERSON">3인칭 뷰 (3P Chase Cam)</option>
+                  <option value="FIRST_PERSON">1인칭 뷰 (1P Cockpit/Hood)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="setting-row">
+              <div class="setting-label-col">
                 <span class="setting-name" data-i18n="settings.gameplay.showNametags">차량 식별 태그 표시</span>
                 <span class="setting-desc" data-i18n="settings.gameplay.showNametagsDesc">상대 차량 및 리플레이 차량 상단 이름표</span>
               </div>
@@ -1117,8 +1130,8 @@
     <div class="modal-card pause-modal-card">
       <header class="modal-header-strip pause-header-strip">
         <div class="pause-header-left">
-          <span class="system-tag-badge" data-i18n="pause.tag">경기 일시 정지</span>
-          <h2 class="modal-title" data-i18n="pause.title">일시정지</h2>
+          <span class="system-tag-badge" id="pause-tag" data-i18n="pause.tag">경기 일시 정지</span>
+          <h2 class="modal-title" id="pause-title" data-i18n="pause.title">일시정지</h2>
         </div>
         <span class="pause-shortcut-tag" data-i18n="pause.escResume">[ESC] TO RESUME</span>
       </header>
@@ -1147,8 +1160,8 @@
           <button type="button" id="pause-btn-resume" class="pause-menu-btn active">
             <span class="pause-btn-num">01</span>
             <div class="pause-btn-text">
-              <span class="pause-btn-title" data-i18n="pause.resume">주행재개</span>
-              <span class="pause-btn-desc" data-i18n="pause.resumeDesc">현재 위치와 시간에서 레이스를 재개합니다 [ESC]</span>
+              <span class="pause-btn-title" id="pause-resume-title" data-i18n="pause.resume">주행재개</span>
+              <span class="pause-btn-desc" id="pause-resume-desc" data-i18n="pause.resumeDesc">현재 위치와 시간에서 레이스를 재개합니다 [ESC]</span>
             </div>
             <span class="pause-btn-chevron">▶</span>
           </button>
@@ -1163,7 +1176,7 @@
           </button>
 
           <button type="button" id="pause-btn-settings" class="pause-menu-btn">
-            <span class="pause-btn-num">03</span>
+            <span class="pause-btn-num" id="pause-settings-num">03</span>
             <div class="pause-btn-text">
               <span class="pause-btn-title" data-i18n="pause.settings">조작 & 사운드 설정</span>
               <span class="pause-btn-desc" data-i18n="pause.settingsDesc">마스터/BGM/SFX 볼륨 및 스티어링 감도를 변경합니다 [O]</span>
@@ -1172,10 +1185,10 @@
           </button>
 
           <button type="button" id="pause-btn-exit" class="pause-menu-btn pause-btn-danger">
-            <span class="pause-btn-num">04</span>
+            <span class="pause-btn-num" id="pause-exit-num">04</span>
             <div class="pause-btn-text">
-              <span class="pause-btn-title" data-i18n="pause.exit">메인 메뉴로 나가기</span>
-              <span class="pause-btn-desc" data-i18n="pause.exitDesc">현재 레이스를 종료하고 로비 메뉴로 돌아갑니다</span>
+              <span class="pause-btn-title" id="pause-exit-title" data-i18n="pause.exit">메인 메뉴로 나가기</span>
+              <span class="pause-btn-desc" id="pause-exit-desc" data-i18n="pause.exitDesc">현재 레이스를 종료하고 로비 메뉴로 돌아갑니다</span>
             </div>
             <span class="pause-btn-chevron">✕</span>
           </button>
@@ -1232,15 +1245,6 @@
             </div>
 
             <div class="history-sort-select-wrap">
-              <span class="filter-sort-label">시점:</span>
-              <select id="history-view-select" class="history-sort-select">
-                <option value="all">전체 시점</option>
-                <option value="FIRST_PERSON">1인칭 (1P)</option>
-                <option value="THIRD_PERSON">3인칭 (3P)</option>
-              </select>
-            </div>
-
-            <div class="history-sort-select-wrap">
               <span class="filter-sort-label" data-i18n="history.sort">정렬:</span>
               <select id="history-sort-select" class="history-sort-select">
                 <option value="best_lap" data-i18n="history.sortBest">최고 랩타임 순</option>
@@ -1277,25 +1281,12 @@
           </table>
         </div>
       </div>
-
-      <!-- 모달 풋터 (상태 안내 및 닫기) -->
-      <footer class="modal-actions history-actions">
-        <div class="history-status-note">
-          <span class="pulse-dot"></span>
-          <span data-i18n="history.note">로컬 INDEXED_DB // 30Hz 고정소수점 바이너리 및 2D/3D 리플레이 연동</span>
-        </div>
-        <div class="history-footer-buttons">
-          <button type="button" id="history-btn-refresh" class="secondary-btn" data-i18n="history.refresh">새로고침</button>
-          <button type="button" id="history-btn-close-bottom" class="primary-btn" data-i18n="history.close">닫기</button>
-        </div>
-      </footer>
     </div>
 
     <!-- 8. 인스펙터 상세 팝업 카드 (전적검색 및 리더보드와 동일한 크기로 덮음) -->
     <div id="history-inspector-card" class="modal-card history-modal-card history-inspector-card" style="display: none;">
       <header class="modal-header-strip inspector-header-strip">
         <div class="inspector-header-left">
-          <button type="button" id="inspector-btn-back" class="secondary-btn inspector-back-btn">← 목록으로</button>
           <div class="inspector-title-group">
             <span class="system-tag-badge" id="inspector-tag-matchcode">MATCH // -</span>
             <h2 class="modal-title" id="inspector-title">경기 상세 분석 & 2D 트랙 리플레이</h2>
@@ -1303,24 +1294,13 @@
         </div>
         <div class="inspector-header-right">
           <span class="detail-rank-badge" id="inspector-badge-rank">🏁 완주 결과: -</span>
-          <button id="inspector-btn-close" class="modal-close-btn" title="닫기 [ESC]">✕</button>
+          <button id="inspector-btn-close" class="modal-close-btn" title="목록으로 돌아가기 [ESC]">✕</button>
         </div>
       </header>
 
       <div class="modal-content-body inspector-content-body" id="inspector-content-body">
         <!-- JS 동적 렌더링 -->
       </div>
-
-      <footer class="modal-actions history-actions">
-        <div class="history-status-note">
-          <span class="pulse-dot"></span>
-          <span>📡 2D 미니맵 인스펙터 // 타임라인 스크러버로 임의 시점 탐색 또는 3D 뷰어로 전체 리플레이 감상</span>
-        </div>
-        <div class="history-footer-buttons">
-          <button type="button" id="inspector-btn-back-bottom" class="secondary-btn">← 목록으로 돌아가기</button>
-          <button type="button" id="inspector-btn-3d-action" class="primary-btn">▶ 3D 뷰어로 재생</button>
-        </div>
-      </footer>
     </div>
   </div>
 

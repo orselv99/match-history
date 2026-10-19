@@ -3,6 +3,7 @@ import type { MatchSummaryMetadata, RaceResultEntry } from '../replay/ReplayType
 import type { CircuitId } from '../data/circuits.ts';
 import { t } from '../i18n/I18nManager.ts';
 import { showToast } from './Toast.ts';
+import { appDB } from '../storage/AppDatabase.ts';
 
 export interface FinishModalCallbacks {
   onReplay: () => void;
@@ -269,42 +270,63 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
   }
 
   /**
-   * 서버에서 현재 서킷 기준 상위 5개 기록 조회, 실패 시 fallback 데이터 표시
+   * 로컬 IndexedDB에서 현재 서킷 기준 상위 5개 기록 조회, 부족 시 기본 fallback 데이터로 보충
    */
   private async loadServerTop5(circuitId: CircuitId): Promise<void> {
     if (!this.serverTop5Tbody) return;
 
     this.serverTop5Tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 10px;">${t('finish.loading')}</td></tr>`;
     if (this.serverStatusTag) {
-      this.serverStatusTag.textContent = 'CONNECTING...';
+      this.serverStatusTag.textContent = 'LOCAL DB...';
       this.serverStatusTag.className = 'finish-status-badge';
     }
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
-      const res = await fetch(`https://match-history-api.orsel.workers.dev/api/leaderboards/${circuitId}?limit=5`, {
-        signal: controller.signal,
-      });
-      clearTimeout(timeoutId);
+      const allReplays = await appDB.listReplays();
+      const circuitReplays = allReplays.filter(
+        r => r.metadata?.circuitId === circuitId && typeof r.metadata?.bestLapMs === 'number' && r.metadata.bestLapMs > 0
+      );
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const serverRecords: CircuitLeaderboardEntry[] = data.slice(0, 5).map((d: any, idx: number) => ({
-          rank: idx + 1,
-          driverName: d.nickname || d.driverName || `Driver #${idx + 1}`,
-          timeFormatted: d.timeFormatted || (typeof d.bestLapMs === 'number' ? this.formatMs(d.bestLapMs) : '--:--.---'),
-        }));
-        this.renderServerTop5(serverRecords, false);
-        return;
+      // 베스트 랩 오름차순 정렬
+      circuitReplays.sort((a, b) => (a.metadata.bestLapMs || Infinity) - (b.metadata.bestLapMs || Infinity));
+
+      const records: CircuitLeaderboardEntry[] = [];
+      const seenDrivers = new Set<string>();
+
+      for (const r of circuitReplays) {
+        const dName = r.metadata.driverName || 'Driver';
+        if (!seenDrivers.has(dName)) {
+          seenDrivers.add(dName);
+          records.push({
+            rank: records.length + 1,
+            driverName: dName,
+            timeFormatted: this.formatMs(r.metadata.bestLapMs),
+          });
+          if (records.length >= 5) break;
+        }
       }
-    } catch {
-      // 서버 미응답 또는 엔드포인트 미구현 시 Fallback으로 부드럽게 전환
-    }
 
-    const fallbackList = FALLBACK_LEADERBOARDS[circuitId] || FALLBACK_LEADERBOARDS['circuit_monaco'] || [];
-    this.renderServerTop5(fallbackList, true);
+      // 5개 미만인 경우 기본 벤치마크 기록으로 채움
+      if (records.length < 5) {
+        const fallbackList = FALLBACK_LEADERBOARDS[circuitId] || FALLBACK_LEADERBOARDS['circuit_monaco'] || [];
+        for (const fb of fallbackList) {
+          if (!seenDrivers.has(fb.driverName)) {
+            seenDrivers.add(fb.driverName);
+            records.push({
+              rank: records.length + 1,
+              driverName: fb.driverName,
+              timeFormatted: fb.timeFormatted,
+            });
+            if (records.length >= 5) break;
+          }
+        }
+      }
+
+      this.renderServerTop5(records.slice(0, 5), false);
+    } catch {
+      const fallbackList = FALLBACK_LEADERBOARDS[circuitId] || FALLBACK_LEADERBOARDS['circuit_monaco'] || [];
+      this.renderServerTop5(fallbackList, true);
+    }
   }
 
   private renderServerTop5(records: CircuitLeaderboardEntry[], isFallback: boolean): void {

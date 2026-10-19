@@ -18,10 +18,12 @@ import { MatchHistoryModal } from './ui/MatchHistoryModal.ts';
 import { ModalManager } from './ui/ModalManager.ts';
 import { i18nManager } from './i18n/I18nManager.ts';
 import { appDB } from './storage/AppDatabase.ts';
+import { initSeedReplays } from './storage/ReplaySeedService.ts';
 import { showToast } from './ui/Toast.ts';
 
 window.addEventListener('DOMContentLoaded', () => {
   i18nManager.init();
+  initSeedReplays();
 
   const container = document.getElementById('game-container') as HTMLElement;
   const minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
@@ -157,14 +159,6 @@ window.addEventListener('DOMContentLoaded', () => {
       }
 
       const ticks = game.recorder.getTicks();
-      if (lastRaceMetadata) {
-        try {
-          const res = await appDB.saveReplay(lastRaceMetadata.matchCode, ticks, lastRaceMetadata);
-          showToast(`💾 리플레이가 로컬 저장소(IndexedDB)에 저장되었습니다. (${res.totalCount}/30)`);
-        } catch (e) {
-          console.warn('[Replay] Failed to save replay to IndexedDB:', e);
-        }
-      }
       game.currentReplayMetadata = lastRaceMetadata;
       game.replayPlayer.loadReplay(ticks);
       setModeUI('REPLAY');
@@ -189,8 +183,17 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  game.onFinishCallback = (metadata: MatchSummaryMetadata) => {
+  game.onFinishCallback = async (metadata: MatchSummaryMetadata) => {
     lastRaceMetadata = metadata;
+    const ticks = game.recorder.getTicks();
+    if (ticks.length > 0) {
+      try {
+        const res = await appDB.saveReplay(metadata.matchCode, ticks, metadata);
+        showToast(`💾 [${metadata.matchCode}] 주행 데이터가 자동 저장되었습니다. (${res.totalCount}/30)`);
+      } catch (e) {
+        console.warn('[AutoSave] Failed to save replay to IndexedDB:', e);
+      }
+    }
     finishModal.show(metadata);
   };
 

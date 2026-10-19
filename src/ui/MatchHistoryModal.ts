@@ -15,6 +15,8 @@ interface CachedCircuit2D {
   maxX: number;
   minZ: number;
   maxZ: number;
+  s1Index: number;
+  s2Index: number;
 }
 
 /**
@@ -346,10 +348,22 @@ export class MatchHistoryModal extends BaseModal {
 
   /**
    * IndexedDB에서 최대 100개 리플레이 조회 및 통계/테이블 일괄 갱신
+   * - 3랩 미만인 구버전 리플레이 탐색 시 자동 삭제 및 필터링하여 온전한 3랩 데이터만 표시
    */
   public async loadAndRender(): Promise<void> {
     try {
-      this.allRecords = await appDB.listReplays();
+      const rawRecords = await appDB.listReplays();
+      const validRecords: CachedReplayRecord[] = [];
+      for (const r of rawRecords) {
+        const lastTick = r.ticks?.[r.ticks.length - 1];
+        const isLessThan3Laps = (r.metadata?.totalLaps || 1) < 3 || (lastTick?.lap || 1) < 3 || (lastTick?.timeMs || 0) < 130000;
+        if (isLessThan3Laps) {
+          await appDB.deleteReplay(r.matchCode);
+        } else {
+          validRecords.push(r);
+        }
+      }
+      this.allRecords = validRecords;
     } catch (e) {
       console.warn('[MatchHistoryModal] Failed to load replays:', e);
       this.allRecords = [];
@@ -522,11 +536,17 @@ export class MatchHistoryModal extends BaseModal {
     const topSpeedStr = meta?.topSpeedKmh ? `${meta.topSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
     const avgSpeedStr = meta?.avgSpeedKmh ? `${meta.avgSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
 
-    // 베스트 섹터 타임
+    // 베스트 섹터 타임 (사용자 요청: 2, 3섹터 누적 시간 표시)
     const bestSectors = meta?.sectorTimesMs?.[1] || meta?.sectorTimesMs?.[0] || [];
-    const s1Str = bestSectors[0] ? this.formatTime(bestSectors[0]) : '--:--.---';
-    const s2Str = bestSectors[1] ? this.formatTime(bestSectors[1]) : '--:--.---';
-    const s3Str = bestSectors[2] ? this.formatTime(bestSectors[2]) : '--:--.---';
+    const s1Ms = bestSectors[0] || 0;
+    const s2IndivMs = bestSectors[1] || 0;
+    const s3IndivMs = bestSectors[2] || 0;
+    const s2CumMs = s1Ms + s2IndivMs;
+    const s3CumMs = s2CumMs + s3IndivMs;
+
+    const s1Str = s1Ms > 0 ? this.formatTime(s1Ms) : '--:--.---';
+    const s2Str = s2IndivMs > 0 ? `${this.formatTime(s2CumMs)} <span style="font-size: 11px; opacity: 0.65; margin-left: 4px;">(+${this.formatTime(s2IndivMs)})</span>` : '--:--.---';
+    const s3Str = s3IndivMs > 0 ? `${this.formatTime(s3CumMs)} <span style="font-size: 11px; opacity: 0.65; margin-left: 4px;">(+${this.formatTime(s3IndivMs)})</span>` : '--:--.---';
 
     // 1~4위 순위표
     let raceResultsHtml = '';
@@ -716,6 +736,9 @@ export class MatchHistoryModal extends BaseModal {
 
   /**
    * 2D 미니맵 캔버스 렌더링 (Lerp 실시간 보간으로 60/120fps 부드러운 움직임)
+   * - 서킷 3대 섹터(S1, S2, S3) 컬러 시각화 및 S/F, S1, S2 체크포인트 라인/배지 렌더링
+   * - 플레이어 진행 방향 쉐브론 화살표 버그 완벽 수정 (스크린 좌표계 120ms 전방 샘플링)
+   * - 실시간 현재 랩 및 통과 섹터(SEC 1/2/3) 텔레메트리 HUD 표시
    */
   private drawMinimapFrame(): void {
     const canvas = document.getElementById('inspector-minimap-canvas') as HTMLCanvasElement | null;
@@ -757,10 +780,11 @@ export class MatchHistoryModal extends BaseModal {
     const toX = (x: number) => (x - midX) * scale + w / 2;
     const toY = (z: number) => (z - midZ) * scale + h / 2;
 
-    // 4. 서킷 도로 렌더링 (아스팔트 외곽 + 중심선)
+    // 4. 서킷 도로 렌더링 (아스팔트 베이스 + 섹터별 컬러 구분선 + 체크포인트)
+    // 4-1. 아스팔트 베이스 외곽 트랙
     ctx.beginPath();
-    ctx.lineWidth = 10;
-    ctx.strokeStyle = '#222634';
+    ctx.lineWidth = 11;
+    ctx.strokeStyle = '#1e2330';
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     cData.points.forEach((p, i) => {
@@ -772,30 +796,89 @@ export class MatchHistoryModal extends BaseModal {
     ctx.closePath();
     ctx.stroke();
 
-    ctx.beginPath();
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#394152';
-    cData.points.forEach((p, i) => {
+    // 4-2. 섹터 1, 2, 3 컬러 중심선 (S1: Sky Cyan, S2: Violet Purple, S3: Amber Gold)
+    const drawSectorPath = (startIdx: number, endIdx: number, color: string) => {
+      ctx.beginPath();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = color;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (let i = startIdx; i <= endIdx; i++) {
+        const p = cData.points[i % cData.points.length];
+        const cx = toX(p.x);
+        const cy = toY(p.z);
+        if (i === startIdx) ctx.moveTo(cx, cy);
+        else ctx.lineTo(cx, cy);
+      }
+      ctx.stroke();
+    };
+
+    // Sector 1: 0 ~ s1Index
+    drawSectorPath(0, cData.s1Index, '#38bdf8');
+    // Sector 2: s1Index ~ s2Index
+    drawSectorPath(cData.s1Index, cData.s2Index, '#a855f7');
+    // Sector 3: s2Index ~ points.length (and back to 0)
+    drawSectorPath(cData.s2Index, cData.points.length, '#f59e0b');
+
+    // 4-3. 섹터 체크포인트 라인 및 텍스트 배지 렌더링 함수
+    const drawCheckpointMarker = (idx: number, label: string, color: string, badgeOffset: { ox: number; oy: number }) => {
+      const p = cData.points[idx % cData.points.length];
+      const prevP = cData.points[(idx - 1 + cData.points.length) % cData.points.length];
+      const nextP = cData.points[(idx + 1) % cData.points.length];
+
       const cx = toX(p.x);
       const cy = toY(p.z);
-      if (i === 0) ctx.moveTo(cx, cy);
-      else ctx.lineTo(cx, cy);
-    });
-    ctx.closePath();
-    ctx.stroke();
 
-    // 스타트 / 피니시 라인
-    const startP = cData.points[0];
-    const sx = toX(startP.x);
-    const sy = toY(startP.z);
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(sx, sy, 4, 0, Math.PI * 2);
-    ctx.fill();
+      // 트랙 접선 및 법선 단위 벡터
+      const fwdX = toX(nextP.x) - toX(prevP.x);
+      const fwdY = toY(nextP.z) - toY(prevP.z);
+      const fwdLen = Math.hypot(fwdX, fwdY) || 1;
+      const nx = -fwdY / fwdLen;
+      const ny = fwdX / fwdLen;
 
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '9px monospace';
-    ctx.fillText('S/F', sx + 7, sy + 3);
+      // 트랙 가로지르는 체크포인트 횡단선
+      const halfGate = 6.5;
+      ctx.beginPath();
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = color;
+      ctx.moveTo(cx - nx * halfGate, cy - ny * halfGate);
+      ctx.lineTo(cx + nx * halfGate, cy + ny * halfGate);
+      ctx.stroke();
+
+      // 체크포인트 도트
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 체크포인트 텍스트 배지 (미니 필 박스)
+      const bx = cx + badgeOffset.ox;
+      const by = cy + badgeOffset.oy;
+      ctx.save();
+      ctx.font = 'bold 9px monospace';
+      const tw = ctx.measureText(label).width;
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (typeof (ctx as any).roundRect === 'function') {
+        (ctx as any).roundRect(bx - 3, by - 8, tw + 6, 12, 2);
+      } else {
+        ctx.rect(bx - 3, by - 8, tw + 6, 12);
+      }
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = color;
+      ctx.fillText(label, bx, by + 1);
+      ctx.restore();
+    };
+
+    // S/F, S1, S2 체크포인트 마커 렌더링
+    drawCheckpointMarker(0, 'S/F', '#ffffff', { ox: 8, oy: -3 });
+    drawCheckpointMarker(cData.s1Index, 'S1', '#38bdf8', { ox: 8, oy: -3 });
+    drawCheckpointMarker(cData.s2Index, 'S2', '#a855f7', { ox: 8, oy: -3 });
 
     // 5. 현재 시각의 전/후 틱 탐색 및 부드러운 선형 보간 (Lerp)
     const ticks = this.minimapRecord.ticks;
@@ -826,6 +909,27 @@ export class MatchHistoryModal extends BaseModal {
     while (dYaw < -Math.PI) dYaw += Math.PI * 2;
     const currentYaw = t1.yaw + dYaw * alpha;
 
+    // 트랙 최근접점을 통한 현재 통과 섹터(1, 2, 3) 정확한 판정
+    let closestIdx = 0;
+    let minDistSq = Infinity;
+    for (let i = 0; i < cData.points.length; i++) {
+      const dx = cData.points[i].x - playerX;
+      const dz = cData.points[i].z - playerZ;
+      const distSq = dx * dx + dz * dz;
+      if (distSq < minDistSq) {
+        minDistSq = distSq;
+        closestIdx = i;
+      }
+    }
+    let currentSector = 1;
+    if (closestIdx >= cData.s2Index) {
+      currentSector = 3;
+    } else if (closestIdx >= cData.s1Index) {
+      currentSector = 2;
+    } else {
+      currentSector = 1;
+    }
+
     // 6. 라이벌 상대 3대 차량 보간 렌더링
     if (t1.opponents) {
       t1.opponents.forEach((opp1, oppIdx) => {
@@ -846,14 +950,57 @@ export class MatchHistoryModal extends BaseModal {
       });
     }
 
-    // 7. 플레이어 차량 렌더링 (빛나는 닷 + 진행 화살표)
+    // 7. 플레이어 차량 렌더링 (빛나는 코어 닷 + 명확한 전방 쉐브론 화살표)
     const px = toX(playerX);
     const py = toY(playerZ);
     const playerColor = this.minimapRecord.metadata?.color || '#38bdf8';
 
+    // 정확한 화면 진행 방향 단위 벡터 계산:
+    // 120ms 앞선 전방 위치를 샘플링하여 스크린 좌표계 변화량(dx, dy)을 직접 구함 (Y축 반전/각도 오류 원천 방지)
+    const lookaheadTimeMs = Math.min(maxDuration, this.minimapCurrentTimeMs + 120);
+    let dirX = 0;
+    let dirY = 0;
+
+    if (lookaheadTimeMs > this.minimapCurrentTimeMs) {
+      let fLow = 0, fHigh = ticks.length - 1;
+      while (fLow <= fHigh) {
+        const mid = (fLow + fHigh) >> 1;
+        if (ticks[mid].timeMs <= lookaheadTimeMs) fLow = mid + 1;
+        else fHigh = mid - 1;
+      }
+      const fi1 = Math.max(0, Math.min(ticks.length - 1, fHigh));
+      const fi2 = Math.min(ticks.length - 1, fi1 + 1);
+      const ft1 = ticks[fi1];
+      const ft2 = ticks[fi2];
+      const fdt = ft2.timeMs - ft1.timeMs;
+      const fAlpha = fdt > 0 ? (lookaheadTimeMs - ft1.timeMs) / fdt : 0;
+      const fwdX = THREE.MathUtils.lerp(ft1.x, ft2.x, fAlpha);
+      const fwdZ = THREE.MathUtils.lerp(ft1.z, ft2.z, fAlpha);
+
+      dirX = toX(fwdX) - px;
+      dirY = toY(fwdZ) - py;
+    }
+
+    const moveLen = Math.hypot(dirX, dirY);
+    if (moveLen > 0.05) {
+      dirX /= moveLen;
+      dirY /= moveLen;
+    } else {
+      // 정지 상태 시 yaw 각도 기반 (스크린 좌표계에서 +Z는 +Y)
+      dirX = Math.sin(currentYaw);
+      dirY = Math.cos(currentYaw);
+      const yawLen = Math.hypot(dirX, dirY) || 1;
+      dirX /= yawLen;
+      dirY /= yawLen;
+    }
+
+    const normX = -dirY;
+    const normY = dirX;
+
+    // 7-1. 플레이어 코어 도트
     ctx.save();
     ctx.shadowColor = playerColor;
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 9;
     ctx.fillStyle = playerColor;
     ctx.beginPath();
     ctx.arc(px, py, 5.5, 0, Math.PI * 2);
@@ -863,24 +1010,55 @@ export class MatchHistoryModal extends BaseModal {
     ctx.stroke();
     ctx.restore();
 
-    // 방향 지시 화살표
-    const arrowLen = 10;
-    const hx = px + Math.sin(currentYaw) * arrowLen;
-    const hy = py - Math.cos(currentYaw) * arrowLen;
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(px, py);
-    ctx.lineTo(hx, hy);
-    ctx.stroke();
+    // 7-2. 날렵하고 명확한 전방 쉐브론 화살표 (진행 방향을 정확하게 가리킴)
+    const tipDist = 13;
+    const baseDist = 6;
+    const wingWidth = 4.5;
 
-    // 8. 테크니컬 HUD 텍스트 오버레이
+    const tipX = px + dirX * tipDist;
+    const tipY = py + dirY * tipDist;
+    const leftX = px + dirX * baseDist + normX * wingWidth;
+    const leftY = py + dirY * baseDist + normY * wingWidth;
+    const rightX = px + dirX * baseDist - normX * wingWidth;
+    const rightY = py + dirY * baseDist - normY * wingWidth;
+    const innerX = px + dirX * (baseDist + 1.5);
+    const innerY = py + dirY * (baseDist + 1.5);
+
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = playerColor;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(leftX, leftY);
+    ctx.lineTo(innerX, innerY);
+    ctx.lineTo(rightX, rightY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // 8. 테크니컬 HUD 텍스트 및 섹터 범례
     ctx.fillStyle = '#38bdf8';
-    ctx.font = '11px monospace';
+    ctx.font = 'bold 11px monospace';
     ctx.fillText(`${currentSpeed.toFixed(0)} km/h`, 12, 18);
 
+    const secBadgeColor = currentSector === 1 ? '#38bdf8' : (currentSector === 2 ? '#c084fc' : '#fbbf24');
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`LAP ${currentLap}/${this.minimapRecord.metadata?.totalLaps || 3}`, w - 70, 18);
+    ctx.font = '10px monospace';
+    ctx.fillText(`LAP ${currentLap}/${this.minimapRecord.metadata?.totalLaps || 3}`, 12, 33);
+
+    ctx.fillStyle = secBadgeColor;
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(`SEC ${currentSector}`, 78, 33);
+
+    // 상단 우측 섹터 컬러 범례
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#38bdf8';
+    ctx.fillText('● S1', w - 106, 18);
+    ctx.fillStyle = '#a855f7';
+    ctx.fillText('● S2', w - 70, 18);
+    ctx.fillStyle = '#f59e0b';
+    ctx.fillText('● S3', w - 34, 18);
 
     // 9. DOM 컨트롤 및 텔레메트리 업데이트
     const timeDisplay = document.getElementById('inspector-time-display');
@@ -895,7 +1073,11 @@ export class MatchHistoryModal extends BaseModal {
 
     const telemetryInfo = document.getElementById('inspector-telemetry-info');
     if (telemetryInfo) {
-      telemetryInfo.textContent = `${currentSpeed.toFixed(0)} km/h | LAP ${currentLap} / ${this.minimapRecord.metadata?.totalLaps || 3}`;
+      telemetryInfo.innerHTML = `
+        <span>${currentSpeed.toFixed(0)} km/h</span> |
+        <span>LAP ${currentLap} / ${this.minimapRecord.metadata?.totalLaps || 3}</span> |
+        <span style="color: ${secBadgeColor}; font-weight: 700;">SECTOR ${currentSector}</span>
+      `;
     }
   }
 
@@ -908,7 +1090,7 @@ export class MatchHistoryModal extends BaseModal {
     }
     const def = CIRCUIT_DEFINITIONS[circuitId] || CIRCUIT_DEFINITIONS.circuit_monaco;
     const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
-    const threePts = curve.getPoints(140);
+    const threePts = curve.getPoints(180);
     let minX = Infinity, maxX = -Infinity;
     let minZ = Infinity, maxZ = -Infinity;
     const points = threePts.map(p => {
@@ -918,7 +1100,9 @@ export class MatchHistoryModal extends BaseModal {
       if (p.z > maxZ) maxZ = p.z;
       return { x: p.x, z: p.z };
     });
-    const cached: CachedCircuit2D = { points, minX, maxX, minZ, maxZ };
+    const s1Index = Math.round(points.length * 0.33);
+    const s2Index = Math.round(points.length * 0.66);
+    const cached: CachedCircuit2D = { points, minX, maxX, minZ, maxZ, s1Index, s2Index };
     this.circuit2DCache.set(circuitId, cached);
     return cached;
   }

@@ -1,4 +1,5 @@
 import { keyBindingManager } from './KeyBindingManager.ts';
+import { ModalManager } from '../ui/ModalManager.ts';
 
 /**
  * 키보드 및 사용자 입력 관리자
@@ -19,9 +20,10 @@ export class InputManager {
   }
 
   private onKeyDown(e: KeyboardEvent): void {
-    // 텍스트 인풋 포커스 중에는 게임 조작 키 입력 무시
+    // 텍스트 인풋 포커스 또는 모달 활성 중에는 게임 조작 키 입력 무시
     const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-    if (targetTag === 'input' || targetTag === 'textarea') return;
+    if (targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select') return;
+    if (ModalManager.hasActiveModal()) return;
 
     this.keyState[e.code] = true;
 

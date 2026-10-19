@@ -657,3 +657,173 @@
   background: #38bdf8;
   box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
 }
+
+/* =====================================================================
+   인스펙터 전체 덮음 카드 & 레이아웃 (Inspector Full-Cover Modal Card)
+   ===================================================================== */
+.history-inspector-card {
+  animation: fadeInInspector 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes fadeInInspector {
+  from { opacity: 0; transform: scale(0.985); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.inspector-header-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.inspector-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.inspector-back-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 14px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.inspector-back-btn:hover {
+  background: var(--accent-spec);
+  color: #000;
+  border-color: var(--accent-spec);
+}
+
+.inspector-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.inspector-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.inspector-content-body {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  flex: 1;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.inspector-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 440px;
+  gap: 20px;
+  align-items: start;
+}
+
+.inspector-meta-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.inspector-minimap-col {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--border-subtle);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inspector-canvas-wrapper {
+  width: 100%;
+  height: 250px;
+  background: #101319;
+  border: 1px solid var(--border-subtle);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.inspector-canvas-wrapper canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.inspector-speed-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--accent-spec);
+  padding: 2px 6px;
+  background: rgba(196, 90, 114, 0.15);
+  border: 1px solid rgba(196, 90, 114, 0.4);
+}
+
+.inspector-telemetry-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+}
+
+.inspector-3d-action-btn {
+  width: 100%;
+  padding: 10px 16px;
+  font-size: 12px;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.inspector-tech-box {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border-subtle);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.inspector-tech-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.tech-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.tech-k {
+  color: var(--text-muted);
+}
+
+.tech-v {
+  color: var(--text-primary);
+  font-weight: 700;
+}

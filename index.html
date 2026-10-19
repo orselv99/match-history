@@ -1186,7 +1186,7 @@
 
   <!-- 8. 전적 검색 & 글로벌 리더보드 모달 (Step 3: Match History Archive) -->
   <div id="match-history-modal" class="modal-overlay">
-    <div class="modal-card history-modal-card">
+    <div id="history-main-card" class="modal-card history-modal-card">
       <header class="modal-header-strip">
         <div class="history-header-left">
           <span class="system-tag-badge" data-i18n="history.tag">30Hz 틱 아카이브</span>
@@ -1291,6 +1291,38 @@
         <div class="history-footer-buttons">
           <button type="button" id="history-btn-refresh" class="secondary-btn" data-i18n="history.refresh">새로고침</button>
           <button type="button" id="history-btn-close-bottom" class="primary-btn" data-i18n="history.close">닫기</button>
+        </div>
+      </footer>
+    </div>
+
+    <!-- 8. 인스펙터 상세 팝업 카드 (전적검색 및 리더보드와 동일한 크기로 덮음) -->
+    <div id="history-inspector-card" class="modal-card history-modal-card history-inspector-card" style="display: none;">
+      <header class="modal-header-strip inspector-header-strip">
+        <div class="inspector-header-left">
+          <button type="button" id="inspector-btn-back" class="secondary-btn inspector-back-btn">← 목록으로</button>
+          <div class="inspector-title-group">
+            <span class="system-tag-badge" id="inspector-tag-matchcode">MATCH // -</span>
+            <h2 class="modal-title" id="inspector-title">경기 상세 분석 & 2D 트랙 리플레이</h2>
+          </div>
+        </div>
+        <div class="inspector-header-right">
+          <span class="detail-rank-badge" id="inspector-badge-rank">🏁 완주 결과: -</span>
+          <button id="inspector-btn-close" class="modal-close-btn" title="닫기 [ESC]">✕</button>
+        </div>
+      </header>
+
+      <div class="modal-content-body inspector-content-body" id="inspector-content-body">
+        <!-- JS 동적 렌더링 -->
+      </div>
+
+      <footer class="modal-actions history-actions">
+        <div class="history-status-note">
+          <span class="pulse-dot"></span>
+          <span>📡 2D 미니맵 인스펙터 // 타임라인 스크러버로 임의 시점 탐색 또는 3D 뷰어로 전체 리플레이 감상</span>
+        </div>
+        <div class="history-footer-buttons">
+          <button type="button" id="inspector-btn-back-bottom" class="secondary-btn">← 목록으로 돌아가기</button>
+          <button type="button" id="inspector-btn-3d-action" class="primary-btn">▶ 3D 뷰어로 재생</button>
         </div>
       </footer>
     </div>

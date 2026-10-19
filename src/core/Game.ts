@@ -19,6 +19,7 @@ import { SpeedFX } from '../game/SpeedFX.ts';
 import { GraphicsSettings, graphicsSettingsManager } from './GraphicsSettingsManager.ts';
 import { MirrorRenderer } from './MirrorRenderer.ts';
 import { StartCutsceneController } from './StartCutsceneController.ts';
+import { ModalManager } from '../ui/ModalManager.ts';
 import { showToast } from '../ui/Toast.ts';
 
 export type GameMode = 'TITLE' | 'DRIVING' | 'REPLAY' | 'DEMO';
@@ -200,7 +201,7 @@ export class Game {
     // 키보드/클릭 이벤트 시 오디오 활성화 및 레이스 시작 / 컷씬 건너뛰기
     window.addEventListener('click', (e) => {
       this.audio.init();
-      if (this.isPaused) return;
+      if (this.isPaused || ModalManager.hasActiveModal() || this.mode === 'TITLE') return;
       const target = e.target as HTMLElement;
       if (target?.closest('.modal-overlay') || target?.closest('.title-scene-overlay') || target?.closest('.interactive')) {
         return;
@@ -216,7 +217,10 @@ export class Game {
 
     window.addEventListener('keydown', (e) => {
       this.audio.init();
-      if (this.isPaused) return;
+      if (this.isPaused || ModalManager.hasActiveModal() || this.mode === 'TITLE') return;
+      const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select') return;
+
       if (this.raceState === 'START_CUTSCENE' && (e.code === 'Space' || e.code === 'Enter' || e.code === 'KeyW' || e.code === 'ArrowUp')) {
         this.skipStartCutscene();
         return;
@@ -338,7 +342,9 @@ export class Game {
     this.lapTimer.reset();
     this.recorder.clear();
     this.audio.pauseEngine();
-    this.mode = 'DRIVING';
+    if (this.mode !== 'TITLE' && this.mode !== 'DEMO') {
+      this.mode = 'DRIVING';
+    }
     this.raceState = 'READY';
     this.countdownTimer = 3.0;
     this.lastBeepNumber = -1;
@@ -424,7 +430,7 @@ export class Game {
       return;
     }
 
-    if (this.isPaused) {
+    if (this.isPaused || ModalManager.hasActiveModal()) {
       this.renderer.render(this.scene, this.camera);
       return;
     }
@@ -582,7 +588,7 @@ export class Game {
     }
 
     // 오프로드 3초 이상 이탈 시 서킷 복귀 안내 토스트 표시
-    if (isOffroad && isRunning) {
+    if (isOffroad && isRunning && !ModalManager.hasActiveModal() && this.mode === 'DRIVING') {
       this.offroadTimer += delta;
       if (this.offroadTimer >= 3.0 && !this.offroadHintShown) {
         this.offroadHintShown = true;
@@ -1017,12 +1023,15 @@ export class Game {
       this.audio.playLobbyBgm();
       this.playerVehicle.mesh.visible = true;
       this.resetVehicleToStart();
+      this.mode = 'TITLE';
       this.replayPlayer.hideGhost();
       this.opponentManager.deactivate();
       this.raceState = 'READY';
       this.countdownTimer = 3.0;
       this.lastBeepNumber = -1;
       this.titleCameraAngle = 0;
+      this.offroadTimer = 0;
+      this.offroadHintShown = false;
     } else if (mode === 'REPLAY') {
       this.audio.pauseEngine();
       this.audio.playInGameBgm();

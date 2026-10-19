@@ -39,7 +39,6 @@ export class MatchHistoryModal extends BaseModal {
   private statTotal: HTMLElement | null;
   private statBest: HTMLElement | null;
   private statSpeed: HTMLElement | null;
-  private statCount: HTMLElement | null;
 
   // 인스펙터 풀-커버 카드 DOM
   private inspectorCard: HTMLElement | null;
@@ -89,7 +88,6 @@ export class MatchHistoryModal extends BaseModal {
     this.statTotal = document.getElementById('history-stat-total');
     this.statBest = document.getElementById('history-stat-best');
     this.statSpeed = document.getElementById('history-stat-speed');
-    this.statCount = document.getElementById('history-stat-count');
 
     // 인스펙터 카드 요소
     this.inspectorCard = document.getElementById('history-inspector-card');
@@ -211,8 +209,17 @@ export class MatchHistoryModal extends BaseModal {
       // 2D 미니맵 재생/일시정지 토글 버튼
       const togglePlayBtn = target.closest('#inspector-btn-play') as HTMLElement | null;
       if (togglePlayBtn) {
-        this.minimapIsPlaying = !this.minimapIsPlaying;
-        togglePlayBtn.textContent = this.minimapIsPlaying ? '⏸' : '▶';
+        if (!this.minimapIsPlaying) {
+          const maxDur = this.minimapRecord?.ticks[this.minimapRecord.ticks.length - 1]?.timeMs || 0;
+          if (this.minimapCurrentTimeMs >= maxDur - 100) {
+            this.minimapCurrentTimeMs = 0;
+          }
+          this.minimapIsPlaying = true;
+          togglePlayBtn.textContent = '⏸';
+        } else {
+          this.minimapIsPlaying = false;
+          togglePlayBtn.textContent = '▶';
+        }
         this.minimapLastTimestamp = performance.now();
         return;
       }
@@ -360,9 +367,6 @@ export class MatchHistoryModal extends BaseModal {
 
     if (this.statTotal) {
       this.statTotal.textContent = total.toLocaleString();
-    }
-    if (this.statCount) {
-      this.statCount.textContent = `(${total}/100)`;
     }
 
     // 최고 랩타임 탐색
@@ -696,10 +700,13 @@ export class MatchHistoryModal extends BaseModal {
       const dt = now - this.minimapLastTimestamp;
       this.minimapLastTimestamp = now;
 
-      // 1.5배속 재생으로 적절한 속도감 제공
-      this.minimapCurrentTimeMs += dt * 1.5;
+      // 2.0배속 재생으로 3랩 전체를 시원하고 흥미진진하게 시청
+      this.minimapCurrentTimeMs += dt * 2.0;
       if (this.minimapCurrentTimeMs >= maxDuration) {
-        this.minimapCurrentTimeMs = 0;
+        this.minimapCurrentTimeMs = maxDuration;
+        this.minimapIsPlaying = false;
+        const playBtn = document.getElementById('inspector-btn-play');
+        if (playBtn) playBtn.textContent = '▶';
       }
       this.drawMinimapFrame();
     } else {
@@ -708,7 +715,7 @@ export class MatchHistoryModal extends BaseModal {
   }
 
   /**
-   * 2D 미니맵 캔버스 렌더링
+   * 2D 미니맵 캔버스 렌더링 (Lerp 실시간 보간으로 60/120fps 부드러운 움직임)
    */
   private drawMinimapFrame(): void {
     const canvas = document.getElementById('inspector-minimap-canvas') as HTMLCanvasElement | null;
@@ -790,24 +797,43 @@ export class MatchHistoryModal extends BaseModal {
     ctx.font = '9px monospace';
     ctx.fillText('S/F', sx + 7, sy + 3);
 
-    // 5. 현재 시각의 틱 탐색 (이진 탐색)
+    // 5. 현재 시각의 전/후 틱 탐색 및 부드러운 선형 보간 (Lerp)
     const ticks = this.minimapRecord.ticks;
     const maxDuration = ticks[ticks.length - 1].timeMs;
 
     let low = 0, high = ticks.length - 1;
     while (low <= high) {
       const mid = (low + high) >> 1;
-      if (ticks[mid].timeMs < this.minimapCurrentTimeMs) low = mid + 1;
+      if (ticks[mid].timeMs <= this.minimapCurrentTimeMs) low = mid + 1;
       else high = mid - 1;
     }
-    const idx = Math.min(Math.max(0, low), ticks.length - 1);
-    const currentTick = ticks[idx];
+    const i1 = Math.max(0, Math.min(ticks.length - 1, high));
+    const i2 = Math.min(ticks.length - 1, i1 + 1);
+    const t1 = ticks[i1];
+    const t2 = ticks[i2];
+    const dt = t2.timeMs - t1.timeMs;
+    const alpha = dt > 0 ? THREE.MathUtils.clamp((this.minimapCurrentTimeMs - t1.timeMs) / dt, 0, 1) : 0;
 
-    // 6. 라이벌 상대 3대 차량 닷 렌더링
-    if (currentTick.opponents) {
-      currentTick.opponents.forEach((opp, oppIdx) => {
-        const ox = toX(opp.x);
-        const oy = toY(opp.z);
+    // 플레이어 좌표, 속도, 각도 보간 (끊김 없는 매끄러운 이동)
+    const playerX = THREE.MathUtils.lerp(t1.x, t2.x, alpha);
+    const playerZ = THREE.MathUtils.lerp(t1.z, t2.z, alpha);
+    const currentSpeed = THREE.MathUtils.lerp(t1.speedKmh, t2.speedKmh, alpha);
+    const currentLap = t1.lap || 1;
+
+    // Yaw 각도 최단호(Shortest-arc) 보간
+    let dYaw = t2.yaw - t1.yaw;
+    while (dYaw > Math.PI) dYaw -= Math.PI * 2;
+    while (dYaw < -Math.PI) dYaw += Math.PI * 2;
+    const currentYaw = t1.yaw + dYaw * alpha;
+
+    // 6. 라이벌 상대 3대 차량 보간 렌더링
+    if (t1.opponents) {
+      t1.opponents.forEach((opp1, oppIdx) => {
+        const opp2 = t2.opponents?.[oppIdx] || opp1;
+        const oppX = THREE.MathUtils.lerp(opp1.x, opp2.x, alpha);
+        const oppZ = THREE.MathUtils.lerp(opp1.z, opp2.z, alpha);
+        const ox = toX(oppX);
+        const oy = toY(oppZ);
         const color = this.minimapRecord?.metadata?.opponentConfigs?.[oppIdx]?.color || '#f59e0b';
 
         ctx.fillStyle = color;
@@ -821,8 +847,8 @@ export class MatchHistoryModal extends BaseModal {
     }
 
     // 7. 플레이어 차량 렌더링 (빛나는 닷 + 진행 화살표)
-    const px = toX(currentTick.x);
-    const py = toY(currentTick.z);
+    const px = toX(playerX);
+    const py = toY(playerZ);
     const playerColor = this.minimapRecord.metadata?.color || '#38bdf8';
 
     ctx.save();
@@ -838,10 +864,9 @@ export class MatchHistoryModal extends BaseModal {
     ctx.restore();
 
     // 방향 지시 화살표
-    const heading = currentTick.yaw;
     const arrowLen = 10;
-    const hx = px + Math.sin(heading) * arrowLen;
-    const hy = py - Math.cos(heading) * arrowLen;
+    const hx = px + Math.sin(currentYaw) * arrowLen;
+    const hy = py - Math.cos(currentYaw) * arrowLen;
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.8;
     ctx.beginPath();
@@ -852,10 +877,10 @@ export class MatchHistoryModal extends BaseModal {
     // 8. 테크니컬 HUD 텍스트 오버레이
     ctx.fillStyle = '#38bdf8';
     ctx.font = '11px monospace';
-    ctx.fillText(`${currentTick.speedKmh.toFixed(0)} km/h`, 12, 18);
+    ctx.fillText(`${currentSpeed.toFixed(0)} km/h`, 12, 18);
 
     ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`LAP ${currentTick.lap || 1}/${this.minimapRecord.metadata?.totalLaps || 1}`, w - 70, 18);
+    ctx.fillText(`LAP ${currentLap}/${this.minimapRecord.metadata?.totalLaps || 3}`, w - 70, 18);
 
     // 9. DOM 컨트롤 및 텔레메트리 업데이트
     const timeDisplay = document.getElementById('inspector-time-display');
@@ -870,7 +895,7 @@ export class MatchHistoryModal extends BaseModal {
 
     const telemetryInfo = document.getElementById('inspector-telemetry-info');
     if (telemetryInfo) {
-      telemetryInfo.textContent = `${currentTick.speedKmh.toFixed(0)} km/h | LAP ${currentTick.lap || 1} / ${this.minimapRecord.metadata?.totalLaps || 3}`;
+      telemetryInfo.textContent = `${currentSpeed.toFixed(0)} km/h | LAP ${currentLap} / ${this.minimapRecord.metadata?.totalLaps || 3}`;
     }
   }
 

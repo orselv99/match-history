@@ -33,9 +33,12 @@ const CIRCUIT_PLANS: CircuitSeedPlan[] = [
   { circuitId: 'circuit_silverstone', prefix: 'SEED-SS', count: 12, baseLapMs: 87097, baseTopSpeed: 244.0 },
 ];
 
+/**
+ * 3랩(총 3바퀴) 주행 틱 데이터 생성
+ */
 function generateTicksForSeed(
   circuitId: CircuitId,
-  targetLapMs: number,
+  lapTimes: [number, number, number],
   topSpeedKmh: number,
   playerRank: number,
   opponentsConfig: Array<{ offsetDist: number; lane: number }>
@@ -46,10 +49,12 @@ function generateTicksForSeed(
   const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
   const circuitLength = curve.getLength();
 
-  // 8Hz 샘플링 (Catmull-Rom 스플라인 3차 보간으로 60/120fps 부드러운 재생 유지 및 50개 파일 대폭 경량화)
-  const FPS = 8;
+  // 5Hz 샘플링 (클라이언트에서 실시간 lerp 보간으로 60/120fps 부드러운 움직임 유지 및 50개 3랩 데이터 용량 12MB대 경량화)
+  const FPS = 5;
   const dtMs = 1000 / FPS;
-  const totalTicks = Math.round((targetLapMs / 1000) * FPS);
+
+  const totalTimeMs = lapTimes[0] + lapTimes[1] + lapTimes[2];
+  const totalTicks = Math.round((totalTimeMs / 1000) * FPS);
 
   const ticks: RawReplayTick[] = [];
   const pt = new THREE.Vector3();
@@ -61,7 +66,20 @@ function generateTicksForSeed(
 
   for (let i = 0; i < totalTicks; i++) {
     const timeMs = Math.round(i * dtMs);
-    const currentT = (i / totalTicks) % 1.0;
+
+    let lap = 1;
+    let lapT = 0;
+    if (timeMs < lapTimes[0]) {
+      lap = 1;
+      lapT = timeMs / lapTimes[0];
+    } else if (timeMs < lapTimes[0] + lapTimes[1]) {
+      lap = 2;
+      lapT = (timeMs - lapTimes[0]) / lapTimes[1];
+    } else {
+      lap = 3;
+      lapT = (timeMs - (lapTimes[0] + lapTimes[1])) / lapTimes[2];
+    }
+    const currentT = Math.min(0.999, Math.max(0, lapT % 1.0));
 
     curve.getPointAt(currentT, pt);
     curve.getTangentAt(currentT, tangent).normalize();
@@ -78,7 +96,12 @@ function generateTicksForSeed(
     // 코너링 감속 물리
     const cornerFactor = Math.min(1.0, cornerAngle / 0.35);
     const minSpeedKmh = 95.0;
-    const speedKmh = topSpeedKmh - (topSpeedKmh - minSpeedKmh) * cornerFactor;
+    let speedKmh = topSpeedKmh - (topSpeedKmh - minSpeedKmh) * cornerFactor;
+
+    // 랩 1 스타트 가속
+    if (lap === 1 && timeMs < 3500) {
+      speedKmh = Math.min(speedKmh, (timeMs / 3500) * topSpeedKmh);
+    }
 
     const steer = THREE.MathUtils.clamp(-turnDir * cornerFactor * 1.3, -1.0, 1.0);
     const isDrifting = cornerFactor > 0.65 && speedKmh > 130.0;
@@ -104,9 +127,9 @@ function generateTicksForSeed(
       const oppHeading = Math.atan2(oppTangent.x, oppTangent.z);
 
       return {
-        x: Number(oppPt.x.toFixed(2)),
-        y: Number(oppPt.y.toFixed(2)),
-        z: Number(oppPt.z.toFixed(2)),
+        x: Number(oppPt.x.toFixed(1)),
+        y: Number(oppPt.y.toFixed(1)),
+        z: Number(oppPt.z.toFixed(1)),
         yaw: Number(oppHeading.toFixed(3)),
         speedKmh: Number((speedKmh * 0.98).toFixed(1)),
       };
@@ -117,9 +140,9 @@ function generateTicksForSeed(
 
     ticks.push({
       timeMs,
-      x: Number(playerPos.x.toFixed(2)),
-      y: Number(playerPos.y.toFixed(2)),
-      z: Number(playerPos.z.toFixed(2)),
+      x: Number(playerPos.x.toFixed(1)),
+      y: Number(playerPos.y.toFixed(1)),
+      z: Number(playerPos.z.toFixed(1)),
       yaw: Number(heading.toFixed(3)),
       pitch: Number(pitch.toFixed(3)),
       roll: Number(roll.toFixed(3)),
@@ -128,7 +151,7 @@ function generateTicksForSeed(
       throttle: Number(throttle.toFixed(2)),
       brake: Number(brake.toFixed(2)),
       isDrifting,
-      lap: 1,
+      lap,
       opponents,
     });
   }
@@ -152,22 +175,26 @@ function main() {
       const matchNum = (cIdx + 1).toString().padStart(2, '0');
       const matchCode = `${plan.prefix}-${matchNum}`;
 
-      // 1. 이름은 미리 정해진 영어3, 한국어3 을 순환 반복
+      // 1. 이름은 미리 정해진 영어3, 한국어3 순환 반복
       const driverName = PREDEFINED_DRIVERS[globalIndex % PREDEFINED_DRIVERS.length];
       const vehicleModelId = VEHICLE_MODELS[globalIndex % VEHICLE_MODELS.length];
       const color = COLORS[globalIndex % COLORS.length];
       const viewMode: 'FIRST_PERSON' | 'THIRD_PERSON' = (globalIndex % 2 === 0) ? 'THIRD_PERSON' : 'FIRST_PERSON';
 
-      // 2. 순위 다양화 (1위만이 아니라 2위, 3위, 4위로 완주한 매치도 포함)
-      // cIdx가 0, 4, 8 -> 1위 / 1, 5, 9 -> 2위 / 2, 6, 10 -> 3위 / 3, 7, 11 -> 4위
+      // 2. 순위 다양화 (1~4위 완주)
       const playerRank = (cIdx % 4) + 1;
 
-      // 랩타임: 상위 순번일수록 빠름 (1위가 벤치마크 최고 기록)
+      // 랩타임 (3랩 전체 시뮬레이션)
       const targetLapMs = plan.baseLapMs + cIdx * 620;
+      const lap1Ms = targetLapMs + 950;
+      const lap2Ms = targetLapMs; // Best Lap
+      const lap3Ms = targetLapMs + 420;
+      const lapTimes: [number, number, number] = [lap1Ms, lap2Ms, lap3Ms];
+      const totalTimeMs = lap1Ms + lap2Ms + lap3Ms;
+
       const topSpeedKmh = Number((plan.baseTopSpeed - cIdx * 0.8).toFixed(1));
 
-      // 상대 차량 3대 설정 (playerRank에 따라 플레이어보다 앞서거나 뒤쳐짐)
-      // playerRank가 1이면 플레이어가 맨 앞, playerRank가 2면 1대가 앞서감, 3이면 2대가 앞섬, 4면 3대 모두 앞섬
+      // 상대 차량 3대 설정
       const oppOffsetDistances = playerRank === 1
         ? [-14, -32, -54]
         : playerRank === 2
@@ -201,11 +228,11 @@ function main() {
         },
       ];
 
-      console.log(`[${globalIndex + 1}/50] Generating ${matchCode}: ${driverName} (${plan.circuitId}, Rank ${playerRank}, ${formatMs(targetLapMs)})`);
+      console.log(`[${globalIndex + 1}/50] Generating 3-LAP ${matchCode}: ${driverName} (${plan.circuitId}, Rank ${playerRank}, Best: ${formatMs(targetLapMs)}, Total: ${formatMs(totalTimeMs)})`);
 
       const ticks = generateTicksForSeed(
         plan.circuitId,
-        targetLapMs,
+        lapTimes,
         topSpeedKmh,
         playerRank,
         opponentConfigs.map(o => ({ offsetDist: o.offsetDist, lane: o.lane }))
@@ -214,7 +241,6 @@ function main() {
       const s1 = Math.round(targetLapMs * 0.32);
       const s2 = Math.round(targetLapMs * 0.36);
       const s3 = targetLapMs - s1 - s2;
-      const totalTimeMs = targetLapMs * 3;
 
       // 레이스 최종 순위표 구성
       const raceParticipants = [
@@ -224,7 +250,6 @@ function main() {
         { driverName: opponentConfigs[2].driverName, color: opponentConfigs[2].color, isPlayer: false, rank: 0 },
       ];
 
-      // 나머지 3대 순위 배정 (1~4 중 playerRank 제외)
       const remainingRanks = [1, 2, 3, 4].filter(r => r !== playerRank);
       raceParticipants[1].rank = remainingRanks[0];
       raceParticipants[2].rank = remainingRanks[1];
@@ -260,7 +285,7 @@ function main() {
         totalLaps: 3,
         totalTimeMs,
         bestLapMs: targetLapMs,
-        lapTimesMs: [targetLapMs + 950, targetLapMs, targetLapMs + 420],
+        lapTimesMs: [lap1Ms, lap2Ms, lap3Ms],
         sectorTimesMs: [
           [s1 + 350, s2 + 400, s3 + 200],
           [s1, s2, s3],
@@ -297,7 +322,7 @@ function main() {
   const outFile = path.join(outDir, 'seed-replays.json');
   fs.writeFileSync(outFile, JSON.stringify(seedRecords));
   const stat = fs.statSync(outFile);
-  console.log(`\n Successfully generated ${seedRecords.length} seed replays to:`);
+  console.log(`\n Successfully generated ${seedRecords.length} 3-LAP seed replays to:`);
   console.log(`  -> ${outFile}`);
   console.log(`  -> Total File Size: ${(stat.size / (1024 * 1024)).toFixed(2)} MB (${(stat.size / 1024).toFixed(1)} KB)`);
 }

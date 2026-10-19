@@ -27,11 +27,11 @@
   gap: 16px;
 }
 
-/* 통계 개요 스트립 */
+/* 통계 개요 스트립 (총 전적, 최고 랩타임, 최고속) */
 .history-metrics-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
 
 .history-metric-card {

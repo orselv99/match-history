@@ -101,7 +101,7 @@ spacing:
 
 ### 2. Typographic Rules
 - **Display & Headings:** `Inter` 서체를 적용하고, Swiss Modernism 스타일의 밀도감을 위해 `-0.01em ~ -0.03em`의 좁은 자간(Tight tracking)을 유지합니다.
-- **Technical Mono:** `JetBrains Mono`는 메타데이터, 섹션 인덱스(`SEC_01 //`), 타임스탬프, 수치 표시에 사용하며 대문자 표기 및 `+0.06em ~ +0.08em`의 넓은 자간을 적용합니다.
+- **Technical Mono:** `JetBrains Mono`는 메타데이터, 섹션 인덱스, 타임스탬프, 수치 표시에 사용하며 대문자 표기 및 `+0.06em ~ +0.08em`의 넓은 자간을 적용합니다.
 
 ### 3. Unified Component Behaviors (Theme-Agnostic)
 - **Primary Button:** `surface-inverse` 배경에 `text-inverse` 텍스트. 클릭/호버 시 순간적인 명도 반전 또는 내부 1px 인셋 테두리 적용.

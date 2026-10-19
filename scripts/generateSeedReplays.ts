@@ -5,160 +5,51 @@ import { CIRCUIT_DEFINITIONS, type CircuitId } from '../src/data/circuits.ts';
 import type { RawReplayTick, MatchSummaryMetadata, ReplayOpponentState } from '../src/replay/ReplayTypes.ts';
 import type { CachedReplayRecord } from '../src/storage/schema.ts';
 
-interface SeedConfig {
-  matchCode: string;
-  driverName: string;
-  circuitId: CircuitId;
-  vehicleModelId: string;
-  color: string;
-  targetLapMs: number;
-  topSpeedKmh: number;
-  opponents: Array<{ driverName: string; vehicleModelId: string; color: string; offsetDist: number; lane: number }>;
-  viewMode: 'FIRST_PERSON' | 'THIRD_PERSON';
-}
-
-const SEED_CONFIGS: SeedConfig[] = [
-  // 1. Monaco
-  {
-    matchCode: 'SEED-MONACO-01',
-    driverName: 'Charles L.',
-    circuitId: 'circuit_monaco',
-    vehicleModelId: 'formula_aero',
-    color: '#ef4444',
-    targetLapMs: 75310,
-    topSpeedKmh: 218.4,
-    opponents: [
-      { driverName: 'Max V.', vehicleModelId: 'lm_hypercar', color: '#1e3a8a', offsetDist: -12, lane: 2.2 },
-      { driverName: 'Lewis H.', vehicleModelId: 'gt_turbo', color: '#06b6d4', offsetDist: -28, lane: -2.0 },
-      { driverName: 'Lando N.', vehicleModelId: 'cyber_speedster', color: '#f97316', offsetDist: -48, lane: 1.5 },
-    ],
-    viewMode: 'FIRST_PERSON',
-  },
-  {
-    matchCode: 'SEED-MONACO-02',
-    driverName: 'Ayrton M.',
-    circuitId: 'circuit_monaco',
-    vehicleModelId: 'gt_turbo',
-    color: '#eab308',
-    targetLapMs: 78420,
-    topSpeedKmh: 205.2,
-    opponents: [
-      { driverName: 'Alain P.', vehicleModelId: 'gt_turbo', color: '#3b82f6', offsetDist: -15, lane: -1.8 },
-      { driverName: 'Nigel M.', vehicleModelId: 'formula_aero', color: '#10b981', offsetDist: -32, lane: 2.0 },
-      { driverName: 'Nelson P.', vehicleModelId: 'cyber_speedster', color: '#8b5cf6', offsetDist: -52, lane: -1.2 },
-    ],
-    viewMode: 'THIRD_PERSON',
-  },
-
-  // 2. Monza
-  {
-    matchCode: 'SEED-MONZA-01',
-    driverName: 'Lewis H.',
-    circuitId: 'circuit_monza',
-    vehicleModelId: 'formula_aero',
-    color: '#e2e8f0',
-    targetLapMs: 81880,
-    topSpeedKmh: 245.8,
-    opponents: [
-      { driverName: 'Kimi R.', vehicleModelId: 'formula_aero', color: '#dc2626', offsetDist: -18, lane: 2.5 },
-      { driverName: 'Fernando A.', vehicleModelId: 'lm_hypercar', color: '#047857', offsetDist: -38, lane: -2.2 },
-      { driverName: 'Sebastian V.', vehicleModelId: 'gt_turbo', color: '#1e40af', offsetDist: -65, lane: 1.0 },
-    ],
-    viewMode: 'THIRD_PERSON',
-  },
-  {
-    matchCode: 'SEED-MONZA-02',
-    driverName: 'Ghost Runner',
-    circuitId: 'circuit_monza',
-    vehicleModelId: 'cyber_speedster',
-    color: '#06b6d4',
-    targetLapMs: 83450,
-    topSpeedKmh: 242.1,
-    opponents: [
-      { driverName: 'Apex Hunter', vehicleModelId: 'formula_aero', color: '#ef4444', offsetDist: -14, lane: -2.0 },
-      { driverName: 'Speed Demon', vehicleModelId: 'lm_hypercar', color: '#f59e0b', offsetDist: -36, lane: 2.2 },
-      { driverName: 'Neon Drift', vehicleModelId: 'cyber_speedster', color: '#a855f7', offsetDist: -58, lane: -1.5 },
-    ],
-    viewMode: 'FIRST_PERSON',
-  },
-
-  // 3. Spa
-  {
-    matchCode: 'SEED-SPA-01',
-    driverName: 'Max V.',
-    circuitId: 'circuit_spa',
-    vehicleModelId: 'lm_hypercar',
-    color: '#1e3a8a',
-    targetLapMs: 106950,
-    topSpeedKmh: 248.5,
-    opponents: [
-      { driverName: 'Charles L.', vehicleModelId: 'formula_aero', color: '#dc2626', offsetDist: -22, lane: -2.4 },
-      { driverName: 'George R.', vehicleModelId: 'formula_aero', color: '#06b6d4', offsetDist: -45, lane: 2.0 },
-      { driverName: 'Carlos S.', vehicleModelId: 'gt_turbo', color: '#eab308', offsetDist: -72, lane: -1.8 },
-    ],
-    viewMode: 'THIRD_PERSON',
-  },
-  {
-    matchCode: 'SEED-SPA-02',
-    driverName: 'Kimi R.',
-    circuitId: 'circuit_spa',
-    vehicleModelId: 'formula_aero',
-    color: '#f8fafc',
-    targetLapMs: 108340,
-    topSpeedKmh: 232.0,
-    opponents: [
-      { driverName: 'Michael S.', vehicleModelId: 'gt_turbo', color: '#b91c1c', offsetDist: -20, lane: 2.2 },
-      { driverName: 'Mika H.', vehicleModelId: 'formula_aero', color: '#94a3b8', offsetDist: -42, lane: -2.5 },
-      { driverName: 'David C.', vehicleModelId: 'lm_hypercar', color: '#2563eb', offsetDist: -68, lane: 1.2 },
-    ],
-    viewMode: 'FIRST_PERSON',
-  },
-
-  // 4. Silverstone
-  {
-    matchCode: 'SEED-SILVER-01',
-    driverName: 'Apex Legend',
-    circuitId: 'circuit_silverstone',
-    vehicleModelId: 'lm_hypercar',
-    color: '#065f46',
-    targetLapMs: 87097,
-    topSpeedKmh: 246.3,
-    opponents: [
-      { driverName: 'Lewis H.', vehicleModelId: 'formula_aero', color: '#06b6d4', offsetDist: -16, lane: -2.2 },
-      { driverName: 'Max V.', vehicleModelId: 'lm_hypercar', color: '#1e3a8a', offsetDist: -35, lane: 2.5 },
-      { driverName: 'Lando N.', vehicleModelId: 'gt_turbo', color: '#ea580c', offsetDist: -62, lane: -1.6 },
-    ],
-    viewMode: 'THIRD_PERSON',
-  },
-  {
-    matchCode: 'SEED-SILVER-02',
-    driverName: 'Norris 4',
-    circuitId: 'circuit_silverstone',
-    vehicleModelId: 'formula_aero',
-    color: '#f97316',
-    targetLapMs: 88650,
-    topSpeedKmh: 234.7,
-    opponents: [
-      { driverName: 'Oscar P.', vehicleModelId: 'formula_aero', color: '#f59e0b', offsetDist: -18, lane: 2.0 },
-      { driverName: 'Charles L.', vehicleModelId: 'gt_turbo', color: '#ef4444', offsetDist: -40, lane: -2.2 },
-      { driverName: 'George R.', vehicleModelId: 'cyber_speedster', color: '#38bdf8', offsetDist: -70, lane: 1.5 },
-    ],
-    viewMode: 'FIRST_PERSON',
-  },
+// 1. 미리 정해진 영어3, 한국어3 드라이버 이름 (반복 사용)
+const PREDEFINED_DRIVERS = [
+  'Apex Hunter',   // EN 1
+  '스피드마스터',  // KR 1
+  'Ghost Runner', // EN 2
+  '질주본능',      // KR 2
+  'Turbo Nova',   // EN 3
+  '한밤의질주',    // KR 3
 ];
 
-function generateTicks(cfg: SeedConfig): RawReplayTick[] {
-  const def = CIRCUIT_DEFINITIONS[cfg.circuitId];
-  if (!def) throw new Error(`Unknown circuit: ${cfg.circuitId}`);
+const VEHICLE_MODELS = ['formula_aero', 'gt_turbo', 'cyber_speedster', 'lm_hypercar'];
+const COLORS = ['#ef4444', '#38bdf8', '#f59e0b', '#10b981', '#a855f7', '#f43f5e', '#e2e8f0', '#06b6d4'];
+
+interface CircuitSeedPlan {
+  circuitId: CircuitId;
+  prefix: string;
+  count: number;
+  baseLapMs: number;
+  baseTopSpeed: number;
+}
+
+const CIRCUIT_PLANS: CircuitSeedPlan[] = [
+  { circuitId: 'circuit_monaco', prefix: 'SEED-MC', count: 13, baseLapMs: 74260, baseTopSpeed: 216.0 },
+  { circuitId: 'circuit_monza', prefix: 'SEED-MZ', count: 13, baseLapMs: 81046, baseTopSpeed: 246.0 },
+  { circuitId: 'circuit_spa', prefix: 'SEED-SP', count: 12, baseLapMs: 106286, baseTopSpeed: 248.0 },
+  { circuitId: 'circuit_silverstone', prefix: 'SEED-SS', count: 12, baseLapMs: 87097, baseTopSpeed: 244.0 },
+];
+
+function generateTicksForSeed(
+  circuitId: CircuitId,
+  targetLapMs: number,
+  topSpeedKmh: number,
+  playerRank: number,
+  opponentsConfig: Array<{ offsetDist: number; lane: number }>
+): RawReplayTick[] {
+  const def = CIRCUIT_DEFINITIONS[circuitId];
+  if (!def) throw new Error(`Unknown circuit: ${circuitId}`);
 
   const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
   const circuitLength = curve.getLength();
 
-  // 15Hz 고정 샘플링 (Catmull-Rom 스플라인 보간으로 60/120fps 부드러운 재생 유지 및 파일 경량화)
-  const FPS = 15;
-  const dtSec = 1 / FPS;
+  // 8Hz 샘플링 (Catmull-Rom 스플라인 3차 보간으로 60/120fps 부드러운 재생 유지 및 50개 파일 대폭 경량화)
+  const FPS = 8;
   const dtMs = 1000 / FPS;
-  const totalTicks = Math.round((cfg.targetLapMs / 1000) * FPS);
+  const totalTicks = Math.round((targetLapMs / 1000) * FPS);
 
   const ticks: RawReplayTick[] = [];
   const pt = new THREE.Vector3();
@@ -168,32 +59,27 @@ function generateTicks(cfg: SeedConfig): RawReplayTick[] {
   const oppTangent = new THREE.Vector3();
   const oppRight = new THREE.Vector3();
 
-  // 진행도 누적
-  let currentT = 0;
-
   for (let i = 0; i < totalTicks; i++) {
     const timeMs = Math.round(i * dtMs);
-    const progress = i / totalTicks;
-    currentT = progress % 1.0;
+    const currentT = (i / totalTicks) % 1.0;
 
     curve.getPointAt(currentT, pt);
     curve.getTangentAt(currentT, tangent).normalize();
     right.set(-tangent.z, 0, tangent.x).normalize();
 
-    // 곡률 추정 (전방 샘플과 비교)
+    // 전방 샘플링으로 곡률 및 선회 방향 계산
     const nextT = (currentT + 0.015) % 1.0;
     const nextTangent = curve.getTangentAt(nextT).normalize();
     const dot = THREE.MathUtils.clamp(tangent.dot(nextTangent), -1, 1);
-    const angle = Math.acos(dot); // 코너 각도
+    const cornerAngle = Math.acos(dot);
     const crossY = tangent.x * nextTangent.z - tangent.z * nextTangent.x;
     const turnDir = crossY > 0 ? 1 : -1;
 
-    // 코너 곡률에 따른 가감속 물리 모델링
-    const cornerFactor = Math.min(1.0, angle / 0.35); // 0(직선) ~ 1(급코너)
+    // 코너링 감속 물리
+    const cornerFactor = Math.min(1.0, cornerAngle / 0.35);
     const minSpeedKmh = 95.0;
-    const speedKmh = cfg.topSpeedKmh - (cfg.topSpeedKmh - minSpeedKmh) * cornerFactor;
+    const speedKmh = topSpeedKmh - (topSpeedKmh - minSpeedKmh) * cornerFactor;
 
-    // 조향 및 드리프트
     const steer = THREE.MathUtils.clamp(-turnDir * cornerFactor * 1.3, -1.0, 1.0);
     const isDrifting = cornerFactor > 0.65 && speedKmh > 130.0;
     const throttle = cornerFactor < 0.3 ? 1.0 : (1.0 - cornerFactor * 0.8);
@@ -203,10 +89,9 @@ function generateTicks(cfg: SeedConfig): RawReplayTick[] {
     const pitch = -Math.asin(THREE.MathUtils.clamp(tangent.y, -0.45, 0.45));
     const roll = isDrifting ? steer * 0.06 : 0;
 
-    // 경쟁 차량 3대 동시 상태 생성
-    const opponents: ReplayOpponentState[] = cfg.opponents.map((opp) => {
-      const oppDistOffset = opp.offsetDist;
-      let oppT = (currentT + oppDistOffset / circuitLength) % 1.0;
+    // 라이벌 3대 위치 계산 (순위에 따라 앞서거나 뒤쳐짐)
+    const opponents: ReplayOpponentState[] = opponentsConfig.map((opp) => {
+      let oppT = (currentT + opp.offsetDist / circuitLength) % 1.0;
       if (oppT < 0) oppT += 1.0;
 
       curve.getPointAt(oppT, oppPt);
@@ -217,16 +102,13 @@ function generateTicks(cfg: SeedConfig): RawReplayTick[] {
       oppPt.y = Math.max(0, oppPt.y) + 0.055;
 
       const oppHeading = Math.atan2(oppTangent.x, oppTangent.z);
-      const oppPitch = -Math.asin(THREE.MathUtils.clamp(oppTangent.y, -0.45, 0.45));
 
       return {
         x: Number(oppPt.x.toFixed(2)),
         y: Number(oppPt.y.toFixed(2)),
         z: Number(oppPt.z.toFixed(2)),
         yaw: Number(oppHeading.toFixed(3)),
-        pitch: Number(oppPitch.toFixed(3)),
         speedKmh: Number((speedKmh * 0.98).toFixed(1)),
-        isDrifting: false,
       };
     });
 
@@ -263,66 +145,148 @@ function formatMs(ms: number): string {
 
 function main() {
   const seedRecords: CachedReplayRecord[] = [];
+  let globalIndex = 0;
 
-  for (const cfg of SEED_CONFIGS) {
-    console.log(`Generating ticks for ${cfg.matchCode} (${cfg.driverName} on ${cfg.circuitId})...`);
-    const ticks = generateTicks(cfg);
+  for (const plan of CIRCUIT_PLANS) {
+    for (let cIdx = 0; cIdx < plan.count; cIdx++) {
+      const matchNum = (cIdx + 1).toString().padStart(2, '0');
+      const matchCode = `${plan.prefix}-${matchNum}`;
 
-    const s1 = Math.round(cfg.targetLapMs * 0.32);
-    const s2 = Math.round(cfg.targetLapMs * 0.36);
-    const s3 = cfg.targetLapMs - s1 - s2;
+      // 1. 이름은 미리 정해진 영어3, 한국어3 을 순환 반복
+      const driverName = PREDEFINED_DRIVERS[globalIndex % PREDEFINED_DRIVERS.length];
+      const vehicleModelId = VEHICLE_MODELS[globalIndex % VEHICLE_MODELS.length];
+      const color = COLORS[globalIndex % COLORS.length];
+      const viewMode: 'FIRST_PERSON' | 'THIRD_PERSON' = (globalIndex % 2 === 0) ? 'THIRD_PERSON' : 'FIRST_PERSON';
 
-    const totalTimeMs = cfg.targetLapMs * 3; // 3랩 기준 매치 서머리
-    const lapTimesMs = [
-      cfg.targetLapMs + 1200,
-      cfg.targetLapMs,
-      cfg.targetLapMs + 450,
-    ];
+      // 2. 순위 다양화 (1위만이 아니라 2위, 3위, 4위로 완주한 매치도 포함)
+      // cIdx가 0, 4, 8 -> 1위 / 1, 5, 9 -> 2위 / 2, 6, 10 -> 3위 / 3, 7, 11 -> 4위
+      const playerRank = (cIdx % 4) + 1;
 
-    const metadata: MatchSummaryMetadata = {
-      matchCode: cfg.matchCode,
-      userId: `user_${cfg.matchCode.toLowerCase()}`,
-      driverName: cfg.driverName,
-      circuitId: cfg.circuitId,
-      vehicleModelId: cfg.vehicleModelId,
-      color: cfg.color,
-      opponentConfigs: cfg.opponents.map((o) => ({
-        driverName: o.driverName,
-        vehicleModelId: o.vehicleModelId,
-        color: o.color,
-      })),
-      totalLaps: 3,
-      totalTimeMs,
-      bestLapMs: cfg.targetLapMs,
-      lapTimesMs,
-      sectorTimesMs: [
-        [s1 + 400, s2 + 500, s3 + 300],
-        [s1, s2, s3],
-        [s1 + 150, s2 + 200, s3 + 100],
-      ],
-      topSpeedKmh: cfg.topSpeedKmh,
-      avgSpeedKmh: Number((cfg.topSpeedKmh * 0.74).toFixed(1)),
-      createdAt: new Date(Date.now() - Math.floor(Math.random() * 86400000 * 5)).toISOString(),
-      rawJsonBytes: ticks.length * 120,
-      quantizedBinaryBytes: ticks.length * 20 + 26,
-      compressedBytes: Math.round(ticks.length * 6),
-      compressionRatioPercent: 95.2,
-      viewMode: cfg.viewMode,
-      raceResults: [
-        { rank: 1, driverName: cfg.driverName, timeMs: totalTimeMs, timeFormatted: formatMs(totalTimeMs), isPlayer: true, color: cfg.color },
-        { rank: 2, driverName: cfg.opponents[0].driverName, timeMs: totalTimeMs + 2410, timeFormatted: formatMs(totalTimeMs + 2410), isPlayer: false, color: cfg.opponents[0].color },
-        { rank: 3, driverName: cfg.opponents[1].driverName, timeMs: totalTimeMs + 5890, timeFormatted: formatMs(totalTimeMs + 5890), isPlayer: false, color: cfg.opponents[1].color },
-        { rank: 4, driverName: cfg.opponents[2].driverName, timeMs: totalTimeMs + 9230, timeFormatted: formatMs(totalTimeMs + 9230), isPlayer: false, color: cfg.opponents[2].color },
-      ],
-    };
+      // 랩타임: 상위 순번일수록 빠름 (1위가 벤치마크 최고 기록)
+      const targetLapMs = plan.baseLapMs + cIdx * 620;
+      const topSpeedKmh = Number((plan.baseTopSpeed - cIdx * 0.8).toFixed(1));
 
-    seedRecords.push({
-      matchCode: cfg.matchCode,
-      ticks,
-      metadata,
-      createdAt: metadata.createdAt,
-      savedAt: Date.now() - 3600000 * 24 * 2,
-    });
+      // 상대 차량 3대 설정 (playerRank에 따라 플레이어보다 앞서거나 뒤쳐짐)
+      // playerRank가 1이면 플레이어가 맨 앞, playerRank가 2면 1대가 앞서감, 3이면 2대가 앞섬, 4면 3대 모두 앞섬
+      const oppOffsetDistances = playerRank === 1
+        ? [-14, -32, -54]
+        : playerRank === 2
+        ? [18, -16, -38]
+        : playerRank === 3
+        ? [28, 14, -22]
+        : [42, 28, 14];
+
+      const rivalPool = PREDEFINED_DRIVERS.filter(n => n !== driverName);
+      const opponentConfigs = [
+        {
+          driverName: rivalPool[0 % rivalPool.length],
+          vehicleModelId: VEHICLE_MODELS[(globalIndex + 1) % VEHICLE_MODELS.length],
+          color: COLORS[(globalIndex + 2) % COLORS.length],
+          offsetDist: oppOffsetDistances[0],
+          lane: 2.2,
+        },
+        {
+          driverName: rivalPool[1 % rivalPool.length],
+          vehicleModelId: VEHICLE_MODELS[(globalIndex + 2) % VEHICLE_MODELS.length],
+          color: COLORS[(globalIndex + 4) % COLORS.length],
+          offsetDist: oppOffsetDistances[1],
+          lane: -2.0,
+        },
+        {
+          driverName: rivalPool[2 % rivalPool.length],
+          vehicleModelId: VEHICLE_MODELS[(globalIndex + 3) % VEHICLE_MODELS.length],
+          color: COLORS[(globalIndex + 6) % COLORS.length],
+          offsetDist: oppOffsetDistances[2],
+          lane: 1.4,
+        },
+      ];
+
+      console.log(`[${globalIndex + 1}/50] Generating ${matchCode}: ${driverName} (${plan.circuitId}, Rank ${playerRank}, ${formatMs(targetLapMs)})`);
+
+      const ticks = generateTicksForSeed(
+        plan.circuitId,
+        targetLapMs,
+        topSpeedKmh,
+        playerRank,
+        opponentConfigs.map(o => ({ offsetDist: o.offsetDist, lane: o.lane }))
+      );
+
+      const s1 = Math.round(targetLapMs * 0.32);
+      const s2 = Math.round(targetLapMs * 0.36);
+      const s3 = targetLapMs - s1 - s2;
+      const totalTimeMs = targetLapMs * 3;
+
+      // 레이스 최종 순위표 구성
+      const raceParticipants = [
+        { driverName, color, isPlayer: true, rank: playerRank },
+        { driverName: opponentConfigs[0].driverName, color: opponentConfigs[0].color, isPlayer: false, rank: 0 },
+        { driverName: opponentConfigs[1].driverName, color: opponentConfigs[1].color, isPlayer: false, rank: 0 },
+        { driverName: opponentConfigs[2].driverName, color: opponentConfigs[2].color, isPlayer: false, rank: 0 },
+      ];
+
+      // 나머지 3대 순위 배정 (1~4 중 playerRank 제외)
+      const remainingRanks = [1, 2, 3, 4].filter(r => r !== playerRank);
+      raceParticipants[1].rank = remainingRanks[0];
+      raceParticipants[2].rank = remainingRanks[1];
+      raceParticipants[3].rank = remainingRanks[2];
+
+      raceParticipants.sort((a, b) => a.rank - b.rank);
+
+      const raceResults = raceParticipants.map(p => {
+        const timeOffset = (p.rank - 1) * 2100;
+        const time = totalTimeMs + timeOffset;
+        return {
+          rank: p.rank,
+          driverName: p.driverName,
+          timeMs: time,
+          timeFormatted: formatMs(time),
+          isPlayer: p.isPlayer,
+          color: p.color,
+        };
+      });
+
+      const metadata: MatchSummaryMetadata = {
+        matchCode,
+        userId: `seed_${matchCode.toLowerCase()}`,
+        driverName,
+        circuitId: plan.circuitId,
+        vehicleModelId,
+        color,
+        opponentConfigs: opponentConfigs.map(o => ({
+          driverName: o.driverName,
+          vehicleModelId: o.vehicleModelId,
+          color: o.color,
+        })),
+        totalLaps: 3,
+        totalTimeMs,
+        bestLapMs: targetLapMs,
+        lapTimesMs: [targetLapMs + 950, targetLapMs, targetLapMs + 420],
+        sectorTimesMs: [
+          [s1 + 350, s2 + 400, s3 + 200],
+          [s1, s2, s3],
+          [s1 + 120, s2 + 180, s3 + 120],
+        ],
+        topSpeedKmh,
+        avgSpeedKmh: Number((topSpeedKmh * 0.74).toFixed(1)),
+        createdAt: new Date(Date.now() - (50 - globalIndex) * 14400000).toISOString(),
+        rawJsonBytes: ticks.length * 110,
+        quantizedBinaryBytes: ticks.length * 20 + 26,
+        compressedBytes: Math.round(ticks.length * 5.5),
+        compressionRatioPercent: 95.5,
+        viewMode,
+        raceResults,
+      };
+
+      seedRecords.push({
+        matchCode,
+        ticks,
+        metadata,
+        createdAt: metadata.createdAt,
+        savedAt: Date.now() - (50 - globalIndex) * 14400000,
+      });
+
+      globalIndex++;
+    }
   }
 
   const outDir = path.resolve('public', 'data');
@@ -335,7 +299,7 @@ function main() {
   const stat = fs.statSync(outFile);
   console.log(`\n Successfully generated ${seedRecords.length} seed replays to:`);
   console.log(`  -> ${outFile}`);
-  console.log(`  -> File size: ${(stat.size / 1024).toFixed(1)} KB`);
+  console.log(`  -> Total File Size: ${(stat.size / (1024 * 1024)).toFixed(2)} MB (${(stat.size / 1024).toFixed(1)} KB)`);
 }
 
 main();

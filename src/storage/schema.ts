@@ -51,7 +51,7 @@ export interface CachedAudioRecord {
 import type { RawReplayTick, MatchSummaryMetadata } from '../replay/ReplayTypes.ts';
 
 /**
- * IndexedDB에 영구 보관되는 매치 리플레이 레코드 (최대 30개 보관)
+ * IndexedDB에 영구 보관되는 매치 리플레이 레코드 (최대 100개 보관)
  */
 export interface CachedReplayRecord {
   matchCode: string;               // Primary Key (예: 'RACE-ABCD')

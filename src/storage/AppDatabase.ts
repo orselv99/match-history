@@ -308,12 +308,13 @@ export class AppDatabase {
         req.onerror = () => reject(req.error);
       });
 
-      // 최대 30개 보관 제한 (오래된 순 FIFO 삭제)
+      // 최대 100개 보관 제한 (오래된 순 FIFO 삭제)
       const all = await this.listReplays();
-      if (all.length > 30) {
+      const MAX_REPLAYS = 100;
+      if (all.length > MAX_REPLAYS) {
         // savedAt 오름차순 정렬 (가장 오래된 것부터)
         all.sort((a, b) => (a.savedAt || 0) - (b.savedAt || 0));
-        const excess = all.length - 30;
+        const excess = all.length - MAX_REPLAYS;
         const deleteTx = db.transaction(STORES.REPLAY, 'readwrite');
         const delStore = deleteTx.objectStore(STORES.REPLAY);
         for (let i = 0; i < excess; i++) {
@@ -325,7 +326,7 @@ export class AppDatabase {
         });
       }
 
-      const totalCount = Math.min(all.length, 30);
+      const totalCount = Math.min(all.length, MAX_REPLAYS);
       return { totalCount, saved: true };
     } catch (e) {
       console.warn('[AppDatabase] Failed to save replay to IndexedDB:', e);

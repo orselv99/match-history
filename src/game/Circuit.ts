@@ -33,6 +33,7 @@ export class Circuit {
   public currentCircuitId: CircuitId = 'circuit_monaco';
   public structureMaterials: StructureMaterials = createStructureMaterials();
   public circuitStructuresGroup?: THREE.Group;
+  public gantryLights: THREE.Mesh[] = [];
 
 
   private samplePoints: THREE.Vector3[] = [];
@@ -83,6 +84,16 @@ export class Circuit {
     this.group.add(CircuitDecorations.buildGround());
     this.circuitStructuresGroup = CircuitDecorations.buildCircuitStructures(this.circuitCurve, this.circuitWidth, this.structureMaterials);
     this.group.add(this.circuitStructuresGroup);
+
+    // 갠트리 3구 카운트다운 라이트 캐싱
+    this.gantryLights = [];
+    this.circuitStructuresGroup.traverse((child) => {
+      if (child.name.startsWith('gantry_light_') && child instanceof THREE.Mesh) {
+        this.gantryLights.push(child);
+      }
+    });
+    this.gantryLights.sort((a, b) => a.position.x - b.position.x);
+
     this.setupCheckpoints();
 
 
@@ -108,6 +119,24 @@ export class Circuit {
           child.intensity = isNight ? (child.userData.baseIntensity || 45.0) : 0;
         }
       });
+    }
+  }
+
+  /**
+   * 스타트 갠트리 3구 카운트다운 라이트 상태 제어
+   * @param activeRedCount 켜질 레드 라이트 개수 (0: 소등, 1: 1번 켜짐, 2: 1/2번 켜짐, 3: 3개 전체 켜짐)
+   * @param isGreen GO! 출발 시 3개 라이트 전체 녹색(Green) 점등 여부
+   */
+  public setGantryLights(activeRedCount: number, isGreen: boolean = false): void {
+    for (let i = 0; i < this.gantryLights.length; i++) {
+      const mesh = this.gantryLights[i];
+      if (isGreen) {
+        mesh.material = this.structureMaterials.emissiveGreenMat;
+      } else if (i < activeRedCount) {
+        mesh.material = this.structureMaterials.emissiveRedMat;
+      } else {
+        mesh.material = this.structureMaterials.lightOffMat;
+      }
     }
   }
 

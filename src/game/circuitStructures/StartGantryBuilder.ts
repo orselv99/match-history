@@ -2,13 +2,14 @@ import * as THREE from 'three';
 import type { StructureMaterials } from './types.ts';
 
 /**
- * 출발선 F1 5구 스타팅 라이트 갠트리 (Start / Finish Gantry)
+ * 출발선 3구 스타팅 라이트 갠트리 (Start / Finish Gantry)
  * - 좌우 강철 기둥 및 상단 트러스 브릿지
- * - 5구 레드 스타팅 라이트
+ * - 3구 스타팅 라이트 (3 > 2 > 1 > GO! 카운트다운 연동)
  * - 트랙 폭 맞춤 상단 START / FINISH 사이니지
  */
 export function buildStartGantry(materials: StructureMaterials, circuitWidth: number): THREE.Group {
   const gantry = new THREE.Group();
+  gantry.name = 'start_finish_gantry';
   const halfW = circuitWidth / 2;
   const postX = halfW + 1.4;
 
@@ -25,17 +26,19 @@ export function buildStartGantry(materials: StructureMaterials, circuitWidth: nu
   const bridge = new THREE.Mesh(bridgeGeom, materials.steelMat);
   bridge.position.set(0, 7.1, 0);
 
-  // 5구 스타팅 라이트 박스
-  const lightBoxGeom = new THREE.BoxGeometry(4.4, 0.9, 0.3);
+  // 3구 스타팅 라이트 박스 (2.8m 폭)
+  const lightBoxGeom = new THREE.BoxGeometry(2.8, 0.9, 0.3);
   const lightBox = new THREE.Mesh(lightBoxGeom, materials.steelMat);
   lightBox.position.set(0, 6.2, -0.65);
 
-  const lightGeom = new THREE.CylinderGeometry(0.24, 0.24, 0.12, 12);
+  // 3구 라이트 배치: -0.8 (1번), 0.0 (2번), 0.8 (3번)
+  const lightGeom = new THREE.CylinderGeometry(0.24, 0.24, 0.12, 16);
   lightGeom.rotateX(Math.PI / 2);
-  for (let i = 0; i < 5; i++) {
-    const redLight = new THREE.Mesh(lightGeom, materials.emissiveRedMat);
-    redLight.position.set(-1.6 + i * 0.8, 6.2, -0.82);
-    gantry.add(redLight);
+  for (let i = 0; i < 3; i++) {
+    const lightMesh = new THREE.Mesh(lightGeom, materials.lightOffMat);
+    lightMesh.position.set(-0.8 + i * 0.8, 6.2, -0.82);
+    lightMesh.name = `gantry_light_${i}`;
+    gantry.add(lightMesh);
   }
 
   // 상단 "START / FINISH" 전광판

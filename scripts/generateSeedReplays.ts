@@ -32,8 +32,17 @@ const CIRCUIT_PLANS: CircuitSeedPlan[] = [
   { circuitId: 'circuit_silverstone', prefix: 'SEED-SS', count: 50, baseTopSpeed: 244.0 },
 ];
 
+const STARTING_GRID_SLOTS = [
+  { dist: -5.0, lane: -2.2 },  // Slot 0 (Pole position)
+  { dist: -16.0, lane: 2.2 },  // Slot 1 (P2)
+  { dist: -27.0, lane: -2.2 }, // Slot 2 (P3)
+  { dist: -38.0, lane: 2.2 },  // Slot 3 (P4)
+];
+
 /**
  * 인게임 물리 시뮬레이션 기반 3랩 주행 틱 및 정밀 메타데이터 생성
+ * - 출발 시 4대 차량 모두 「 」 그리드 마킹 박스 내 정중앙에 수평 정차(speed=0, yaw=메인스트레이트 정방향)
+ * - 결승선 통과 전에는 메인 스트레이트 직선 궤적 주행, 결승선 통과 후 서킷 스플라인 곡선에 부드럽게 합류
  * - 차량 속도(km/h)와 3D 트랙 실제 이동 거리(m)를 100% 일치시켜 실제 주행과 리플레이 속도감이 완벽히 동일함
  */
 function generateTicksForSeed(
@@ -63,16 +72,69 @@ function generateTicksForSeed(
   const dtMs = 1000 / FPS;
 
   const ticks: RawReplayTick[] = [];
-  const pt = new THREE.Vector3();
   const tangent = new THREE.Vector3();
-  const right = new THREE.Vector3();
-  const oppPt = new THREE.Vector3();
-  const oppTangent = new THREE.Vector3();
-  const oppRight = new THREE.Vector3();
 
-  let dist = 0;
+  // 4개 그리드 슬롯 배치 결정
+  const playerSlot = Math.min(3, Math.max(0, playerRank - 1));
+  const oppSlots = [0, 1, 2, 3].filter(s => s !== playerSlot);
+
+  const playerInitDist = STARTING_GRID_SLOTS[playerSlot].dist;
+  const playerInitLane = STARTING_GRID_SLOTS[playerSlot].lane;
+
+  const oppInitDists = oppSlots.map(s => STARTING_GRID_SLOTS[s].dist);
+  const oppInitLanes = oppSlots.map(s => STARTING_GRID_SLOTS[s].lane);
+
+  // 메인 스트레이트 시작점 및 정방향 벡터 산출
+  const startPt = curve.getPointAt(0);
+  const startTangent = curve.getTangentAt(0).normalize();
+  const localXDir = new THREE.Vector3(startTangent.z, 0, -startTangent.x).normalize();
+  const straightHeading = Math.atan2(startTangent.x, startTangent.z);
+
+  // 3D 위치 및 회전각 산출 함수 (결승선 이전에는 직선 수평 정렬, 이후에는 서킷 곡선 추종)
+  function getVehiclePose(vDist: number, vInitLane: number, targetLane: number): {
+    pos: THREE.Vector3;
+    heading: number;
+    pitch: number;
+    roll: number;
+  } {
+    const pos = new THREE.Vector3();
+    if (vDist <= 0) {
+      pos.copy(startPt)
+         .addScaledVector(startTangent, vDist)
+         .addScaledVector(localXDir, vInitLane);
+      pos.y = Math.max(0, startPt.y) + 0.055;
+      return {
+        pos,
+        heading: straightHeading,
+        pitch: 0,
+        roll: 0,
+      };
+    } else {
+      const t = (vDist / circuitLength) % 1.0;
+      curve.getPointAt(t, pos);
+      const tan = curve.getTangentAt(t).normalize();
+      const r = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+
+      // 출발 후 45m 구간에 걸쳐 그리드 레인에서 레이싱 레인으로 부드럽게 합류
+      const blendOut = Math.min(1.0, vDist / 45.0);
+      const lane = THREE.MathUtils.lerp(vInitLane, targetLane, blendOut);
+      pos.addScaledVector(r, lane);
+      pos.y = Math.max(0, pos.y) + 0.055;
+
+      const heading = Math.atan2(tan.x, tan.z);
+      const pitch = -Math.asin(THREE.MathUtils.clamp(tan.y, -0.45, 0.45));
+      return {
+        pos,
+        heading,
+        pitch,
+        roll: 0,
+      };
+    }
+  }
+
+  let dist = playerInitDist;
   let timeMs = 0;
-  let prevDist = 0;
+  let prevDist = dist;
   let prevT = 0;
   let lap = 1;
   const lapTimes: number[] = [];
@@ -90,27 +152,61 @@ function generateTicksForSeed(
   let totalSpeedAccum = 0;
   let tickCount = 0;
 
+  // 1. Tick 0: 모든 차량이 그리드 마킹 「 」 박스 내에 0km/h로 완벽히 정렬된 정차 틱 추가
+  const initPlayerPose = getVehiclePose(playerInitDist, playerInitLane, 0);
+  const initOpponents: ReplayOpponentState[] = opponentsConfig.map((opp, oppIdx) => {
+    const oppPose = getVehiclePose(oppInitDists[oppIdx], oppInitLanes[oppIdx], opp.lane);
+    return {
+      x: Number(oppPose.pos.x.toFixed(2)),
+      y: Number(oppPose.pos.y.toFixed(2)),
+      z: Number(oppPose.pos.z.toFixed(2)),
+      yaw: Number(oppPose.heading.toFixed(3)),
+      speedKmh: 0,
+    };
+  });
+
+  ticks.push({
+    timeMs: 0,
+    x: Number(initPlayerPose.pos.x.toFixed(2)),
+    y: Number(initPlayerPose.pos.y.toFixed(2)),
+    z: Number(initPlayerPose.pos.z.toFixed(2)),
+    yaw: Number(initPlayerPose.heading.toFixed(3)),
+    pitch: 0,
+    roll: 0,
+    speedKmh: 0,
+    steer: 0,
+    throttle: 1.0,
+    brake: 0,
+    isDrifting: false,
+    lap: 1,
+    opponents: initOpponents,
+  });
+
   while (lap <= 3) {
-    const currentT = (dist / circuitLength) % 1.0;
-
-    curve.getPointAt(currentT, pt);
-    curve.getTangentAt(currentT, tangent).normalize();
-    right.set(-tangent.z, 0, tangent.x).normalize();
-
-    // 전방 곡률 샘플링을 통한 현실적인 코너링 감속
-    const nextT = (currentT + 0.02) % 1.0;
-    const nextTangent = curve.getTangentAt(nextT).normalize();
-    const dot = THREE.MathUtils.clamp(tangent.dot(nextTangent), -1, 1);
-    const cornerAngle = Math.acos(dot);
-    const crossY = tangent.x * nextTangent.z - tangent.z * nextTangent.x;
-    const turnDir = crossY > 0 ? 1 : -1;
-
-    const cornerFactor = Math.min(1.0, cornerAngle / 0.35);
-    let speedKmh = actualTopSpeed - (actualTopSpeed - minCornerSpeedKmh) * cornerFactor;
-
     // 랩 1 스타트 가속 시뮬레이션
-    if (lap === 1 && timeMs < 2500) {
-      speedKmh = Math.min(speedKmh, (timeMs / 2500) * (actualTopSpeed * 0.88));
+    let speedKmh = 0;
+    if (timeMs < 2500) {
+      speedKmh = Math.max(12, (timeMs / 2500) * (actualTopSpeed * 0.88));
+    } else {
+      speedKmh = actualTopSpeed;
+    }
+
+    let cornerFactor = 0;
+    let turnDir = 0;
+
+    if (dist > 0) {
+      const currentT = (dist / circuitLength) % 1.0;
+      curve.getTangentAt(currentT, tangent).normalize();
+      const nextT = (currentT + 0.02) % 1.0;
+      const nextTangent = curve.getTangentAt(nextT).normalize();
+      const dot = THREE.MathUtils.clamp(tangent.dot(nextTangent), -1, 1);
+      const cornerAngle = Math.acos(dot);
+      const crossY = tangent.x * nextTangent.z - tangent.z * nextTangent.x;
+      turnDir = crossY > 0 ? 1 : -1;
+      cornerFactor = Math.min(1.0, cornerAngle / 0.35);
+
+      const targetCornerSpeed = actualTopSpeed - (actualTopSpeed - minCornerSpeedKmh) * cornerFactor;
+      speedKmh = Math.min(speedKmh, targetCornerSpeed);
     }
 
     const speedMs = speedKmh / 3.6;
@@ -124,105 +220,102 @@ function generateTicksForSeed(
     const throttle = cornerFactor < 0.3 ? 1.0 : (1.0 - cornerFactor * 0.8);
     const brake = cornerFactor > 0.5 ? (cornerFactor - 0.5) * 1.6 : 0.0;
 
-    const heading = Math.atan2(tangent.x, tangent.z);
-    const pitch = -Math.asin(THREE.MathUtils.clamp(tangent.y, -0.45, 0.45));
-    const roll = isDrifting ? steer * 0.06 : 0;
+    const playerPose = getVehiclePose(dist, playerInitLane, 0);
 
     // 라이벌 3대 동시 3D 위치 및 주행 계산 (엎치락뒤치락 추월 및 차체 충돌 불꽃 스파크 시뮬레이션)
     const opponents: ReplayOpponentState[] = opponentsConfig.map((opp, oppIdx) => {
-      // 엎치락뒤치락 순위 역전 파동 (전체 레이스 진행도 기준 사인파 오프셋 진동)
-      const raceProgress = THREE.MathUtils.clamp(dist / (3 * circuitLength), 0, 1);
-      // 각 차량별로 위상을 다르게 주어 레이스 중 서로 앞서거니 뒤서거니 추월 발생
-      const wave = Math.sin(raceProgress * Math.PI * 5 + oppIdx * 1.9) * 16.0;
-      // 결승선(3랩 종반부)에 다다르면 지정된 최종 완주 순위(playerRank)로 안정 수렴
-      const blend = Math.pow(raceProgress, 1.8);
-      const dynamicOffset = opp.offsetDist * blend + (opp.offsetDist + wave) * (1 - blend);
+      let oppDist = 0;
+      if (dist <= 0) {
+        oppDist = oppInitDists[oppIdx] + (dist - playerInitDist);
+      } else {
+        const raceProgress = THREE.MathUtils.clamp(dist / (3 * circuitLength), 0, 1);
+        const wave = Math.sin(raceProgress * Math.PI * 5 + oppIdx * 1.9) * 16.0;
+        const blend = Math.pow(raceProgress, 1.8);
+        const dynamicOffset = opp.offsetDist * blend + (opp.offsetDist + wave) * (1 - blend);
+        oppDist = dist + dynamicOffset;
+      }
 
-      let oppT = (currentT + dynamicOffset / circuitLength) % 1.0;
-      if (oppT < 0) oppT += 1.0;
-
-      curve.getPointAt(oppT, oppPt);
-      curve.getTangentAt(oppT, oppTangent).normalize();
-      oppRight.set(-oppTangent.z, 0, oppTangent.x).normalize();
-
-      // 머신끼리 부딪혀서 불꽃 튀는 차체 측면 접촉(Wheel-to-wheel contact) 시뮬레이션
       let laneOffset = opp.lane;
-      // 플레이어와 전후 거리가 3.5m 이내로 나란히 달릴 때 차체 사이드 스크랩(불꽃 발생) 유도 (절대 관통되지 않는 2.12m 유지)
-      if (Math.abs(dynamicOffset) < 3.5 && Math.abs(dynamicOffset) > 0.4) {
+      const distDiff = Math.abs(oppDist - dist);
+      if (dist > 30 && distDiff < 3.5 && distDiff > 0.4) {
         if (Math.abs(opp.lane) < 3.0) {
           laneOffset = opp.lane > 0 ? 2.12 : -2.12;
         }
       }
 
-      oppPt.addScaledVector(oppRight, laneOffset);
-      oppPt.y = Math.max(0, oppPt.y) + 0.055;
-
-      const oppHeading = Math.atan2(oppTangent.x, oppTangent.z);
+      const oppPose = getVehiclePose(oppDist, oppInitLanes[oppIdx], laneOffset);
 
       return {
-        x: Number(oppPt.x.toFixed(2)),
-        y: Number(oppPt.y.toFixed(2)),
-        z: Number(oppPt.z.toFixed(2)),
-        yaw: Number(oppHeading.toFixed(3)),
+        x: Number(oppPose.pos.x.toFixed(2)),
+        y: Number(oppPose.pos.y.toFixed(2)),
+        z: Number(oppPose.pos.z.toFixed(2)),
+        yaw: Number(oppPose.heading.toFixed(3)),
         speedKmh: Math.round(speedKmh * 0.98),
       };
     });
 
-    const playerPos = pt.clone();
-    playerPos.y = Math.max(0, playerPos.y) + 0.055;
-
     ticks.push({
       timeMs: Math.round(timeMs),
-      x: Number(playerPos.x.toFixed(2)),
-      y: Number(playerPos.y.toFixed(2)),
-      z: Number(playerPos.z.toFixed(2)),
-      yaw: Number(heading.toFixed(3)),
-      pitch: Number(pitch.toFixed(3)),
-      roll: Number(roll.toFixed(3)),
+      x: Number(playerPose.pos.x.toFixed(2)),
+      y: Number(playerPose.pos.y.toFixed(2)),
+      z: Number(playerPose.pos.z.toFixed(2)),
+      yaw: Number(playerPose.heading.toFixed(3)),
+      pitch: Number(playerPose.pitch.toFixed(3)),
+      roll: isDrifting ? Number((steer * 0.06).toFixed(3)) : 0,
       speedKmh: Number(speedKmh.toFixed(1)),
       steer: Number(steer.toFixed(2)),
       throttle: Number(throttle.toFixed(2)),
       brake: Number(brake.toFixed(2)),
       isDrifting,
-      lap,
+      lap: Math.min(3, Math.max(1, lap)),
       opponents,
     });
 
-    // 정밀 서브틱(sub-tick) 보간을 통한 밀리초 정밀도 섹터 타임 산출 (소수점 00 고정 제거)
-    if (currentSector === 1 && currentT >= 0.33) {
-      const frac = (prevT < currentT && (currentT - prevT) > 0.0001) ? THREE.MathUtils.clamp((0.33 - prevT) / (currentT - prevT), 0, 1) : 0.5;
-      const exactTime = (timeMs - dtMs) + frac * dtMs;
-      const lapJitter = ((cIdx * 17 + lap * 37) % 73) - 36; // 주행 랩별 현실적 밀리초 편차
-      s1TimeMs = Math.max(1200, Math.round(exactTime - lapStartTimeMs + lapJitter));
-      currentSector = 2;
-    } else if (currentSector === 2 && currentT >= 0.66) {
-      const frac = (prevT < currentT && (currentT - prevT) > 0.0001) ? THREE.MathUtils.clamp((0.66 - prevT) / (currentT - prevT), 0, 1) : 0.5;
-      const exactTime = (timeMs - dtMs) + frac * dtMs;
-      const lapJitter = ((cIdx * 29 + lap * 43) % 89) - 44;
-      s2TimeMs = Math.max(1200, Math.round(exactTime - lapStartTimeMs - s1TimeMs + lapJitter));
-      currentSector = 3;
+    // 출발선 통과 감지 (dist 이전 < 0 && 현재 >= 0)
+    if (prevDist < 0 && dist >= 0) {
+      lapStartTimeMs = timeMs;
+      currentSector = 1;
     }
 
-    // 랩 완료 체크
-    if (dist >= lap * circuitLength) {
-      const targetDist = lap * circuitLength;
-      const frac = (dist > prevDist) ? THREE.MathUtils.clamp((targetDist - prevDist) / (dist - prevDist), 0, 1) : 0.5;
-      const exactFinishTime = (timeMs - dtMs) + frac * dtMs;
-      const lapDuration = Math.round(exactFinishTime - lapStartTimeMs);
-      const s3TimeMs = Math.max(1200, lapDuration - s1TimeMs - s2TimeMs);
+    if (dist > 0) {
+      const currentT = (dist / circuitLength) % 1.0;
 
-      lapTimes.push(lapDuration);
-      sectorTimes.push([s1TimeMs, s2TimeMs, s3TimeMs]);
+      // 정밀 서브틱(sub-tick) 보간을 통한 밀리초 정밀도 섹터 타임 산출
+      if (currentSector === 1 && currentT >= 0.33) {
+        const frac = (prevT < currentT && (currentT - prevT) > 0.0001) ? THREE.MathUtils.clamp((0.33 - prevT) / (currentT - prevT), 0, 1) : 0.5;
+        const exactTime = (timeMs - dtMs) + frac * dtMs;
+        const lapJitter = ((cIdx * 17 + lap * 37) % 73) - 36;
+        s1TimeMs = Math.max(1200, Math.round(exactTime - lapStartTimeMs + lapJitter));
+        currentSector = 2;
+      } else if (currentSector === 2 && currentT >= 0.66) {
+        const frac = (prevT < currentT && (currentT - prevT) > 0.0001) ? THREE.MathUtils.clamp((0.66 - prevT) / (currentT - prevT), 0, 1) : 0.5;
+        const exactTime = (timeMs - dtMs) + frac * dtMs;
+        const lapJitter = ((cIdx * 29 + lap * 43) % 89) - 44;
+        s2TimeMs = Math.max(1200, Math.round(exactTime - lapStartTimeMs - s1TimeMs + lapJitter));
+        currentSector = 3;
+      }
 
-      lapStartTimeMs = exactFinishTime;
-      currentSector = 1;
-      s1TimeMs = 0;
-      s2TimeMs = 0;
-      lap++;
+      // 랩 완료 체크
+      if (dist >= lap * circuitLength) {
+        const targetDist = lap * circuitLength;
+        const frac = (dist > prevDist) ? THREE.MathUtils.clamp((targetDist - prevDist) / (dist - prevDist), 0, 1) : 0.5;
+        const exactFinishTime = (timeMs - dtMs) + frac * dtMs;
+        const lapDuration = Math.round(exactFinishTime - lapStartTimeMs);
+        const s3TimeMs = Math.max(1200, lapDuration - s1TimeMs - s2TimeMs);
+
+        lapTimes.push(lapDuration);
+        sectorTimes.push([s1TimeMs, s2TimeMs, s3TimeMs]);
+
+        lapStartTimeMs = exactFinishTime;
+        currentSector = 1;
+        s1TimeMs = 0;
+        s2TimeMs = 0;
+        lap++;
+      }
+      prevT = currentT;
     }
 
     prevDist = dist;
-    prevT = currentT;
   }
 
   const bestLapMs = Math.min(...lapTimes);
@@ -301,96 +394,78 @@ function main() {
         },
       ];
 
-      const { ticks, lapTimes, totalTimeMs, bestLapMs, bestLapNum, sectorTimes, avgSpeedKmh } = generateTicksForSeed(
-        plan.circuitId,
-        topSpeedKmh,
-        playerRank,
-        opponentConfigs.map(o => ({ offsetDist: o.offsetDist, lane: o.lane })),
-        cIdx
-      );
+      const sim = generateTicksForSeed(plan.circuitId, topSpeedKmh, playerRank, opponentConfigs, cIdx);
 
-      console.log(`[${globalIndex + 1}/50] Generating Realistic 3-LAP ${matchCode}: ${driverName} (${plan.circuitId}, Rank ${playerRank}, Best: ${formatMs(bestLapMs)}, Total: ${formatMs(totalTimeMs)})`);
+      // 3. 상대 차량 3대의 기록 산출 (밀리초 단위 실시간 주행 기반)
+      const opponentsResult = opponentConfigs.map((opp, oppIdx) => {
+        const gapMs = (oppIdx + 1) * 850 + ((cIdx * 37 + oppIdx * 19) % 350) - 175;
+        const totalMs = playerRank === 1
+          ? sim.totalTimeMs + gapMs
+          : (playerRank === 2
+              ? (oppIdx === 0 ? sim.totalTimeMs - 720 : sim.totalTimeMs + gapMs)
+              : (playerRank === 3
+                  ? (oppIdx <= 1 ? sim.totalTimeMs - (800 - oppIdx * 350) : sim.totalTimeMs + gapMs)
+                  : sim.totalTimeMs - (1200 - oppIdx * 320)));
 
-      // 레이스 최종 순위표 구성
-      const raceParticipants = [
-        { driverName, color, isPlayer: true, rank: playerRank },
-        { driverName: opponentConfigs[0].driverName, color: opponentConfigs[0].color, isPlayer: false, rank: 0 },
-        { driverName: opponentConfigs[1].driverName, color: opponentConfigs[1].color, isPlayer: false, rank: 0 },
-        { driverName: opponentConfigs[2].driverName, color: opponentConfigs[2].color, isPlayer: false, rank: 0 },
-      ];
+        const safeTotalMs = Math.max(sim.totalTimeMs * 0.9, Math.round(totalMs));
+        const oppBestMs = Math.round(safeTotalMs / 3.03 + (oppIdx * 120));
 
-      const remainingRanks = [1, 2, 3, 4].filter(r => r !== playerRank);
-      raceParticipants[1].rank = remainingRanks[0];
-      raceParticipants[2].rank = remainingRanks[1];
-      raceParticipants[3].rank = remainingRanks[2];
-
-      raceParticipants.sort((a, b) => a.rank - b.rank);
-
-      const raceResults = raceParticipants.map(p => {
-        const timeOffset = (p.rank - 1) * 850;
-        const time = totalTimeMs + timeOffset;
         return {
-          rank: p.rank,
-          driverName: p.driverName,
-          timeMs: time,
-          timeFormatted: formatMs(time),
-          isPlayer: p.isPlayer,
-          color: p.color,
+          driverName: opp.driverName,
+          vehicleModelId: opp.vehicleModelId,
+          color: opp.color,
+          totalTimeMs: safeTotalMs,
+          totalTimeFormatted: formatMs(safeTotalMs),
+          bestLapMs: oppBestMs,
+          bestLapFormatted: formatMs(oppBestMs),
         };
       });
 
+      // 4. 메타데이터 생성
       const metadata: MatchSummaryMetadata = {
         matchCode,
-        userId: `seed_${matchCode.toLowerCase()}`,
-        driverName,
         circuitId: plan.circuitId,
+        driverName,
         vehicleModelId,
         color,
-        opponentConfigs: opponentConfigs.map(o => ({
-          driverName: o.driverName,
-          vehicleModelId: o.vehicleModelId,
-          color: o.color,
-        })),
-        totalLaps: 3,
-        totalTimeMs,
-        bestLapMs,
-        bestLapNum,
-        lapTimesMs: lapTimes,
-        sectorTimesMs: sectorTimes,
-        topSpeedKmh,
-        avgSpeedKmh,
-        createdAt: new Date(Date.now() - (50 - globalIndex) * 14400000).toISOString(),
-        rawJsonBytes: ticks.length * 110,
-        quantizedBinaryBytes: ticks.length * 20 + 26,
-        compressedBytes: Math.round(ticks.length * 5.5),
-        compressionRatioPercent: 95.5,
         viewMode,
-        raceResults,
+        timestamp: Date.now() - (plan.count - cIdx) * 3600000 * 3, // 3시간 간격 타임스탬프
+        totalTimeMs: sim.totalTimeMs,
+        totalTimeFormatted: formatMs(sim.totalTimeMs),
+        bestLapMs: sim.bestLapMs,
+        bestLapFormatted: formatMs(sim.bestLapMs),
+        bestLapNumber: sim.bestLapNum,
+        lapTimes: sim.lapTimes,
+        sectorTimes: sim.sectorTimes,
+        avgSpeedKmh: sim.avgSpeedKmh,
+        maxSpeedKmh: topSpeedKmh,
+        rank: playerRank,
+        totalRacers: 4,
+        totalLaps: 3,
+        opponentConfigs,
+        opponents: opponentsResult,
       };
 
       seedRecords.push({
         matchCode,
-        ticks,
         metadata,
-        createdAt: metadata.createdAt,
-        savedAt: Date.now() - (50 - globalIndex) * 14400000,
+        ticks: sim.ticks,
+        createdAt: metadata.timestamp,
+        compressed: false,
       });
 
       globalIndex++;
     }
   }
 
-  const outDir = path.resolve('public', 'data');
+  const outDir = path.resolve(process.cwd(), 'public/data');
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }
 
   const outFile = path.join(outDir, 'seed-replays.json');
   fs.writeFileSync(outFile, JSON.stringify(seedRecords));
-  const stat = fs.statSync(outFile);
-  console.log(`\n Successfully generated ${seedRecords.length} realistic physics 3-LAP seed replays to:`);
-  console.log(`  -> ${outFile}`);
-  console.log(`  -> Total File Size: ${(stat.size / (1024 * 1024)).toFixed(2)} MB (${(stat.size / 1024).toFixed(1)} KB)`);
+  console.log(`Successfully generated ${seedRecords.length} high-frequency 3-lap replays (aligned to starting grids) to: ${outFile}`);
 }
 
 main();

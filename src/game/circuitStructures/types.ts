@@ -8,7 +8,9 @@ export interface StructureMaterials {
   seatBlueMat: THREE.MeshStandardMaterial;
   glassMat: THREE.MeshStandardMaterial;
   emissiveRedMat: THREE.MeshStandardMaterial;
+  emissiveGreenMat: THREE.MeshStandardMaterial;
   emissiveCyanMat: THREE.MeshStandardMaterial;
+  lightOffMat: THREE.MeshStandardMaterial;
   floodlightBulbMat: THREE.MeshStandardMaterial;
 }
 
@@ -32,11 +34,24 @@ export function createStructureMaterials(): StructureMaterials {
       emissiveIntensity: 2.8,
       roughness: 0.2,
     }),
+    emissiveGreenMat: new THREE.MeshStandardMaterial({
+      color: 0x22c55e,
+      emissive: 0x22c55e,
+      emissiveIntensity: 3.2,
+      roughness: 0.2,
+    }),
     emissiveCyanMat: new THREE.MeshStandardMaterial({
       color: 0x38bdf8,
       emissive: 0x0284c7,
       emissiveIntensity: 1.8,
       roughness: 0.2,
+    }),
+    lightOffMat: new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      emissive: 0x050505,
+      emissiveIntensity: 0.0,
+      roughness: 0.85,
+      metalness: 0.2,
     }),
     floodlightBulbMat: new THREE.MeshStandardMaterial({
       color: 0xffffff,

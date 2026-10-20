@@ -119,6 +119,7 @@ export class Game {
   private stableStandings: LeaderboardRacerEntry[] = [];
   private overtakePendingTimers: Map<string, number> = new Map();
   private swapCooldownTimers: Map<string, number> = new Map();
+  private gantryGoTimer: number = 0;
 
   // 콜백
   public onFinishCallback?: (metadata: MatchSummaryMetadata) => void;
@@ -363,6 +364,8 @@ export class Game {
     this.collisionManager.reset();
 
     this.resetStandings();
+    this.gantryGoTimer = 0;
+    this.circuit.setGantryLights(0);
     this.lapTimer.reset();
     this.recorder.clear();
     this.audio.pauseEngine();
@@ -441,6 +444,8 @@ export class Game {
   public startCountdown(): void {
     if (this.raceState === 'COUNTDOWN' || this.raceState === 'RUNNING') return;
     this.resetStandings();
+    this.gantryGoTimer = 0;
+    this.circuit.setGantryLights(0);
     this.raceState = 'COUNTDOWN';
     this.countdownTimer = 3.0;
     this.lastBeepNumber = -1;
@@ -463,6 +468,13 @@ export class Game {
     const delta = Math.min(this.clock.getDelta(), 0.1);
     this.lastDelta = delta;
     const deltaMs = delta * 1000;
+
+    if (this.gantryGoTimer > 0) {
+      this.gantryGoTimer -= delta;
+      if (this.gantryGoTimer <= 0) {
+        this.circuit.setGantryLights(0);
+      }
+    }
 
     // R 키 리셋 감지
     if (this.input.consumeReset()) {
@@ -524,12 +536,20 @@ export class Game {
     if (currentNumber > 0 && currentNumber <= 3 && currentNumber !== this.lastBeepNumber) {
       this.lastBeepNumber = currentNumber;
       this.audio.playCountdownBeep(false); // 3, 2, 1 삐-
+
+      // 3구 스타팅 라이트 연동: 3초(1구 점등) -> 2초(2구 점등) -> 1초(3구 전체 점등)
+      const activeRedCount = 4 - currentNumber;
+      this.circuit.setGantryLights(activeRedCount, false);
     }
 
     if (this.countdownTimer <= 0) {
       // GO! 신호음 및 레이스 스타트
       this.audio.playCountdownBeep(true);
       this.raceState = 'RUNNING';
+
+      // 3구 라이트 녹색(Green) 전체 점등 후 1.2초 뒤 자동 소등
+      this.circuit.setGantryLights(3, true);
+      this.gantryGoTimer = 1.2;
 
       if (this.mode === 'REPLAY') {
         this.replayPlayer.play();
@@ -1128,6 +1148,8 @@ export class Game {
       this.raceState = 'COUNTDOWN';
       this.countdownTimer = 3.0;
       this.lastBeepNumber = -1;
+      this.gantryGoTimer = 0;
+      this.circuit.setGantryLights(0);
       this.cameraController.snapToTarget(this.replayPlayer.ghostVehicle);
     } else if (mode === 'DEMO') {
       this.audio.playInGameBgm();

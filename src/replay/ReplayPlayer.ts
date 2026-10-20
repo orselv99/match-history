@@ -53,6 +53,7 @@ export class ReplayPlayer {
     if (ticks.length > 0) {
       this.totalDurationMs = ticks[ticks.length - 1].timeMs;
       this.currentTimeMs = 0;
+      this.playbackSpeed = 1.0; // 새 리플레이 로드 시 1.0x 표준 실시간 배속으로 초기화
       // 데이터 로드 시에는 고스트 카를 숨겨둔 상태로 유지 (리플레이 모드 재생 시에만 활성화)
       this.ghostVehicle.mesh.visible = false;
       this.opponentVehicles.forEach(v => { v.mesh.visible = false; });

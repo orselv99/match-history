@@ -43,7 +43,6 @@ export class MatchHistoryModal extends BaseModal {
   // 인스펙터 풀-커버 카드 DOM
   private inspectorCard: HTMLElement | null;
   private inspectorBtnClose: HTMLElement | null;
-  private inspectorTagMatchcode: HTMLElement | null;
   private inspectorContentBody: HTMLElement | null;
 
   private allRecords: CachedReplayRecord[] = [];
@@ -84,7 +83,6 @@ export class MatchHistoryModal extends BaseModal {
     // 인스펙터 카드 요소
     this.inspectorCard = document.getElementById('history-inspector-card');
     this.inspectorBtnClose = document.getElementById('inspector-btn-close');
-    this.inspectorTagMatchcode = document.getElementById('inspector-tag-matchcode');
     this.inspectorContentBody = document.getElementById('inspector-content-body');
 
     this.bindEvents();
@@ -275,11 +273,6 @@ export class MatchHistoryModal extends BaseModal {
     // 메인 카드 숨기고 인스펙터 카드 표시
     this.mainCard.style.display = 'none';
     this.inspectorCard.style.display = 'flex';
-
-    // 헤더 태그 갱신
-    if (this.inspectorTagMatchcode) {
-      this.inspectorTagMatchcode.textContent = `MATCH // ${rec.matchCode}`;
-    }
 
     // 본문 내용 렌더링
     this.inspectorContentBody.innerHTML = this.buildInspectorContentHtml(rec);
@@ -555,7 +548,7 @@ export class MatchHistoryModal extends BaseModal {
         <div class="inspector-meta-col">
           <!-- 1~3행: 드라이버 Parent Grouping (총 6개의 카드) -->
           <div class="detail-floating-group driver-parent-group">
-            <span class="floating-group-title">드라이버: <strong class="driver-name-highlight">${driverName}</strong></span>
+            <span class="floating-group-title">🪛 드라이버: <strong class="driver-name-highlight">${driverName}</strong></span>
             <div class="detail-meta-grid-2col">
               <!-- 1행: 머신, 서킷 -->
               <div class="detail-floating-card">
@@ -616,7 +609,7 @@ export class MatchHistoryModal extends BaseModal {
 
           <!-- 5행: 레이스 완주 순위 -->
           <div class="detail-floating-group">
-            <span class="floating-group-title">🏆 레이스 완주 순위 (1~4위)</span>
+            <span class="floating-group-title">🏆 레이스 완주 순위</span>
             <div class="rank-finish-list">
               ${raceResultsHtml}
             </div>
@@ -628,7 +621,7 @@ export class MatchHistoryModal extends BaseModal {
             <div class="inspector-tech-col-list">
               <div class="tech-row-item">
                 <span class="tech-k">샘플링 레이트</span>
-                <span class="tech-v">8Hz / Catmull-Rom 3차 보간</span>
+                <span class="tech-v">10Hz / Catmull-Rom 3차 보간</span>
               </div>
               <div class="tech-row-item">
                 <span class="tech-k">기록 프레임 수</span>
@@ -658,7 +651,7 @@ export class MatchHistoryModal extends BaseModal {
           <div class="minimap-controls">
             <button type="button" class="minimap-play-btn" id="inspector-btn-play" title="재생 / 일시정지">▶</button>
             <input type="range" class="minimap-scrubber" id="inspector-scrubber" min="0" max="1000" value="0">
-            <span class="inspector-speed-badge">1.5x</span>
+            <span class="inspector-speed-badge">1.0x</span>
           </div>
 
           <div class="inspector-telemetry-strip">
@@ -722,8 +715,8 @@ export class MatchHistoryModal extends BaseModal {
       const dt = now - this.minimapLastTimestamp;
       this.minimapLastTimestamp = now;
 
-      // 2.0배속 재생으로 3랩 전체를 시원하고 흥미진진하게 시청
-      this.minimapCurrentTimeMs += dt * 2.0;
+      // 1.0배속 정속 재생으로 실제 주행 속도와 1:1 완벽 동기화
+      this.minimapCurrentTimeMs += dt * 1.0;
       if (this.minimapCurrentTimeMs >= maxDuration) {
         this.minimapCurrentTimeMs = maxDuration;
         this.minimapIsPlaying = false;

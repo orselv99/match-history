@@ -57,8 +57,8 @@ function generateTicksForSeed(
   const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
   const circuitLength = curve.getLength();
 
-  // 10Hz 샘플링 (0.1초당 1틱) - 3D 쿼터니언 Slerp 및 미니맵 실시간 보간과 완벽 호환, 50MB 이하 초경량화
-  const FPS = 10;
+  // 15Hz 샘플링 (66.6ms당 1틱) - 정밀 궤적 및 100MB 이내 고밀도 시뮬레이션
+  const FPS = 15;
   const dt = 1 / FPS;
   const dtMs = 1000 / FPS;
 
@@ -145,11 +145,13 @@ function generateTicksForSeed(
       curve.getTangentAt(oppT, oppTangent).normalize();
       oppRight.set(-oppTangent.z, 0, oppTangent.x).normalize();
 
-      // 머신끼리 부딪혀서 불꽃 튀는 차체 접촉(Wheel-to-wheel contact) 시뮬레이션
+      // 머신끼리 부딪혀서 불꽃 튀는 차체 측면 접촉(Wheel-to-wheel contact) 시뮬레이션
       let laneOffset = opp.lane;
-      // 플레이어와 전후 거리가 2.4m 이내로 초근접할 때 차선을 서로 밀착시켜 충돌 스파크 유발
-      if (Math.abs(dynamicOffset) < 2.4) {
-        laneOffset = opp.lane > 0 ? 0.38 : -0.38;
+      // 플레이어와 전후 거리가 3.5m 이내로 나란히 달릴 때 차체 사이드 스크랩(불꽃 발생) 유도 (절대 관통되지 않는 2.12m 유지)
+      if (Math.abs(dynamicOffset) < 3.5 && Math.abs(dynamicOffset) > 0.4) {
+        if (Math.abs(opp.lane) < 3.0) {
+          laneOffset = opp.lane > 0 ? 2.12 : -2.12;
+        }
       }
 
       oppPt.addScaledVector(oppRight, laneOffset);
@@ -281,21 +283,21 @@ function main() {
           vehicleModelId: VEHICLE_MODELS[(globalIndex + 1) % VEHICLE_MODELS.length],
           color: COLORS[(globalIndex + 2) % COLORS.length],
           offsetDist: oppOffsetDistances[0],
-          lane: 2.2,
+          lane: 2.25,
         },
         {
           driverName: rivalPool[1 % rivalPool.length],
           vehicleModelId: VEHICLE_MODELS[(globalIndex + 2) % VEHICLE_MODELS.length],
           color: COLORS[(globalIndex + 4) % COLORS.length],
           offsetDist: oppOffsetDistances[1],
-          lane: -2.0,
+          lane: -2.25,
         },
         {
           driverName: rivalPool[2 % rivalPool.length],
           vehicleModelId: VEHICLE_MODELS[(globalIndex + 3) % VEHICLE_MODELS.length],
           color: COLORS[(globalIndex + 6) % COLORS.length],
           offsetDist: oppOffsetDistances[2],
-          lane: 1.4,
+          lane: (cIdx % 2 === 0) ? -4.3 : 4.3,
         },
       ];
 

@@ -305,7 +305,7 @@ export class CollisionManager {
     }
   }
 
-  private updateSparks(delta: number): void {
+  public updateSparks(delta: number): void {
     const posArr = this.sparkPosAttr.array as Float32Array;
     const colArr = this.sparkColAttr.array as Float32Array;
 
@@ -378,7 +378,61 @@ export class CollisionManager {
         if (Math.abs(v1.position.y - v2.position.y) > 2.2) continue;
 
         const distSq = v1.position.distanceToSquared(v2.position);
-        if (distSq < 7.29) {
+        if (distSq > 38.44) continue;
+
+        // 3D 리플레이 차체 겹침/관통 방지 2D OBB SAT 정밀 물리 판정
+        const h1 = v1.heading + (v1.slipAngle || 0);
+        const fwd1 = new THREE.Vector3(Math.sin(h1), 0, Math.cos(h1));
+        const right1 = new THREE.Vector3(-Math.cos(h1), 0, Math.sin(h1));
+
+        const h2 = v2.heading + (v2.slipAngle || 0);
+        const fwd2 = new THREE.Vector3(Math.sin(h2), 0, Math.cos(h2));
+        const right2 = new THREE.Vector3(-Math.cos(h2), 0, Math.sin(h2));
+
+        const halfW1 = 1.10, halfL1 = 2.30;
+        const halfW2 = 1.10, halfL2 = 2.30;
+
+        const D = new THREE.Vector3().subVectors(v2.position, v1.position);
+        D.y = 0;
+
+        const axes = [right1, fwd1, right2, fwd2];
+        let minOverlap = Infinity;
+        let bestAxis = axes[0];
+        let bestSign = 1;
+        let collided = true;
+
+        for (let k = 0; k < 4; k++) {
+          const axis = axes[k];
+          const projD = D.dot(axis);
+          const absProjD = Math.abs(projD);
+
+          const r1 = halfW1 * Math.abs(right1.dot(axis)) + halfL1 * Math.abs(fwd1.dot(axis));
+          const r2 = halfW2 * Math.abs(right2.dot(axis)) + halfL2 * Math.abs(fwd2.dot(axis));
+
+          const overlap = (r1 + r2) - absProjD;
+          if (overlap <= 0) {
+            collided = false;
+            break;
+          }
+
+          if (overlap < minOverlap) {
+            minOverlap = overlap;
+            bestAxis = axis;
+            bestSign = projD < 0 ? 1 : -1;
+          }
+        }
+
+        if (collided && minOverlap > 0) {
+          const depth = minOverlap;
+          const normal = bestAxis.clone().multiplyScalar(bestSign).normalize();
+
+          // 리플레이 중 머신끼리 파고드는 관통 현상(Penetration) 즉각 해소 및 외곽 접촉 유지
+          const separation = normal.clone().multiplyScalar(Math.max(depth * 0.54, 0.05));
+          v1.position.add(separation);
+          v2.position.sub(separation);
+          v1.mesh.position.copy(v1.position);
+          v2.mesh.position.copy(v2.position);
+
           const pairKey = v1.id < v2.id ? `${v1.id}_${v2.id}` : `${v2.id}_${v1.id}`;
           const cd = this.collisionCooldowns.get(pairKey) || 0;
 

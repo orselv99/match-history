@@ -109,6 +109,7 @@ export class MatchHistoryModal extends BaseModal {
         this.tabBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         this.currentCircuitFilter = btn.getAttribute('data-circuit') || 'all';
+        this.currentPage = 1;
         this.renderTable();
       });
     });
@@ -116,6 +117,7 @@ export class MatchHistoryModal extends BaseModal {
     // 4. 드라이버 및 매치코드 검색
     const executeSearch = () => {
       this.searchQuery = this.searchInput?.value.trim().toLowerCase() || '';
+      this.currentPage = 1;
       this.renderTable();
     };
 
@@ -127,7 +129,28 @@ export class MatchHistoryModal extends BaseModal {
     // 5. 정렬 셀렉트 변경
     this.sortSelect?.addEventListener('change', () => {
       this.sortMode = (this.sortSelect?.value as any) || 'best_lap';
+      this.currentPage = 1;
       this.renderTable();
+    });
+
+    // 6. 페이지네이션 바 클릭 이벤트 위임
+    this.paginationContainer?.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const pageBtn = target.closest('.page-btn') as HTMLElement | null;
+      if (!pageBtn || pageBtn.hasAttribute('disabled')) return;
+
+      const pageStr = pageBtn.getAttribute('data-page');
+      if (pageStr) {
+        const page = parseInt(pageStr, 10);
+        if (!isNaN(page) && page !== this.currentPage) {
+          this.currentPage = page;
+          this.renderTable();
+          const scrollContainer = this.mainCard?.querySelector('.history-table-container');
+          if (scrollContainer) {
+            scrollContainer.scrollTop = 0;
+          }
+        }
+      }
     });
 
     // 9. 테이블 내 클릭 이벤트 위임
@@ -355,6 +378,7 @@ export class MatchHistoryModal extends BaseModal {
       this.allRecords = [];
     }
 
+    this.currentPage = 1;
     this.updateStats();
     this.renderTable();
   }

@@ -58,7 +58,7 @@ export class CameraController {
     this.camera.lookAt(this.cameraLookTarget);
   }
 
-  public updateChase(delta: number, targetVehicle: Vehicle): void {
+  public updateChase(delta: number, targetVehicle: Vehicle, isPaused: boolean = false): void {
     const isFirstPerson = this.viewMode === 'FIRST_PERSON';
     // 급감속/조향 시 횡방향 출렁임을 방지하기 위해 체이스 카메라는 차체 본래 heading 중심 안정 추적
     const heading = targetVehicle.heading + targetVehicle.slipAngle * (isFirstPerson ? 0.5 : 0.15);
@@ -94,6 +94,11 @@ export class CameraController {
     this.camera.lookAt(this.cameraLookTarget);
 
     // 충돌 시 다이내믹 카메라 쉐이크(Camera Shake) 감쇠 적용
+    if (isPaused) {
+      this.cameraShakeIntensity = 0;
+      return;
+    }
+
     if (this.shakeMode !== 'OFF' && this.cameraShakeIntensity > 0.001) {
       const mult = this.shakeMode === 'REDUCED' ? 0.4 : 1.0;
       this.camera.position.x += (Math.random() - 0.5) * this.cameraShakeIntensity * 1.6 * mult;
@@ -125,6 +130,10 @@ export class CameraController {
       this.camera.position.y += (Math.random() - 0.5) * aeroShake * 0.7;
       this.camera.position.z += (Math.random() - 0.5) * aeroShake;
     }
+  }
+
+  public resetShake(): void {
+    this.cameraShakeIntensity = 0;
   }
 
   public triggerShake(intensity: number): void {

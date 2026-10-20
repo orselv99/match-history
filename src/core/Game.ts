@@ -149,6 +149,12 @@ export class Game {
     this.replayPlayer.onPlaybackEnd = () => {
       this.handleReplayFinish();
     };
+    this.replayPlayer.onStateChange = (isPlaying) => {
+      if (!isPlaying) {
+        this.cameraController.resetShake();
+        this.audio.pauseEngine();
+      }
+    };
     this.scene.add(this.replayPlayer.ghostVehicle.mesh);
     this.replayPlayer.opponentVehicles.forEach(v => this.scene.add(v.mesh));
 
@@ -828,21 +834,27 @@ export class Game {
       return;
     }
 
-    this.replayPlayer.update(deltaMs);
+    const isPlaying = this.replayPlayer.isPlaying;
+    if (isPlaying) {
+      this.replayPlayer.update(deltaMs);
+    }
 
     // 활성 리플레이 차량(고스트 + 상대 차량) 스키드마크 및 타이어 연기 효과 갱신
     const activeReplayVehicles = [
       this.replayPlayer.ghostVehicle,
       ...this.replayPlayer.opponentVehicles.filter(v => v.mesh.visible)
     ];
-    this.skidMarkManager.update(delta, activeReplayVehicles);
-    this.collisionManager.updateReplay(delta, activeReplayVehicles, this.replayPlayer.ghostVehicle);
+    if (isPlaying) {
+      this.skidMarkManager.update(delta, activeReplayVehicles);
+      this.collisionManager.updateReplay(delta, activeReplayVehicles, this.replayPlayer.ghostVehicle);
+      const ghost = this.replayPlayer.ghostVehicle;
+      this.audio.update(ghost.getSpeedKmh(), ghost.isDrifting, ghost.speed > 5 ? 0.85 : 0.2);
+    } else {
+      this.collisionManager.updateSparks(delta);
+      this.audio.pauseEngine();
+    }
 
-    // 리플레이 오디오(엔진음 및 드리프트 타이어 스킬음) 갱신
-    const ghost = this.replayPlayer.ghostVehicle;
-    this.audio.update(ghost.getSpeedKmh(), ghost.isDrifting, ghost.speed > 5 ? 0.85 : 0.2);
-
-    this.cameraController.updateChase(delta, this.replayPlayer.ghostVehicle);
+    this.cameraController.updateChase(delta, this.replayPlayer.ghostVehicle, !isPlaying);
     this.environmentManager.update(
       delta,
       this.replayPlayer.ghostVehicle.position,

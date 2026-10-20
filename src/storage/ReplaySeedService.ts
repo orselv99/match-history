@@ -1,7 +1,7 @@
 import { appDB } from './AppDatabase.ts';
 import type { CachedReplayRecord } from './schema.ts';
 
-const SEED_VERSION_KEY = 'apex_racing_seeded_v13_200matches_dynamic';
+const SEED_VERSION_KEY = 'apex_racing_seeded_v14_200matches_no_overlap';
 
 /**
  * 리포지토리 정적 시드 리플레이(/data/seed-replays.json, 50개 * 3랩)를 로컬 IndexedDB에 안전하게 초기화

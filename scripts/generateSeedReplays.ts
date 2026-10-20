@@ -33,10 +33,10 @@ const CIRCUIT_PLANS: CircuitSeedPlan[] = [
 ];
 
 const STARTING_GRID_SLOTS = [
-  { dist: -5.0, lane: -2.2 },  // Slot 0 (Pole position)
-  { dist: -16.0, lane: 2.2 },  // Slot 1 (P2)
-  { dist: -27.0, lane: -2.2 }, // Slot 2 (P3)
-  { dist: -38.0, lane: 2.2 },  // Slot 3 (P4)
+  { dist: -5.0, lane: 2.2 },   // Slot 0 (Pole position: right offset +2.2m)
+  { dist: -16.0, lane: -2.2 }, // Slot 1 (P2: right offset -2.2m)
+  { dist: -27.0, lane: 2.2 },  // Slot 2 (P3: right offset +2.2m)
+  { dist: -38.0, lane: -2.2 }, // Slot 3 (P4: right offset -2.2m)
 ];
 
 /**
@@ -84,13 +84,13 @@ function generateTicksForSeed(
   const oppInitDists = oppSlots.map(s => STARTING_GRID_SLOTS[s].dist);
   const oppInitLanes = oppSlots.map(s => STARTING_GRID_SLOTS[s].lane);
 
-  // 메인 스트레이트 시작점 및 정방향 벡터 산출
+  // 메인 스트레이트 시작점 및 정방향/우측 벡터 산출 (모든 구간에서 r = (-tan.z, 0, tan.x) 로 100% 일치)
   const startPt = curve.getPointAt(0);
   const startTangent = curve.getTangentAt(0).normalize();
-  const localXDir = new THREE.Vector3(startTangent.z, 0, -startTangent.x).normalize();
+  const startRight = new THREE.Vector3(-startTangent.z, 0, startTangent.x).normalize();
   const straightHeading = Math.atan2(startTangent.x, startTangent.z);
 
-  // 3D 위치 및 회전각 산출 함수 (결승선 이전에는 직선 수평 정렬, 이후에는 서킷 곡선 추종)
+  // 3D 위치 및 회전각 산출 함수 (결승선 이전에는 직선 수평 정렬, 이후에는 서킷 곡선 추종 - 벡터 방향 통일로 불연속 점프 원천 차단)
   function getVehiclePose(vDist: number, vInitLane: number, targetLane: number): {
     pos: THREE.Vector3;
     heading: number;
@@ -101,7 +101,7 @@ function generateTicksForSeed(
     if (vDist <= 0) {
       pos.copy(startPt)
          .addScaledVector(startTangent, vDist)
-         .addScaledVector(localXDir, vInitLane);
+         .addScaledVector(startRight, vInitLane);
       pos.y = Math.max(0, startPt.y) + 0.055;
       return {
         pos,
@@ -225,14 +225,19 @@ function generateTicksForSeed(
     // 라이벌 3대 동시 3D 위치 및 주행 계산 (엎치락뒤치락 추월 및 차체 충돌 불꽃 스파크 시뮬레이션)
     const opponents: ReplayOpponentState[] = opponentsConfig.map((opp, oppIdx) => {
       let oppDist = 0;
+      const raceProgress = dist > 0 ? THREE.MathUtils.clamp(dist / (3 * circuitLength), 0, 1) : 0;
+      const wave = Math.sin(raceProgress * Math.PI * 5 + oppIdx * 1.9) * 16.0;
+      const blend = Math.pow(raceProgress, 1.8);
+      const dynamicOffset = opp.offsetDist * blend + (opp.offsetDist + wave) * (1 - blend);
+
       if (dist <= 0) {
         oppDist = oppInitDists[oppIdx] + (dist - playerInitDist);
       } else {
-        const raceProgress = THREE.MathUtils.clamp(dist / (3 * circuitLength), 0, 1);
-        const wave = Math.sin(raceProgress * Math.PI * 5 + oppIdx * 1.9) * 16.0;
-        const blend = Math.pow(raceProgress, 1.8);
-        const dynamicOffset = opp.offsetDist * blend + (opp.offsetDist + wave) * (1 - blend);
-        oppDist = dist + dynamicOffset;
+        // 결승선 통과 직후(0~50m) 초기 슬롯 간격에서 레이스 동적 간격(dynamicOffset)으로 부드럽게 전환
+        const launchBlend = Math.min(1.0, dist / 50.0);
+        const startDiff = oppInitDists[oppIdx] - playerInitDist;
+        const currentOffset = THREE.MathUtils.lerp(startDiff, dynamicOffset, launchBlend);
+        oppDist = dist + currentOffset;
       }
 
       let laneOffset = opp.lane;

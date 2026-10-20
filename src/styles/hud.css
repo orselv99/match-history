@@ -78,6 +78,72 @@
   }
 }
 
+/* 1-1. 상단 좌측 실시간 순위 표시기 (HUD Position Badge) */
+.hud-top-left {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.hud-rank-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-card);
+  border: 1px solid var(--border-strong);
+  padding: 6px 14px;
+  box-sizing: border-box;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.hud-rank-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.hud-rank-val-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.hud-rank-number {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 900;
+  color: #38bdf8;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.hud-rank-number.p1 {
+  color: #fbbf24;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+}
+
+.hud-rank-number.p2 {
+  color: #cbd5e1;
+  text-shadow: 0 0 10px rgba(203, 213, 225, 0.4);
+}
+
+.hud-rank-number.p3 {
+  color: #f59e0b;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+}
+
+.hud-rank-total {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
 /* 2. 우측 상단 실시간 미니맵 */
 .hud-top-right {
   position: absolute;

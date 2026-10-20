@@ -25,6 +25,10 @@ export class HUDController {
   private cutsceneSkipPrompt: HTMLElement | null;
   private cinematicBars: HTMLElement | null;
 
+  private hudRankContainer: HTMLElement | null;
+  private hudCurrentRank: HTMLElement | null;
+  private hudTotalRacers: HTMLElement | null;
+
   private lapCounter: HTMLElement | null;
   private currentLapTime: HTMLElement | null;
   private bestLapTime: HTMLElement | null;
@@ -51,6 +55,10 @@ export class HUDController {
     this.driftStaminaValue = document.getElementById('drift-stamina-value');
     this.cutsceneSkipPrompt = document.getElementById('cutscene-skip-prompt');
     this.cinematicBars = document.getElementById('cinematic-bars');
+
+    this.hudRankContainer = document.getElementById('hud-rank-container');
+    this.hudCurrentRank = document.getElementById('hud-current-rank');
+    this.hudTotalRacers = document.getElementById('hud-total-racers');
 
     this.lapCounter = document.getElementById('lap-counter');
     this.currentLapTime = document.getElementById('current-lap-time');
@@ -100,6 +108,20 @@ export class HUDController {
 
   public update(state: GameUIState): void {
     const gearColor = GEAR_COLORS[state.gear] || '#c45a72';
+
+    // 상단 좌측 실시간 순위(Position) 갱신
+    if (this.hudRankContainer) {
+      const showRank = state.gameMode !== 'TITLE';
+      this.hudRankContainer.style.display = showRank ? 'flex' : 'none';
+      if (showRank && this.hudCurrentRank) {
+        const rank = state.currentRank || 1;
+        this.hudCurrentRank.textContent = `P${rank}`;
+        this.hudCurrentRank.className = `hud-rank-number p${Math.min(3, rank)}`;
+        if (this.hudTotalRacers) {
+          this.hudTotalRacers.textContent = `/ ${state.totalRacers || 4}`;
+        }
+      }
+    }
 
     if (this.speedIndicator) {
       this.speedIndicator.textContent = state.speedKmh.toString();

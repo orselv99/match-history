@@ -51,6 +51,8 @@ export interface GameUIState {
   countdownVisible: boolean;
   replayTimeStr?: string;
   inputState?: KeyInputState;
+  currentRank?: number;
+  totalRacers?: number;
 }
 
 /**
@@ -1251,7 +1253,11 @@ export class Game {
     const driftStamina = focusedVehicle ? focusedVehicle.driftStamina : 100.0;
     const isSpinningOut = focusedVehicle ? focusedVehicle.isSpinningOut : false;
 
+    const rankInfo = this.computeCurrentRank();
+
     this.onStateUpdate({
+      currentRank: rankInfo.rank,
+      totalRacers: rankInfo.total,
       speedKmh: Math.round(speed),
       gear,
       rpmRatio,
@@ -1272,6 +1278,61 @@ export class Game {
       replayTimeStr: this.mode === 'REPLAY' ? `${this.formatTime(this.replayPlayer.currentTimeMs)} / ${this.formatTime(this.replayPlayer.totalDurationMs)}` : undefined,
       inputState,
     });
+  }
+
+  /**
+   * 실시간 현재 주행 순위 및 전체 참가 차량 수 산출
+   */
+  public computeCurrentRank(): { rank: number; total: number } {
+    if (this.mode === 'DRIVING') {
+      const playerT = this.circuit.getClosestT(this.playerVehicle.position);
+      const playerProg = this.lapTimer.hasPassedStartLine ? (this.lapTimer.currentLap - 1) + playerT : playerT - 1.0;
+      let rank = 1;
+      let count = 1;
+      this.opponentManager.agents.forEach((a) => {
+        if (!a.vehicle.mesh.visible) return;
+        count++;
+        const oppProg = a.hasPassedStartLine ? (a.currentLap - 1) + a.t : a.t - 1.0;
+        if (oppProg > playerProg) {
+          rank++;
+        }
+      });
+      return { rank, total: count };
+    } else if (this.mode === 'DEMO') {
+      const playerAgent = this.opponentManager.agents[0];
+      if (!playerAgent) return { rank: 1, total: 4 };
+      const playerProg = playerAgent.hasPassedStartLine ? (playerAgent.currentLap - 1) + playerAgent.t : playerAgent.t - 1.0;
+      let rank = 1;
+      let count = 0;
+      this.opponentManager.agents.forEach((a) => {
+        if (!a.vehicle.mesh.visible) return;
+        count++;
+        if (a === playerAgent) return;
+        const oppProg = a.hasPassedStartLine ? (a.currentLap - 1) + a.t : a.t - 1.0;
+        if (oppProg > playerProg) {
+          rank++;
+        }
+      });
+      return { rank, total: count };
+    } else if (this.mode === 'REPLAY') {
+      const ghost = this.replayPlayer.ghostVehicle;
+      const ghostT = this.circuit.getClosestT(ghost.position);
+      let rank = 1;
+      let count = 1;
+      this.replayPlayer.opponentVehicles.forEach((opp) => {
+        if (!opp.mesh.visible) return;
+        count++;
+        const oppT = this.circuit.getClosestT(opp.position);
+        let dt = oppT - ghostT;
+        while (dt > 0.5) dt -= 1.0;
+        while (dt < -0.5) dt += 1.0;
+        if (dt > 0.002) {
+          rank++;
+        }
+      });
+      return { rank, total: count };
+    }
+    return { rank: 1, total: 4 };
   }
 
   public getFocusedVehicle(): Vehicle | null {

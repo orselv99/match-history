@@ -189,9 +189,10 @@
 
 .history-table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
   font-size: 12px;
-  text-align: left;
+  text-align: center;
 }
 
 .history-table th {
@@ -200,18 +201,90 @@
   font-size: 10px;
   color: var(--text-muted);
   letter-spacing: 0.05em;
-  padding: 10px 10px;
+  padding: 10px 6px;
   border-bottom: 1px solid var(--border-strong);
   white-space: nowrap;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .history-table td {
-  padding: 9px 10px;
+  padding: 9px 6px;
   border-bottom: 1px solid var(--border-subtle);
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-primary);
   white-space: nowrap;
+  text-align: center;
+  vertical-align: middle;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 각 컬럼별 고정 너비 및 중앙 정렬 */
+.history-table th.col-rank,
+.history-table td.col-rank {
+  width: 64px;
+  min-width: 64px;
+  max-width: 64px;
+  text-align: center;
+}
+
+.history-table th.col-driver,
+.history-table td.col-driver {
+  width: 140px;
+  min-width: 140px;
+  max-width: 140px;
+  text-align: center;
+}
+
+.history-table th.col-vehicle,
+.history-table td.col-vehicle {
+  width: 125px;
+  min-width: 125px;
+  max-width: 125px;
+  text-align: center;
+}
+
+.history-table th.col-circuit,
+.history-table td.col-circuit {
+  width: 135px;
+  min-width: 135px;
+  max-width: 135px;
+  text-align: center;
+}
+
+.history-table th.col-lap,
+.history-table td.col-lap {
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+  text-align: center;
+}
+
+.history-table th.col-speed,
+.history-table td.col-speed {
+  width: 95px;
+  min-width: 95px;
+  max-width: 95px;
+  text-align: center;
+}
+
+.history-table th.col-date,
+.history-table td.col-date {
+  width: 130px;
+  min-width: 130px;
+  max-width: 130px;
+  text-align: center;
+}
+
+.history-table th.col-action,
+.history-table td.col-action {
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
+  text-align: center;
 }
 
 .history-table tr:hover td {
@@ -231,12 +304,28 @@
 }
 
 .rank-badge {
-  display: inline-block;
-  padding: 2px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 38px;
+  height: 20px;
+  box-sizing: border-box;
+  padding: 0 4px;
   font-weight: 700;
   font-size: 11px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-subtle);
+  border-radius: 0;
+}
+
+.rank-badge.medal-only {
+  font-size: 15px;
+  min-width: 26px;
+  height: 22px;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
 }
 
 .rank-badge-1 {
@@ -258,8 +347,13 @@
 }
 
 .driver-name-text {
+  display: block;
+  text-align: center;
   font-weight: 600;
   color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .driver-tag.pro {
@@ -306,6 +400,7 @@
 .vehicle-view-col-wrap {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -379,6 +474,7 @@
 .history-action-group {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -1238,6 +1334,19 @@
   gap: 4px;
 }
 
+.page-ellipsis {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  min-width: 20px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
 .page-btn {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1255,6 +1364,12 @@
   cursor: pointer;
   transition: all 0.15s ease;
   user-select: none;
+}
+
+.page-btn.page-num {
+  min-width: 32px;
+  padding: 0 4px;
+  letter-spacing: 0.03em;
 }
 
 .page-btn:hover:not([disabled]) {

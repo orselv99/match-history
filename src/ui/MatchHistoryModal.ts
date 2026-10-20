@@ -494,12 +494,13 @@ export class MatchHistoryModal extends BaseModal {
     // 7. 테이블 행 생성 (가로 스크롤 방지를 위해 다시보기 버튼 텍스트 제거하고 컴팩트 아이콘만 표시)
     this.tableTbody.innerHTML = pageItems.map(({ rec, rankNum }) => {
       const meta = rec.metadata;
-      let rankBadgeHtml = `<span class="rank-badge">${rankNum.toString().padStart(2, '0')}</span>`;
+      // 순위 표시: 1~3등은 메달 이모티콘만 사용, 4등 이상은 000 (3자리 패딩) 고정 표시
+      let rankBadgeHtml = `<span class="rank-badge">${rankNum.toString().padStart(3, '0')}</span>`;
       let rankRowClass = '';
 
       if (this.sortMode === 'best_lap' && rankNum <= 3) {
         const medal = rankNum === 1 ? '🥇' : (rankNum === 2 ? '🥈' : '🥉');
-        rankBadgeHtml = `<span class="rank-badge rank-badge-${rankNum}">${medal} ${rankNum.toString().padStart(2, '0')}</span>`;
+        rankBadgeHtml = `<span class="rank-badge rank-badge-${rankNum} medal-only" title="${rankNum}위">${medal}</span>`;
         rankRowClass = `rank-row-top rank-${rankNum}`;
       }
 
@@ -549,16 +550,27 @@ export class MatchHistoryModal extends BaseModal {
     }
 
     const current = this.currentPage;
-    const maxVisible = 5;
-    let startPage = Math.max(1, current - Math.floor(maxVisible / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-    if (endPage - startPage + 1 < maxVisible) {
-      startPage = Math.max(1, endPage - maxVisible + 1);
+    const items: (number | '...')[] = [];
+
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) items.push(i);
+    } else {
+      if (current <= 3) {
+        items.push(1, 2, 3, 4, '...', totalPages);
+      } else if (current >= totalPages - 2) {
+        items.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
+      } else {
+        items.push(1, '...', current - 1, current, current + 1, '...', totalPages);
+      }
     }
 
     let pageButtonsHtml = "";
-    for (let p = startPage; p <= endPage; p++) {
-      pageButtonsHtml += `<button type="button" class="page-btn page-num ${p === current ? 'active' : ''}" data-page="${p}">${p}</button>`;
+    for (const it of items) {
+      if (it === '...') {
+        pageButtonsHtml += `<span class="page-ellipsis">...</span>`;
+      } else {
+        pageButtonsHtml += `<button type="button" class="page-btn page-num ${it === current ? 'active' : ''}" data-page="${it}">[${it}]</button>`;
+      }
     }
 
     this.paginationContainer.innerHTML = `

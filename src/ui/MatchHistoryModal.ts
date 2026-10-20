@@ -312,7 +312,7 @@ export class MatchHistoryModal extends BaseModal {
       const validRecords: CachedReplayRecord[] = [];
       for (const r of rawRecords) {
         const lastTick = r.ticks?.[r.ticks.length - 1];
-        const isLessThan3Laps = (r.metadata?.totalLaps || 1) < 3 || (lastTick?.lap || 1) < 3 || (lastTick?.timeMs || 0) < 130000;
+        const isLessThan3Laps = (r.metadata?.totalLaps || 1) < 3 || (lastTick?.lap || 1) < 3 || (lastTick?.timeMs || 0) < 45000;
         if (isLessThan3Laps) {
           await appDB.deleteReplay(r.matchCode);
         } else {
@@ -320,13 +320,13 @@ export class MatchHistoryModal extends BaseModal {
         }
       }
 
-      // 3랩 데이터가 40개 미만인 경우(구버전 데이터 정리 후 등) 자동으로 최신 시드 데이터 즉시 일괄 동기화
+      // 3랩 데이터가 40개 미만인 경우(초기화 또는 구버전 정리 후 등) 자동으로 최신 시드 데이터 즉시 일괄 동기화
       if (validRecords.length < 40) {
         await initSeedReplays(true);
         const refreshed = await appDB.listReplays();
         this.allRecords = refreshed.filter(r => {
           const lastTick = r.ticks?.[r.ticks.length - 1];
-          return (r.metadata?.totalLaps || 1) >= 3 && (lastTick?.lap || 1) >= 3 && (lastTick?.timeMs || 0) >= 130000;
+          return (r.metadata?.totalLaps || 1) >= 3 && (lastTick?.lap || 1) >= 3 && (lastTick?.timeMs || 0) >= 45000;
         });
       } else {
         this.allRecords = validRecords;

@@ -49,6 +49,10 @@ export class MatchHistoryModal extends BaseModal {
   private currentCircuitFilter: string = 'all';
   private searchQuery: string = '';
   private sortMode: 'best_lap' | 'recent' | 'top_speed' = 'best_lap';
+  private currentPage: number = 1;
+  private readonly pageSize: number = 20;
+  private paginationContainer: HTMLElement | null = null;
+  private minimapPlaybackSpeed: number = 1.0;
 
   // 2D 미니맵 리플레이 및 인스펙터 상태
   public isInspectorViewOpen: boolean = false;
@@ -84,6 +88,7 @@ export class MatchHistoryModal extends BaseModal {
     this.inspectorCard = document.getElementById('history-inspector-card');
     this.inspectorBtnClose = document.getElementById('inspector-btn-close');
     this.inspectorContentBody = document.getElementById('inspector-content-body');
+    this.paginationContainer = document.getElementById('history-pagination-container');
 
     this.bindEvents();
   }
@@ -169,6 +174,20 @@ export class MatchHistoryModal extends BaseModal {
 
       // 2D 미니맵 재생/일시정지 토글 버튼
       const togglePlayBtn = target.closest('#inspector-btn-play') as HTMLElement | null;
+      // 2D 미니맵 배속 토글 버튼 (1.0x -> 2.0x -> 4.0x)
+      const speedBtn = target.closest("#inspector-btn-speed") as HTMLElement | null;
+      if (speedBtn) {
+        if (this.minimapPlaybackSpeed === 1.0) {
+          this.minimapPlaybackSpeed = 2.0;
+        } else if (this.minimapPlaybackSpeed === 2.0) {
+          this.minimapPlaybackSpeed = 4.0;
+        } else {
+          this.minimapPlaybackSpeed = 1.0;
+        }
+        speedBtn.textContent = `${this.minimapPlaybackSpeed.toFixed(1)}x`;
+        return;
+      }
+
       if (togglePlayBtn) {
         if (!this.minimapIsPlaying) {
           const maxDur = this.minimapRecord?.ticks[this.minimapRecord.ticks.length - 1]?.timeMs || 0;
@@ -427,20 +446,29 @@ export class MatchHistoryModal extends BaseModal {
 
     // 5. 빈 상태 UI
     if (filtered.length === 0) {
+      if (this.paginationContainer) this.paginationContainer.innerHTML = "";
       this.tableTbody.innerHTML = `
         <tr>
           <td colspan="8" style="text-align: center; padding: 36px 16px; color: var(--text-muted); font-family: var(--font-mono); font-size: 12px;">
             <span style="font-size: 22px; display: block; margin-bottom: 8px;">🏁</span>
             일치하는 경기 리플레이가 없습니다.<br>
-            <span style="font-size: 11px; opacity: 0.7;">경기를 완주한 후 결과 화면에서 [다시보기]를 누르면 로컬 IndexedDB에 최대 100개까지 자동 보관됩니다.</span>
+            <span style="font-size: 11px; opacity: 0.7;">경기를 완주한 후 결과 화면에서 [다시보기]를 누르면 로컬 IndexedDB에 자동 보관됩니다.</span>
           </td>
         </tr>
       `;
       return;
     }
 
-    // 6. 테이블 행 생성
-    this.tableTbody.innerHTML = filtered.map(({ rec, rankNum }) => {
+    // 6. 페이지네이션 슬라이싱 (페이지당 20건)
+    const totalPages = Math.max(1, Math.ceil(filtered.length / this.pageSize));
+    if (this.currentPage > totalPages) this.currentPage = totalPages;
+    if (this.currentPage < 1) this.currentPage = 1;
+
+    const startIndex = (this.currentPage - 1) * this.pageSize;
+    const pageItems = filtered.slice(startIndex, startIndex + this.pageSize);
+
+    // 7. 테이블 행 생성 (가로 스크롤 방지를 위해 다시보기 버튼 텍스트 제거하고 컴팩트 아이콘만 표시)
+    this.tableTbody.innerHTML = pageItems.map(({ rec, rankNum }) => {
       const meta = rec.metadata;
       let rankBadgeHtml = `<span class="rank-badge">${rankNum.toString().padStart(2, '0')}</span>`;
       let rankRowClass = '';
@@ -470,18 +498,57 @@ export class MatchHistoryModal extends BaseModal {
           <td class="col-date">${dateStr}</td>
           <td class="col-action">
             <div class="history-action-group">
-              <button type="button" class="history-replay-btn" data-match="${rec.matchCode}">▶ 다시보기</button>
+              <button type="button" class="history-replay-btn icon-only" data-match="${rec.matchCode}" title="3D 리플레이 다시보기">▶</button>
               <button type="button" class="history-delete-btn" data-match="${rec.matchCode}" title="삭제">✕</button>
             </div>
           </td>
         </tr>
       `;
     }).join('');
+
+    // 8. 페이지네이션 바 렌더링
+    this.renderPagination(totalPages, filtered.length, startIndex, pageItems.length);
   }
 
   /**
    * 인스펙터 풀-커버 카드 내부 본문 HTML 생성
    */
+  /**
+   * 200건 대규모 리더보드 초고속 탐색을 위한 페이지네이션 컨트롤 바 렌더링
+   */
+  private renderPagination(totalPages: number, totalCount: number, startIndex: number, pageItemCount: number): void {
+    if (!this.paginationContainer) return;
+
+    if (totalPages <= 1) {
+      this.paginationContainer.innerHTML = `<div class="pagination-info">전체 <strong>${totalCount}</strong>건</div>`;
+      return;
+    }
+
+    const current = this.currentPage;
+    const maxVisible = 5;
+    let startPage = Math.max(1, current - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    if (endPage - startPage + 1 < maxVisible) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
+    }
+
+    let pageButtonsHtml = "";
+    for (let p = startPage; p <= endPage; p++) {
+      pageButtonsHtml += `<button type="button" class="page-btn page-num ${p === current ? 'active' : ''}" data-page="${p}">${p}</button>`;
+    }
+
+    this.paginationContainer.innerHTML = `
+      <div class="pagination-info">전체 <strong>${totalCount}</strong>건 중 <strong>${startIndex + 1} - ${startIndex + pageItemCount}</strong></div>
+      <div class="pagination-controls">
+        <button type="button" class="page-btn page-nav" data-page="1" title="첫 페이지" ${current === 1 ? 'disabled' : ''}>«</button>
+        <button type="button" class="page-btn page-nav" data-page="${Math.max(1, current - 1)}" title="이전 페이지" ${current === 1 ? 'disabled' : ''}>‹</button>
+        ${pageButtonsHtml}
+        <button type="button" class="page-btn page-nav" data-page="${Math.min(totalPages, current + 1)}" title="다음 페이지" ${current === totalPages ? 'disabled' : ''}>›</button>
+        <button type="button" class="page-btn page-nav" data-page="${totalPages}" title="마지막 페이지" ${current === totalPages ? 'disabled' : ''}>»</button>
+      </div>
+    `;
+  }
+
   private buildInspectorContentHtml(rec: CachedReplayRecord): string {
     const meta = rec.metadata;
     const driverName = this.escapeHtml(meta?.driverName || 'Driver');
@@ -668,7 +735,7 @@ export class MatchHistoryModal extends BaseModal {
           <div class="minimap-controls">
             <button type="button" class="minimap-play-btn" id="inspector-btn-play" title="재생 / 일시정지">▶</button>
             <input type="range" class="minimap-scrubber" id="inspector-scrubber" min="0" max="1000" value="0">
-            <span class="inspector-speed-badge">1.0x</span>
+            <button type="button" class="inspector-speed-badge" id="inspector-btn-speed" title="재생 배속 변경 (1.0x -> 2.0x -> 4.0x)">${this.minimapPlaybackSpeed.toFixed(1)}x</button>
           </div>
 
           <div class="inspector-telemetry-strip">
@@ -732,8 +799,8 @@ export class MatchHistoryModal extends BaseModal {
       const dt = now - this.minimapLastTimestamp;
       this.minimapLastTimestamp = now;
 
-      // 1.0배속 정속 재생으로 실제 주행 속도와 1:1 완벽 동기화
-      this.minimapCurrentTimeMs += dt * 1.0;
+      // 선택된 배속(1.0x / 2.0x / 4.0x)으로 재생
+      this.minimapCurrentTimeMs += dt * this.minimapPlaybackSpeed;
       if (this.minimapCurrentTimeMs >= maxDuration) {
         this.minimapCurrentTimeMs = maxDuration;
         this.minimapIsPlaying = false;
@@ -912,7 +979,7 @@ export class MatchHistoryModal extends BaseModal {
     // 플레이어 좌표, 속도, 각도 보간 (끊김 없는 매끄러운 이동)
     const playerX = THREE.MathUtils.lerp(t1.x, t2.x, alpha);
     const playerZ = THREE.MathUtils.lerp(t1.z, t2.z, alpha);
-    const currentSpeed = THREE.MathUtils.lerp(t1.speedKmh, t2.speedKmh, alpha);
+    const currentSpeed = (this.minimapCurrentTimeMs <= 50) ? 0 : THREE.MathUtils.lerp(t1.speedKmh, t2.speedKmh, alpha);
     const currentLap = t1.lap || 1;
 
     // Yaw 각도 최단호(Shortest-arc) 보간

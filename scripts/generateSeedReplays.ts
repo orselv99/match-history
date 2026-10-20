@@ -26,10 +26,10 @@ interface CircuitSeedPlan {
 }
 
 const CIRCUIT_PLANS: CircuitSeedPlan[] = [
-  { circuitId: 'circuit_monaco', prefix: 'SEED-MC', count: 13, baseTopSpeed: 216.0 },
-  { circuitId: 'circuit_monza', prefix: 'SEED-MZ', count: 13, baseTopSpeed: 246.0 },
-  { circuitId: 'circuit_spa', prefix: 'SEED-SP', count: 12, baseTopSpeed: 248.0 },
-  { circuitId: 'circuit_silverstone', prefix: 'SEED-SS', count: 12, baseTopSpeed: 244.0 },
+  { circuitId: 'circuit_monaco', prefix: 'SEED-MC', count: 50, baseTopSpeed: 216.0 },
+  { circuitId: 'circuit_monza', prefix: 'SEED-MZ', count: 50, baseTopSpeed: 246.0 },
+  { circuitId: 'circuit_spa', prefix: 'SEED-SP', count: 50, baseTopSpeed: 248.0 },
+  { circuitId: 'circuit_silverstone', prefix: 'SEED-SS', count: 50, baseTopSpeed: 244.0 },
 ];
 
 /**
@@ -57,8 +57,8 @@ function generateTicksForSeed(
   const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
   const circuitLength = curve.getLength();
 
-  // 10Hz 샘플링 (0.1초당 1틱) - 고주파 보간 및 리얼타임 레이싱 정확도 확보
-  const FPS = 30;
+  // 10Hz 샘플링 (0.1초당 1틱) - 3D 쿼터니언 Slerp 및 미니맵 실시간 보간과 완벽 호환, 50MB 이하 초경량화
+  const FPS = 10;
   const dt = 1 / FPS;
   const dtMs = 1000 / FPS;
 
@@ -109,8 +109,8 @@ function generateTicksForSeed(
     let speedKmh = actualTopSpeed - (actualTopSpeed - minCornerSpeedKmh) * cornerFactor;
 
     // 랩 1 스타트 가속 시뮬레이션
-    if (lap === 1 && timeMs < 2000) {
-      speedKmh = Math.min(speedKmh, (timeMs / 2000) * (actualTopSpeed * 0.85) + 50);
+    if (lap === 1 && timeMs < 2500) {
+      speedKmh = Math.min(speedKmh, (timeMs / 2500) * (actualTopSpeed * 0.88));
     }
 
     const speedMs = speedKmh / 3.6;
@@ -128,26 +128,41 @@ function generateTicksForSeed(
     const pitch = -Math.asin(THREE.MathUtils.clamp(tangent.y, -0.45, 0.45));
     const roll = isDrifting ? steer * 0.06 : 0;
 
-    // 라이벌 3대 동시 3D 위치 및 주행 계산
-    const opponents: ReplayOpponentState[] = opponentsConfig.map((opp) => {
-      let oppT = (currentT + opp.offsetDist / circuitLength) % 1.0;
+    // 라이벌 3대 동시 3D 위치 및 주행 계산 (엎치락뒤치락 추월 및 차체 충돌 불꽃 스파크 시뮬레이션)
+    const opponents: ReplayOpponentState[] = opponentsConfig.map((opp, oppIdx) => {
+      // 엎치락뒤치락 순위 역전 파동 (전체 레이스 진행도 기준 사인파 오프셋 진동)
+      const raceProgress = THREE.MathUtils.clamp(dist / (3 * circuitLength), 0, 1);
+      // 각 차량별로 위상을 다르게 주어 레이스 중 서로 앞서거니 뒤서거니 추월 발생
+      const wave = Math.sin(raceProgress * Math.PI * 5 + oppIdx * 1.9) * 16.0;
+      // 결승선(3랩 종반부)에 다다르면 지정된 최종 완주 순위(playerRank)로 안정 수렴
+      const blend = Math.pow(raceProgress, 1.8);
+      const dynamicOffset = opp.offsetDist * blend + (opp.offsetDist + wave) * (1 - blend);
+
+      let oppT = (currentT + dynamicOffset / circuitLength) % 1.0;
       if (oppT < 0) oppT += 1.0;
 
       curve.getPointAt(oppT, oppPt);
       curve.getTangentAt(oppT, oppTangent).normalize();
       oppRight.set(-oppTangent.z, 0, oppTangent.x).normalize();
 
-      oppPt.addScaledVector(oppRight, opp.lane);
+      // 머신끼리 부딪혀서 불꽃 튀는 차체 접촉(Wheel-to-wheel contact) 시뮬레이션
+      let laneOffset = opp.lane;
+      // 플레이어와 전후 거리가 2.4m 이내로 초근접할 때 차선을 서로 밀착시켜 충돌 스파크 유발
+      if (Math.abs(dynamicOffset) < 2.4) {
+        laneOffset = opp.lane > 0 ? 0.38 : -0.38;
+      }
+
+      oppPt.addScaledVector(oppRight, laneOffset);
       oppPt.y = Math.max(0, oppPt.y) + 0.055;
 
       const oppHeading = Math.atan2(oppTangent.x, oppTangent.z);
 
       return {
-        x: Number(oppPt.x.toFixed(3)),
-        y: Number(oppPt.y.toFixed(3)),
-        z: Number(oppPt.z.toFixed(3)),
-        yaw: Number(oppHeading.toFixed(4)),
-        speedKmh: Number((speedKmh * 0.98).toFixed(1)),
+        x: Number(oppPt.x.toFixed(2)),
+        y: Number(oppPt.y.toFixed(2)),
+        z: Number(oppPt.z.toFixed(2)),
+        yaw: Number(oppHeading.toFixed(3)),
+        speedKmh: Math.round(speedKmh * 0.98),
       };
     });
 
@@ -156,12 +171,12 @@ function generateTicksForSeed(
 
     ticks.push({
       timeMs: Math.round(timeMs),
-      x: Number(playerPos.x.toFixed(3)),
-      y: Number(playerPos.y.toFixed(3)),
-      z: Number(playerPos.z.toFixed(3)),
-      yaw: Number(heading.toFixed(4)),
-      pitch: Number(pitch.toFixed(4)),
-      roll: Number(roll.toFixed(4)),
+      x: Number(playerPos.x.toFixed(2)),
+      y: Number(playerPos.y.toFixed(2)),
+      z: Number(playerPos.z.toFixed(2)),
+      yaw: Number(heading.toFixed(3)),
+      pitch: Number(pitch.toFixed(3)),
+      roll: Number(roll.toFixed(3)),
       speedKmh: Number(speedKmh.toFixed(1)),
       steer: Number(steer.toFixed(2)),
       throttle: Number(throttle.toFixed(2)),

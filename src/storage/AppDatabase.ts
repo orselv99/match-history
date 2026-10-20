@@ -308,9 +308,9 @@ export class AppDatabase {
         req.onerror = () => reject(req.error);
       });
 
-      // 최대 100개 보관 제한 (오래된 순 FIFO 삭제)
+      // 최대 300개 보관 제한 (오래된 순 FIFO 삭제)
       const all = await this.listReplays();
-      const MAX_REPLAYS = 100;
+      const MAX_REPLAYS = 300;
       if (all.length > MAX_REPLAYS) {
         // savedAt 오름차순 정렬 (가장 오래된 것부터)
         all.sort((a, b) => (a.savedAt || 0) - (b.savedAt || 0));

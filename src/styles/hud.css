@@ -78,7 +78,7 @@
   }
 }
 
-/* 1-1. 상단 좌측 실시간 순위 표시기 (HUD Position Badge) */
+/* 1-1. 상단 좌측 실시간 순위 타워 (HUD Real-time Standings Tower & Overtake Shuffle) */
 .hud-top-left {
   position: absolute;
   top: 16px;
@@ -87,61 +87,108 @@
   pointer-events: none;
 }
 
-.hud-rank-card {
-  display: flex;
-  flex-direction: column;
-  background: var(--surface-card);
-  border: 1px solid var(--border-strong);
-  padding: 6px 14px;
+.hud-standings-tower {
+  position: relative;
+  width: 195px;
+  height: 124px;
+}
+
+.tower-racer-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 27px;
   box-sizing: border-box;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
-}
-
-.hud-rank-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  margin-bottom: 2px;
-}
-
-.hud-rank-val-wrap {
   display: flex;
-  align-items: baseline;
-  gap: 4px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  background: rgba(14, 18, 26, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1), background-color 0.25s ease, border-color 0.25s ease;
+  will-change: transform;
 }
 
-.hud-rank-number {
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 900;
-  color: #38bdf8;
-  line-height: 1;
-  text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+.tower-racer-row.is-player {
+  background: rgba(6, 182, 212, 0.18);
+  border-color: rgba(56, 189, 248, 0.7);
+  border-left: 3px solid #38bdf8;
 }
 
-.hud-rank-number.p1 {
-  color: #fbbf24;
-  text-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+.tower-racer-row.rank-up {
+  animation: towerRankPulse 0.5s ease;
 }
 
-.hud-rank-number.p2 {
-  color: #cbd5e1;
-  text-shadow: 0 0 10px rgba(203, 213, 225, 0.4);
+@keyframes towerRankPulse {
+  0% {
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.95);
+    border-color: #38bdf8;
+  }
+  100% {
+    box-shadow: none;
+  }
 }
 
-.hud-rank-number.p3 {
-  color: #f59e0b;
-  text-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
-}
-
-.hud-rank-total {
+.tower-rank-badge {
   font-family: var(--font-mono);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 900;
   color: var(--text-muted);
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.tower-rank-badge.p1 {
+  color: #fbbf24;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+}
+
+.tower-rank-badge.p2 {
+  color: #e2e8f0;
+}
+
+.tower-rank-badge.p3 {
+  color: #f59e0b;
+}
+
+.tower-color-pill {
+  width: 3px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 0;
+}
+
+.tower-driver-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.tower-racer-row.is-player .tower-driver-name {
+  color: #38bdf8;
+  font-weight: 800;
+}
+
+.tower-you-tag {
+  font-size: 8px;
+  font-weight: 900;
+  padding: 1px 4px;
+  background: #38bdf8;
+  color: #000;
+  margin-left: 5px;
+  letter-spacing: 0.05em;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* 2. 우측 상단 실시간 미니맵 */

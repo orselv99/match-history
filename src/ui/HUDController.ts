@@ -26,8 +26,8 @@ export class HUDController {
   private cinematicBars: HTMLElement | null;
 
   private hudRankContainer: HTMLElement | null;
-  private hudCurrentRank: HTMLElement | null;
-  private hudTotalRacers: HTMLElement | null;
+  private standingsTower: HTMLElement | null;
+  private racerRowMap: Map<string, { rowEl: HTMLElement; badgeEl: HTMLElement; nameEl: HTMLElement; lastRank: number }> = new Map();
 
   private lapCounter: HTMLElement | null;
   private currentLapTime: HTMLElement | null;
@@ -57,8 +57,7 @@ export class HUDController {
     this.cinematicBars = document.getElementById('cinematic-bars');
 
     this.hudRankContainer = document.getElementById('hud-rank-container');
-    this.hudCurrentRank = document.getElementById('hud-current-rank');
-    this.hudTotalRacers = document.getElementById('hud-total-racers');
+    this.standingsTower = document.getElementById('hud-standings-tower');
 
     this.lapCounter = document.getElementById('lap-counter');
     this.currentLapTime = document.getElementById('current-lap-time');
@@ -109,17 +108,72 @@ export class HUDController {
   public update(state: GameUIState): void {
     const gearColor = GEAR_COLORS[state.gear] || '#c45a72';
 
-    // 상단 좌측 실시간 순위(Position) 갱신
-    if (this.hudRankContainer) {
-      const showRank = state.gameMode !== 'TITLE';
-      this.hudRankContainer.style.display = showRank ? 'flex' : 'none';
-      if (showRank && this.hudCurrentRank) {
-        const rank = state.currentRank || 1;
-        this.hudCurrentRank.textContent = `P${rank}`;
-        this.hudCurrentRank.className = `hud-rank-number p${Math.min(3, rank)}`;
-        if (this.hudTotalRacers) {
-          this.hudTotalRacers.textContent = `/ ${state.totalRacers || 4}`;
+    // 상단 좌측 실시간 4인 순위 타워(Standings Tower) 및 셔플 교체 애니메이션 갱신
+    if (this.hudRankContainer && this.standingsTower) {
+      const showStandings = state.gameMode !== 'TITLE' && !!state.standings && state.standings.length > 0;
+      this.hudRankContainer.style.display = showStandings ? 'block' : 'none';
+
+      if (showStandings && state.standings) {
+        // 1. 엔트리 키 변경 감지 시(모드 전환 등) 기존 노드 재생성
+        const currentKeys = state.standings.map(s => s.id).join(',');
+        const existingKeys = Array.from(this.racerRowMap.keys()).join(',');
+        if (currentKeys !== existingKeys) {
+          this.standingsTower.innerHTML = '';
+          this.racerRowMap.clear();
+
+          state.standings.forEach(racer => {
+            const rowEl = document.createElement('div');
+            rowEl.className = `tower-racer-row ${racer.isPlayer ? 'is-player' : ''}`;
+            rowEl.setAttribute('data-racer-id', racer.id);
+
+            const badgeEl = document.createElement('span');
+            badgeEl.className = `tower-rank-badge p${racer.rank}`;
+            badgeEl.textContent = `${racer.rank}`;
+
+            const colorPill = document.createElement('span');
+            colorPill.className = 'tower-color-pill';
+            colorPill.style.backgroundColor = racer.color || '#38bdf8';
+
+            const nameEl = document.createElement('span');
+            nameEl.className = 'tower-driver-name';
+            nameEl.innerHTML = `${racer.driverName}${racer.isPlayer ? ' <span class="tower-you-tag">YOU</span>' : ''}`;
+
+            rowEl.appendChild(badgeEl);
+            rowEl.appendChild(colorPill);
+            rowEl.appendChild(nameEl);
+
+            this.standingsTower!.appendChild(rowEl);
+            this.racerRowMap.set(racer.id, {
+              rowEl,
+              badgeEl,
+              nameEl,
+              lastRank: racer.rank
+            });
+          });
         }
+
+        // 2. 실시간 순위 위치(Slot) 이동 및 셔플 애니메이션 적용
+        state.standings.forEach(racer => {
+          const item = this.racerRowMap.get(racer.id);
+          if (!item) return;
+
+          const slotIndex = racer.rank - 1; // 0, 1, 2, 3
+          item.rowEl.style.transform = `translateY(${slotIndex * 31}px)`;
+          item.rowEl.style.zIndex = `${5 - racer.rank}`;
+
+          item.badgeEl.textContent = `${racer.rank}`;
+          item.badgeEl.className = `tower-rank-badge p${Math.min(3, racer.rank)}`;
+
+          // 순위 상승(추월) 시 시각적 펄스 애니메이션
+          if (racer.rank !== item.lastRank) {
+            if (racer.rank < item.lastRank) {
+              item.rowEl.classList.remove('rank-up');
+              void item.rowEl.offsetWidth; // force reflow
+              item.rowEl.classList.add('rank-up');
+            }
+            item.lastRank = racer.rank;
+          }
+        });
       }
     }
 

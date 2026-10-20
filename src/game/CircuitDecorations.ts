@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { STARTING_GRID_SLOTS } from '../data/circuits.ts';
 import {
   createStructureMaterials,
   buildStartGantry,
@@ -69,16 +70,9 @@ export class CircuitDecorations {
     }
 
     // 2) 4개 슬롯 코너 브래킷 「 」 마킹
-    const slotConfigs = [
-      { distBehind: 5.0, lane: -2.2 },
-      { distBehind: 16.0, lane: 2.2 },
-      { distBehind: 27.0, lane: -2.2 },
-      { distBehind: 38.0, lane: 2.2 },
-    ];
-
     const localXDir = new THREE.Vector3(startTangent.z, 0, -startTangent.x).normalize();
 
-    slotConfigs.forEach((slot) => {
+    STARTING_GRID_SLOTS.forEach((slot) => {
       const center = new THREE.Vector3()
         .copy(startPt)
         .addScaledVector(startTangent, -slot.distBehind)

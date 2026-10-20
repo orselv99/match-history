@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import * as fs from 'fs';
 import * as path from 'path';
-import { CIRCUIT_DEFINITIONS, type CircuitId } from '../src/data/circuits.ts';
+import { CIRCUIT_DEFINITIONS, STARTING_GRID_SLOTS, type CircuitId } from '../src/data/circuits.ts';
 import type { RawReplayTick, MatchSummaryMetadata, ReplayOpponentState } from '../src/replay/ReplayTypes.ts';
 import type { CachedReplayRecord } from '../src/storage/schema.ts';
 
@@ -32,57 +32,15 @@ const CIRCUIT_PLANS: CircuitSeedPlan[] = [
   { circuitId: 'circuit_silverstone', prefix: 'SEED-SS', count: 50, baseTopSpeed: 244.0 },
 ];
 
-const STARTING_GRID_SLOTS = [
-  { dist: -5.0, lane: 2.2 },   // Slot 0 (Pole position: right offset +2.2m)
-  { dist: -16.0, lane: -2.2 }, // Slot 1 (P2: right offset -2.2m)
-  { dist: -27.0, lane: 2.2 },  // Slot 2 (P3: right offset +2.2m)
-  { dist: -38.0, lane: -2.2 }, // Slot 3 (P4: right offset -2.2m)
-];
-
-/**
- * 인게임 물리 시뮬레이션 기반 3랩 주행 틱 및 정밀 메타데이터 생성
- * - 출발 시 4대 차량 모두 「 」 그리드 마킹 박스 내 정중앙에 수평 정차(speed=0, yaw=메인스트레이트 정방향)
- * - 결승선 통과 전에는 메인 스트레이트 직선 궤적 주행, 결승선 통과 후 서킷 스플라인 곡선에 부드럽게 합류
- * - 차량 속도(km/h)와 3D 트랙 실제 이동 거리(m)를 100% 일치시켜 실제 주행과 리플레이 속도감이 완벽히 동일함
- */
-function generateTicksForSeed(
-  circuitId: CircuitId,
-  topSpeedKmh: number,
-  playerRank: number,
-  opponentsConfig: Array<{ offsetDist: number; lane: number }>,
-  cIdx: number
-): {
-  ticks: RawReplayTick[];
-  lapTimes: [number, number, number];
-  totalTimeMs: number;
-  bestLapMs: number;
-  bestLapNum: number;
-  sectorTimes: [number, number, number][];
-  avgSpeedKmh: number;
-} {
-  const def = CIRCUIT_DEFINITIONS[circuitId];
-  if (!def) throw new Error(`Unknown circuit: ${circuitId}`);
-
-  const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
-  const circuitLength = curve.getLength();
-
-  // 15Hz 샘플링 (66.6ms당 1틱) - 정밀 궤적 및 100MB 이내 고밀도 시뮬레이션
-  const FPS = 15;
-  const dt = 1 / FPS;
-  const dtMs = 1000 / FPS;
-
-  const ticks: RawReplayTick[] = [];
-  const tangent = new THREE.Vector3();
-
-  // 4개 그리드 슬롯 배치 결정
+  // 4개 그리드 슬롯 배치 결정 (STARTING_GRID_SLOTS 단일 소스 참조)
   const playerSlot = Math.min(3, Math.max(0, playerRank - 1));
   const oppSlots = [0, 1, 2, 3].filter(s => s !== playerSlot);
 
-  const playerInitDist = STARTING_GRID_SLOTS[playerSlot].dist;
-  const playerInitLane = STARTING_GRID_SLOTS[playerSlot].lane;
+  const playerInitDist = -STARTING_GRID_SLOTS[playerSlot].distBehind;
+  const playerInitLane = -STARTING_GRID_SLOTS[playerSlot].lane; // startRight 좌표계 변환
 
-  const oppInitDists = oppSlots.map(s => STARTING_GRID_SLOTS[s].dist);
-  const oppInitLanes = oppSlots.map(s => STARTING_GRID_SLOTS[s].lane);
+  const oppInitDists = oppSlots.map(s => -STARTING_GRID_SLOTS[s].distBehind);
+  const oppInitLanes = oppSlots.map(s => -STARTING_GRID_SLOTS[s].lane);
 
   // 메인 스트레이트 시작점 및 정방향/우측 벡터 산출 (모든 구간에서 r = (-tan.z, 0, tan.x) 로 100% 일치)
   const startPt = curve.getPointAt(0);

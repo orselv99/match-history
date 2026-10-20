@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CIRCUIT_DEFINITIONS, type CircuitId, type CircuitMetadata } from '../data/circuits.ts';
+import { CIRCUIT_DEFINITIONS, STARTING_GRID_SLOTS, type CircuitId, type CircuitMetadata } from '../data/circuits.ts';
 import { CircuitDecorations } from './CircuitDecorations.ts';
 import { createStructureMaterials, type StructureMaterials } from './circuitStructures/index.ts';
 
@@ -342,13 +342,8 @@ export class Circuit {
    * 스타팅 그리드 슬롯 인덱스(0: Pole, 1, 2, 3)의 위치 및 헤딩각 반환
    */
   public getGridPosition(slotIndex: number): { position: THREE.Vector3; heading: number } {
-    const slotDistances = [-5.0, -16.0, -27.0, -38.0];
-    const slotLanes = [-2.2, 2.2, -2.2, 2.2];
-
-    const distZ = slotDistances[Math.min(3, Math.max(0, slotIndex))] ?? -5.0;
-    const laneX = slotLanes[Math.min(3, Math.max(0, slotIndex))] ?? -2.2;
-
-    return this.getStartStraightWorldPosition(laneX, distZ);
+    const slot = STARTING_GRID_SLOTS[Math.min(STARTING_GRID_SLOTS.length - 1, Math.max(0, slotIndex))] ?? STARTING_GRID_SLOTS[0];
+    return this.getStartStraightWorldPosition(slot.lane, -slot.distBehind);
   }
 
   /**

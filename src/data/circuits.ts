@@ -18,6 +18,26 @@ export interface CircuitMetadata {
   controlPoints: THREE.Vector3[];
 }
 
+export interface StartingGridSlotConfig {
+  slotIndex: number;
+  distBehind: number; // 결승선 후방 거리 (양수, m)
+  lane: number;       // 횡방향 레인 오프셋 (m)
+}
+
+/**
+ * 4대 차량 스타팅 그리드 슬롯 위치 및 레인 단일 정의 (Single Source of Truth)
+ * - Slot 0: Pole position (후방 5.0m, 좌측 -2.2m)
+ * - Slot 1: P2 position (후방 16.0m, 우측 +2.2m)
+ * - Slot 2: P3 position (후방 27.0m, 좌측 -2.2m)
+ * - Slot 3: P4 position (후방 38.0m, 우측 +2.2m)
+ */
+export const STARTING_GRID_SLOTS: readonly StartingGridSlotConfig[] = [
+  { slotIndex: 0, distBehind: 5.0, lane: -2.2 },
+  { slotIndex: 1, distBehind: 16.0, lane: 2.2 },
+  { slotIndex: 2, distBehind: 27.0, lane: -2.2 },
+  { slotIndex: 3, distBehind: 38.0, lane: 2.2 },
+] as const;
+
 /**
  * 3대 글로벌 공식 서킷 제어점 및 메타데이터 정의
  * 1. Circuit de Monaco (테크니컬 스트리트 서킷)

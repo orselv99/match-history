@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Vehicle } from './Vehicle.ts';
 import { Circuit } from './Circuit.ts';
+import { STARTING_GRID_SLOTS } from '../data/circuits.ts';
 import { OPPONENT_CONFIGS, type VehicleModelId } from '../data/vehicles.ts';
 import {
   type OpponentAgent,
@@ -108,9 +109,6 @@ export class OpponentManager {
     this.isAllFinished = false;
 
     const circuitLength = this.circuit.circuitCurve.getLength();
-    const slotDistances = [5.0, 16.0, 27.0, 38.0];
-    const slotLanes = [-2.2, 2.2, -2.2, 2.2];
-
     this.raceTimeMs = 0;
     this.agents.forEach((agent, idx) => {
       if (asRivals && idx === 0) {
@@ -121,8 +119,9 @@ export class OpponentManager {
       }
 
       agent.vehicle.mesh.visible = true;
-      const distBehind = slotDistances[idx];
-      const lane = slotLanes[idx];
+      const slot = STARTING_GRID_SLOTS[Math.min(STARTING_GRID_SLOTS.length - 1, Math.max(0, idx))] ?? STARTING_GRID_SLOTS[0];
+      const distBehind = slot.distBehind;
+      const lane = slot.lane;
 
       agent.t = (1.0 - (distBehind / circuitLength)) % 1.0;
       agent.prevT = agent.t;

@@ -705,12 +705,6 @@
   border-color: var(--accent-spec);
 }
 
-.inspector-title-group {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
 .inspector-header-right {
   display: flex;
   align-items: center;
@@ -945,6 +939,15 @@
 .floating-card-value.text-accent-gold {
   color: #fbbf24;
   font-weight: 800;
+}
+
+.floating-card-value.circuit-name-val {
+  font-size: 12px;
+  line-height: 1.35;
+  word-break: keep-all;
+  white-space: normal;
+  display: inline-block;
+  padding: 0 2px;
 }
 
 .text-muted {

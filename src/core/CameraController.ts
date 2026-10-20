@@ -29,7 +29,7 @@ export class CameraController {
     const heading = targetVehicle.heading + targetVehicle.slipAngle;
     const sinH = Math.sin(heading);
     const cosH = Math.cos(heading);
-    const pitchLookOffset = -Math.sin(targetVehicle.pitch) * 0.8;
+    const pitchLookOffset = this.viewMode === 'FIRST_PERSON' ? -Math.sin(targetVehicle.pitch) * 0.15 : 0;
     const isFirstPerson = this.viewMode === 'FIRST_PERSON';
 
     if (isFirstPerson) {
@@ -59,12 +59,13 @@ export class CameraController {
   }
 
   public updateChase(delta: number, targetVehicle: Vehicle): void {
-    const heading = targetVehicle.heading + targetVehicle.slipAngle;
+    const isFirstPerson = this.viewMode === 'FIRST_PERSON';
+    // 급감속/조향 시 횡방향 출렁임을 방지하기 위해 체이스 카메라는 차체 본래 heading 중심 안정 추적
+    const heading = targetVehicle.heading + targetVehicle.slipAngle * (isFirstPerson ? 0.5 : 0.15);
     const sinH = Math.sin(heading);
     const cosH = Math.cos(heading);
-    // 가속/피칭 시 화면 출렁거림(꿀렁거림) 방지를 위해 피치 영향 계수 완화 (3.5 -> 0.8)
-    const pitchLookOffset = -Math.sin(targetVehicle.pitch) * (this.viewMode === 'FIRST_PERSON' ? 0.5 : 0.8);
-    const isFirstPerson = this.viewMode === 'FIRST_PERSON';
+    // 3인칭 체이스에서는 감속 시 차가 숙여져도 카메라 앵글이 아래로 꺼지지 않도록 pitch offset 완전 제거 (0)
+    const pitchLookOffset = isFirstPerson ? -Math.sin(targetVehicle.pitch) * 0.15 : 0;
 
     const targetCamPos = isFirstPerson
       ? new THREE.Vector3(
@@ -74,11 +75,12 @@ export class CameraController {
         )
       : new THREE.Vector3(
           targetVehicle.position.x - sinH * 8.5,
-          targetVehicle.position.y + 4.2,
+          targetVehicle.position.y + 4.0,
           targetVehicle.position.z - cosH * 8.5
         );
 
-    const lerpRate = isFirstPerson ? 24.0 : 9.0;
+    // 감속 시 카메라와 차량 간격이 좁아졌다 늘어나는 스프링 현상을 제거하기 위해 추적 반응속도 최적화
+    const lerpRate = isFirstPerson ? 24.0 : 14.0;
     this.camera.position.lerp(targetCamPos, Math.min(1.0, lerpRate * delta));
 
     const lookAhead = isFirstPerson ? 32.0 : 4.0;
@@ -88,8 +90,7 @@ export class CameraController {
       targetVehicle.position.y + lookHeight + pitchLookOffset,
       targetVehicle.position.z + cosH * lookAhead
     );
-    // lookAt 타겟을 부드럽게 보간하여 가속/감속 전환 시 시야가 울렁거리는 현상 제거
-    this.cameraLookTarget.lerp(desiredLookTarget, Math.min(1.0, 14.0 * delta));
+    this.cameraLookTarget.lerp(desiredLookTarget, Math.min(1.0, 16.0 * delta));
     this.camera.lookAt(this.cameraLookTarget);
 
     // 충돌 시 다이내믹 카메라 쉐이크(Camera Shake) 감쇠 적용

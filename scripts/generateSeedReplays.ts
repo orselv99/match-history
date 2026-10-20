@@ -47,6 +47,7 @@ function generateTicksForSeed(
   lapTimes: [number, number, number];
   totalTimeMs: number;
   bestLapMs: number;
+  bestLapNum: number;
   sectorTimes: [number, number, number][];
   avgSpeedKmh: number;
 } {
@@ -71,6 +72,8 @@ function generateTicksForSeed(
 
   let dist = 0;
   let timeMs = 0;
+  let prevDist = 0;
+  let prevT = 0;
   let lap = 1;
   const lapTimes: number[] = [];
   let lapStartTimeMs = 0;
@@ -168,31 +171,46 @@ function generateTicksForSeed(
       opponents,
     });
 
-    // 섹터 체크 (S1: 33%, S2: 66%)
+    // 정밀 서브틱(sub-tick) 보간을 통한 밀리초 정밀도 섹터 타임 산출 (소수점 00 고정 제거)
     if (currentSector === 1 && currentT >= 0.33) {
-      s1TimeMs = timeMs - lapStartTimeMs;
+      const frac = (prevT < currentT && (currentT - prevT) > 0.0001) ? THREE.MathUtils.clamp((0.33 - prevT) / (currentT - prevT), 0, 1) : 0.5;
+      const exactTime = (timeMs - dtMs) + frac * dtMs;
+      const lapJitter = ((cIdx * 17 + lap * 37) % 73) - 36; // 주행 랩별 현실적 밀리초 편차
+      s1TimeMs = Math.max(1200, Math.round(exactTime - lapStartTimeMs + lapJitter));
       currentSector = 2;
     } else if (currentSector === 2 && currentT >= 0.66) {
-      s2TimeMs = (timeMs - lapStartTimeMs) - s1TimeMs;
+      const frac = (prevT < currentT && (currentT - prevT) > 0.0001) ? THREE.MathUtils.clamp((0.66 - prevT) / (currentT - prevT), 0, 1) : 0.5;
+      const exactTime = (timeMs - dtMs) + frac * dtMs;
+      const lapJitter = ((cIdx * 29 + lap * 43) % 89) - 44;
+      s2TimeMs = Math.max(1200, Math.round(exactTime - lapStartTimeMs - s1TimeMs + lapJitter));
       currentSector = 3;
     }
 
     // 랩 완료 체크
     if (dist >= lap * circuitLength) {
-      const lapDuration = timeMs - lapStartTimeMs;
-      lapTimes.push(Math.round(lapDuration));
-      const s3TimeMs = Math.round(lapDuration - s1TimeMs - s2TimeMs);
-      sectorTimes.push([Math.round(s1TimeMs), Math.round(s2TimeMs), s3TimeMs]);
+      const targetDist = lap * circuitLength;
+      const frac = (dist > prevDist) ? THREE.MathUtils.clamp((targetDist - prevDist) / (dist - prevDist), 0, 1) : 0.5;
+      const exactFinishTime = (timeMs - dtMs) + frac * dtMs;
+      const lapDuration = Math.round(exactFinishTime - lapStartTimeMs);
+      const s3TimeMs = Math.max(1200, lapDuration - s1TimeMs - s2TimeMs);
 
-      lapStartTimeMs = timeMs;
+      lapTimes.push(lapDuration);
+      sectorTimes.push([s1TimeMs, s2TimeMs, s3TimeMs]);
+
+      lapStartTimeMs = exactFinishTime;
       currentSector = 1;
       s1TimeMs = 0;
       s2TimeMs = 0;
       lap++;
     }
+
+    prevDist = dist;
+    prevT = currentT;
   }
 
   const bestLapMs = Math.min(...lapTimes);
+  const bestLapIndex = lapTimes.indexOf(bestLapMs);
+  const bestLapNum = bestLapIndex >= 0 ? bestLapIndex + 1 : 1;
   const avgSpeedKmh = Number((totalSpeedAccum / (tickCount || 1)).toFixed(1));
 
   return {
@@ -200,6 +218,7 @@ function generateTicksForSeed(
     lapTimes: [lapTimes[0], lapTimes[1], lapTimes[2]],
     totalTimeMs: Math.round(timeMs),
     bestLapMs,
+    bestLapNum,
     sectorTimes,
     avgSpeedKmh,
   };
@@ -318,6 +337,7 @@ function main() {
         totalLaps: 3,
         totalTimeMs,
         bestLapMs,
+        bestLapNum,
         lapTimesMs: lapTimes,
         sectorTimesMs: sectorTimes,
         topSpeedKmh,

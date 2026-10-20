@@ -243,7 +243,6 @@ export const en = {
     escResume: '[ESC] TO RESUME',
   },
   history: {
-    tag: '30Hz TICK ARCHIVE',
     title: 'MATCH ARCHIVE & LEADERBOARD',
     totalMatches: 'TOTAL MATCHES',
     circuitBest: 'CIRCUIT BEST',

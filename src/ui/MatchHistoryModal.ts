@@ -464,7 +464,7 @@ export class MatchHistoryModal extends BaseModal {
           <td class="col-rank">${rankBadgeHtml}</td>
           <td class="col-driver"><strong class="driver-name-text">${driverName}</strong></td>
           <td class="col-vehicle">${vehicleBadge}</td>
-          <td class="col-circuit">${circuitTitle}</td>
+          <td class="col-circuit">${this.formatCircuitTitle(circuitTitle)}</td>
           <td class="col-lap"><span class="lap-highlight ${rankNum === 1 ? 'gold' : ''}">${lapTime}</span></td>
           <td class="col-speed">${topSpeed}</td>
           <td class="col-date">${dateStr}</td>
@@ -588,7 +588,7 @@ export class MatchHistoryModal extends BaseModal {
               </div>
               <div class="detail-floating-card">
                 <span class="floating-card-label">서킷</span>
-                <span class="floating-card-value">${circuitTitle}</span>
+                <span class="floating-card-value circuit-name-val">${this.formatCircuitTitle(circuitTitle)}</span>
               </div>
               <!-- 2행: 베스트 랩타임, 총 레이스 시간 -->
               <div class="detail-floating-card">
@@ -1049,28 +1049,30 @@ export class MatchHistoryModal extends BaseModal {
     ctx.fill();
     ctx.restore();
 
-    // 8. 테크니컬 HUD 텍스트 및 섹터 범례
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 11px monospace';
-    ctx.fillText(`${currentSpeed.toFixed(0)} km/h`, 12, 18);
-
+    // 8. 테크니컬 HUD 텍스트 (서킷 도로와 겹치지 않도록 우측 상단 빈 공간에 오른쪽 정렬 배치, 범례는 제거)
+    const totalLaps = this.minimapRecord.metadata?.totalLaps || 3;
     const secBadgeColor = currentSector === 1 ? '#38bdf8' : (currentSector === 2 ? '#c084fc' : '#fbbf24');
-    ctx.fillStyle = '#94a3b8';
-    ctx.font = '10px monospace';
-    ctx.fillText(`LAP ${currentLap}/${this.minimapRecord.metadata?.totalLaps || 3}`, 12, 33);
 
-    ctx.fillStyle = secBadgeColor;
-    ctx.font = 'bold 10px monospace';
-    ctx.fillText(`SEC ${currentSector}`, 78, 33);
+    ctx.save();
+    ctx.textAlign = 'right';
 
-    // 상단 우측 섹터 컬러 범례
-    ctx.font = '9px monospace';
+    // 1행: 현재 속도 (km/h)
     ctx.fillStyle = '#38bdf8';
-    ctx.fillText('● S1', w - 106, 18);
-    ctx.fillStyle = '#a855f7';
-    ctx.fillText('● S2', w - 70, 18);
-    ctx.fillStyle = '#f59e0b';
-    ctx.fillText('● S3', w - 34, 18);
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText(`${currentSpeed.toFixed(0)} km/h`, w - 14, 18);
+
+    // 2행: LAP 및 SECTOR 정보 (우측 상단 정렬)
+    ctx.font = 'bold 10px monospace';
+    const secStr = `SEC ${currentSector}`;
+    const secWidth = ctx.measureText(secStr).width;
+    ctx.fillStyle = secBadgeColor;
+    ctx.fillText(secStr, w - 14, 33);
+
+    ctx.font = '10px monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText(`LAP ${currentLap}/${totalLaps} · `, w - 14 - secWidth, 33);
+
+    ctx.restore();
 
     // 9. DOM 컨트롤 및 텔레메트리 업데이트
     const timeDisplay = document.getElementById('inspector-time-display');
@@ -1135,6 +1137,33 @@ export class MatchHistoryModal extends BaseModal {
     if (vehicleModelId === 'cyber_speedster') return 'Cyber Speedster';
     if (vehicleModelId === 'lm_hypercar') return 'Apex Hypercar';
     return 'GT-86 Turbo';
+  }
+
+  private formatCircuitTitle(title: string): string {
+    if (!title) return "";
+    if (title.length >= 10 && title.includes(" ")) {
+      const words = title.split(" ");
+      if (words.length === 2) {
+        return `${words[0]}<br>${words[1]}`;
+      } else if (words.length > 2) {
+        const midChar = title.length / 2;
+        let bestSpaceIdx = 0;
+        let minDiff = Infinity;
+        let runningLen = 0;
+        for (let i = 0; i < words.length - 1; i++) {
+          runningLen += words[i].length + (i > 0 ? 1 : 0);
+          const diff = Math.abs(runningLen - midChar);
+          if (diff < minDiff) {
+            minDiff = diff;
+            bestSpaceIdx = i;
+          }
+        }
+        const part1 = words.slice(0, bestSpaceIdx + 1).join(" ");
+        const part2 = words.slice(bestSpaceIdx + 1).join(" ");
+        return `${part1}<br>${part2}`;
+      }
+    }
+    return title;
   }
 
   private getCircuitTitle(circuitId: CircuitId): string {

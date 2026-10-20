@@ -243,7 +243,6 @@ export const ko = {
     escResume: '[ESC] TO RESUME',
   },
   history: {
-    tag: '30Hz 틱 아카이브',
     title: '전적 검색 및 리더보드',
     totalMatches: '총 전적',
     circuitBest: '최고 랩타임',

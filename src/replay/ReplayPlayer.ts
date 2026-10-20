@@ -161,10 +161,10 @@ export class ReplayPlayer {
     const p0 = this.ticks[i0];
     const p3 = this.ticks[i3];
 
-    // X, Y, Z 각각 큐빅 스플라인 보간
-    const interpX = this.catmullRom(p0.x, t1.x, t2.x, p3.x, alpha);
-    const interpY = this.catmullRom(p0.y, t1.y, t2.y, p3.y, alpha);
-    const interpZ = this.catmullRom(p0.z, t1.z, t2.z, p3.z, alpha);
+    // 가감속 시 Catmull-Rom 오버슈트(앞뒤/상하 진동 꿀렁임)를 원천 차단하기 위해 고정밀 선형 보간(lerp) 적용
+    const interpX = THREE.MathUtils.lerp(t1.x, t2.x, alpha);
+    const interpY = THREE.MathUtils.lerp(t1.y, t2.y, alpha);
+    const interpZ = THREE.MathUtils.lerp(t1.z, t2.z, alpha);
 
     this.ghostVehicle.position.set(interpX, interpY, interpZ);
     this.ghostVehicle.mesh.position.copy(this.ghostVehicle.position);

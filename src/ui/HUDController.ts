@@ -161,6 +161,11 @@ export class HUDController {
           item.rowEl.style.transform = `translateY(${slotIndex * 31}px)`;
           item.rowEl.style.zIndex = `${5 - racer.rank}`;
 
+          const expectedHtml = `${racer.driverName}${racer.isPlayer ? ' <span class="tower-you-tag">YOU</span>' : ''}`;
+          if (item.nameEl.innerHTML !== expectedHtml) {
+            item.nameEl.innerHTML = expectedHtml;
+          }
+
           item.badgeEl.textContent = `${racer.rank}`;
           item.badgeEl.className = `tower-rank-badge p${Math.min(3, racer.rank)}`;
 

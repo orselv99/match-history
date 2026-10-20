@@ -1,23 +1,13 @@
-import * as THREE from 'three';
 import { BaseModal } from './BaseModal.ts';
 import { appDB } from '../storage/AppDatabase.ts';
 import { initSeedReplays } from '../storage/ReplaySeedService.ts';
 import type { CachedReplayRecord } from '../storage/schema.ts';
 import { CIRCUIT_DEFINITIONS, type CircuitId } from '../data/circuits.ts';
 import { showToast } from './Toast.ts';
+import { MinimapReplayPlayer } from './MinimapReplayPlayer.ts';
 
 export interface MatchHistoryModalCallbacks {
   onPlayReplay?: (record: CachedReplayRecord) => void;
-}
-
-interface CachedCircuit2D {
-  points: Array<{ x: number; z: number }>;
-  minX: number;
-  maxX: number;
-  minZ: number;
-  maxZ: number;
-  s1Index: number;
-  s2Index: number;
 }
 
 /**
@@ -52,18 +42,11 @@ export class MatchHistoryModal extends BaseModal {
   private currentPage: number = 1;
   private readonly pageSize: number = 20;
   private paginationContainer: HTMLElement | null = null;
-  private minimapPlaybackSpeed: number = 1.0;
 
-  // 2D 미니맵 리플레이 및 인스펙터 상태
+  // 2D 미니맵 플레이어 및 인스펙터 상태
   public isInspectorViewOpen: boolean = false;
   private currentInspectorRecord: CachedReplayRecord | null = null;
-  private minimapAnimId: number | null = null;
-  private minimapRecord: CachedReplayRecord | null = null;
-  private minimapCurrentTimeMs: number = 0;
-  private minimapIsPlaying: boolean = false; // 기본값 일시정지 (자동 재생 비활성화)
-  private minimapLastTimestamp: number = 0;
-  private isScrubbing: boolean = false;
-  private circuit2DCache = new Map<string, CachedCircuit2D>();
+  private minimapPlayer: MinimapReplayPlayer = new MinimapReplayPlayer();
 
   private callbacks: MatchHistoryModalCallbacks;
 
@@ -195,35 +178,17 @@ export class MatchHistoryModal extends BaseModal {
     this.inspectorCard?.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
 
-      // 2D 미니맵 재생/일시정지 토글 버튼
-      const togglePlayBtn = target.closest('#inspector-btn-play') as HTMLElement | null;
       // 2D 미니맵 배속 토글 버튼 (1.0x -> 2.0x -> 4.0x)
       const speedBtn = target.closest("#inspector-btn-speed") as HTMLElement | null;
       if (speedBtn) {
-        if (this.minimapPlaybackSpeed === 1.0) {
-          this.minimapPlaybackSpeed = 2.0;
-        } else if (this.minimapPlaybackSpeed === 2.0) {
-          this.minimapPlaybackSpeed = 4.0;
-        } else {
-          this.minimapPlaybackSpeed = 1.0;
-        }
-        speedBtn.textContent = `${this.minimapPlaybackSpeed.toFixed(1)}x`;
+        this.minimapPlayer.cyclePlaybackSpeed();
         return;
       }
 
+      // 2D 미니맵 재생/일시정지 토글 버튼
+      const togglePlayBtn = target.closest('#inspector-btn-play') as HTMLElement | null;
       if (togglePlayBtn) {
-        if (!this.minimapIsPlaying) {
-          const maxDur = this.minimapRecord?.ticks[this.minimapRecord.ticks.length - 1]?.timeMs || 0;
-          if (this.minimapCurrentTimeMs >= maxDur - 100) {
-            this.minimapCurrentTimeMs = 0;
-          }
-          this.minimapIsPlaying = true;
-          togglePlayBtn.textContent = '⏸';
-        } else {
-          this.minimapIsPlaying = false;
-          togglePlayBtn.textContent = '▶';
-        }
-        this.minimapLastTimestamp = performance.now();
+        this.minimapPlayer.togglePlayPause();
         return;
       }
 
@@ -244,25 +209,18 @@ export class MatchHistoryModal extends BaseModal {
       if (target.id === 'inspector-scrubber') {
         const scrubber = target as HTMLInputElement;
         const progress = parseFloat(scrubber.value) / 1000;
-        if (this.minimapRecord && this.minimapRecord.ticks.length > 0) {
-          const totalDuration = this.minimapRecord.ticks[this.minimapRecord.ticks.length - 1].timeMs;
-          this.minimapCurrentTimeMs = progress * totalDuration;
-          this.drawMinimapFrame();
-        }
+        this.minimapPlayer.seekProgress(progress);
       }
     });
 
     this.inspectorCard?.addEventListener('mousedown', (e) => {
       if ((e.target as HTMLElement).id === 'inspector-scrubber') {
-        this.isScrubbing = true;
+        this.minimapPlayer.setScrubbing(true);
       }
     });
 
     window.addEventListener('mouseup', () => {
-      if (this.isScrubbing) {
-        this.isScrubbing = false;
-        this.minimapLastTimestamp = performance.now();
-      }
+      this.minimapPlayer.setScrubbing(false);
     });
 
     // 마우스 휠 이벤트 위임: 우측 미니맵 영역 위에서 휠을 굴려도 좌측 메타데이터 목록이 스크롤되도록 지원
@@ -298,7 +256,7 @@ export class MatchHistoryModal extends BaseModal {
    */
   public closeEntireModal(): void {
     this.closeInspector();
-    this.stopMinimapPlayback();
+    this.minimapPlayer.stop();
     super.close();
   }
 
@@ -319,24 +277,15 @@ export class MatchHistoryModal extends BaseModal {
     // 본문 내용 렌더링
     this.inspectorContentBody.innerHTML = this.buildInspectorContentHtml(rec);
 
-    // 2D 미니맵 재생 준비 (자동 재생 X, 0초 정지 상태로 첫 프레임 렌더링)
-    this.minimapRecord = rec;
-    this.minimapCurrentTimeMs = 0;
-    this.minimapIsPlaying = false; // 요구사항: 자동으로 플레이되지 않음
-    this.minimapLastTimestamp = performance.now();
-
-    const playBtn = document.getElementById('inspector-btn-play');
-    if (playBtn) playBtn.textContent = '▶';
-
-    this.drawMinimapFrame();
-    this.startMinimapLoop();
+    // 2D 미니맵 플레이어 연결 및 첫 프레임 렌더링
+    this.minimapPlayer.attach(this.inspectorContentBody, rec);
   }
 
   /**
    * 인스펙터를 닫고 메인 리더보드 목록 화면으로 복귀
    */
   public closeInspector(): void {
-    this.stopMinimapPlayback();
+    this.minimapPlayer.stop();
     this.isInspectorViewOpen = false;
     this.currentInspectorRecord = null;
 
@@ -771,7 +720,7 @@ export class MatchHistoryModal extends BaseModal {
           <div class="minimap-controls">
             <button type="button" class="minimap-play-btn" id="inspector-btn-play" title="재생 / 일시정지">▶</button>
             <input type="range" class="minimap-scrubber" id="inspector-scrubber" min="0" max="1000" value="0">
-            <button type="button" class="inspector-speed-badge" id="inspector-btn-speed" title="재생 배속 변경 (1.0x -> 2.0x -> 4.0x)">${this.minimapPlaybackSpeed.toFixed(1)}x</button>
+            <button type="button" class="inspector-speed-badge" id="inspector-btn-speed" title="재생 배속 변경 (1.0x -> 2.0x -> 4.0x)">${this.minimapPlayer.getSpeed().toFixed(1)}x</button>
           </div>
 
           <div class="inspector-telemetry-strip">
@@ -796,432 +745,6 @@ export class MatchHistoryModal extends BaseModal {
         </div>
       </div>
     `;
-  }
-
-  /**
-   * 2D 미니맵 애니메이션 루프 시작
-   */
-  private startMinimapLoop(): void {
-    this.stopMinimapPlayback();
-
-    const loop = () => {
-      this.tickMinimap();
-      if (this.isInspectorViewOpen) {
-        this.minimapAnimId = requestAnimationFrame(loop);
-      }
-    };
-
-    this.minimapAnimId = requestAnimationFrame(loop);
-  }
-
-  private stopMinimapPlayback(): void {
-    if (this.minimapAnimId !== null) {
-      cancelAnimationFrame(this.minimapAnimId);
-      this.minimapAnimId = null;
-    }
-  }
-
-  /**
-   * 2D 미니맵 프레임 진행 및 캔버스 갱신
-   */
-  private tickMinimap(): void {
-    if (!this.minimapRecord || !this.minimapRecord.ticks || this.minimapRecord.ticks.length === 0) return;
-
-    const ticks = this.minimapRecord.ticks;
-    const maxDuration = ticks[ticks.length - 1].timeMs;
-
-    if (this.minimapIsPlaying && !this.isScrubbing) {
-      const now = performance.now();
-      const dt = now - this.minimapLastTimestamp;
-      this.minimapLastTimestamp = now;
-
-      // 선택된 배속(1.0x / 2.0x / 4.0x)으로 재생
-      this.minimapCurrentTimeMs += dt * this.minimapPlaybackSpeed;
-      if (this.minimapCurrentTimeMs >= maxDuration) {
-        this.minimapCurrentTimeMs = maxDuration;
-        this.minimapIsPlaying = false;
-        const playBtn = document.getElementById('inspector-btn-play');
-        if (playBtn) playBtn.textContent = '▶';
-      }
-      this.drawMinimapFrame();
-    } else {
-      this.minimapLastTimestamp = performance.now();
-    }
-  }
-
-  /**
-   * 2D 미니맵 캔버스 렌더링 (Lerp 실시간 보간으로 60/120fps 부드러운 움직임)
-   * - 서킷 3대 섹터(S1, S2, S3) 컬러 시각화 및 S/F, S1, S2 체크포인트 라인/배지 렌더링
-   * - 플레이어 진행 방향 쉐브론 화살표 버그 완벽 수정 (스크린 좌표계 120ms 전방 샘플링)
-   * - 실시간 현재 랩 및 통과 섹터(SEC 1/2/3) 텔레메트리 HUD 표시
-   */
-  private drawMinimapFrame(): void {
-    const canvas = document.getElementById('inspector-minimap-canvas') as HTMLCanvasElement | null;
-    if (!canvas || !this.minimapRecord) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const w = canvas.width;
-    const h = canvas.height;
-
-    // 1. 배경 클리어
-    ctx.fillStyle = '#101319';
-    ctx.fillRect(0, 0, w, h);
-
-    // 2. 가이드 그리드 라인
-    ctx.strokeStyle = '#181c25';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < w; x += 40) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-    }
-    for (let y = 0; y < h; y += 40) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
-    }
-
-    // 3. 서킷 2D 정규화 좌표 가져오기
-    const circuitId = this.minimapRecord.metadata?.circuitId || 'circuit_monaco';
-    const cData = this.getCircuit2D(circuitId);
-
-    const pad = 24;
-    const availW = w - pad * 2;
-    const availH = h - pad * 2;
-    const rangeX = cData.maxX - cData.minX || 1;
-    const rangeZ = cData.maxZ - cData.minZ || 1;
-    const scale = Math.min(availW / rangeX, availH / rangeZ);
-    const midX = (cData.minX + cData.maxX) / 2;
-    const midZ = (cData.minZ + cData.maxZ) / 2;
-
-    const toX = (x: number) => (x - midX) * scale + w / 2;
-    const toY = (z: number) => (z - midZ) * scale + h / 2;
-
-    // 4. 서킷 도로 렌더링 (아스팔트 베이스 + 섹터별 컬러 구분선 + 체크포인트)
-    // 4-1. 아스팔트 베이스 외곽 트랙
-    ctx.beginPath();
-    ctx.lineWidth = 11;
-    ctx.strokeStyle = '#1e2330';
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    cData.points.forEach((p, i) => {
-      const cx = toX(p.x);
-      const cy = toY(p.z);
-      if (i === 0) ctx.moveTo(cx, cy);
-      else ctx.lineTo(cx, cy);
-    });
-    ctx.closePath();
-    ctx.stroke();
-
-    // 4-2. 섹터 1, 2, 3 컬러 중심선 (S1: Sky Cyan, S2: Violet Purple, S3: Amber Gold)
-    const drawSectorPath = (startIdx: number, endIdx: number, color: string) => {
-      ctx.beginPath();
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = color;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      for (let i = startIdx; i <= endIdx; i++) {
-        const p = cData.points[i % cData.points.length];
-        const cx = toX(p.x);
-        const cy = toY(p.z);
-        if (i === startIdx) ctx.moveTo(cx, cy);
-        else ctx.lineTo(cx, cy);
-      }
-      ctx.stroke();
-    };
-
-    // Sector 1: 0 ~ s1Index
-    drawSectorPath(0, cData.s1Index, '#38bdf8');
-    // Sector 2: s1Index ~ s2Index
-    drawSectorPath(cData.s1Index, cData.s2Index, '#a855f7');
-    // Sector 3: s2Index ~ points.length (and back to 0)
-    drawSectorPath(cData.s2Index, cData.points.length, '#f59e0b');
-
-    // 4-3. 섹터 체크포인트 라인 및 텍스트 배지 렌더링 함수
-    const drawCheckpointMarker = (idx: number, label: string, color: string, badgeOffset: { ox: number; oy: number }) => {
-      const p = cData.points[idx % cData.points.length];
-      const prevP = cData.points[(idx - 1 + cData.points.length) % cData.points.length];
-      const nextP = cData.points[(idx + 1) % cData.points.length];
-
-      const cx = toX(p.x);
-      const cy = toY(p.z);
-
-      // 트랙 접선 및 법선 단위 벡터
-      const fwdX = toX(nextP.x) - toX(prevP.x);
-      const fwdY = toY(nextP.z) - toY(prevP.z);
-      const fwdLen = Math.hypot(fwdX, fwdY) || 1;
-      const nx = -fwdY / fwdLen;
-      const ny = fwdX / fwdLen;
-
-      // 트랙 가로지르는 체크포인트 횡단선
-      const halfGate = 6.5;
-      ctx.beginPath();
-      ctx.lineWidth = 2.5;
-      ctx.strokeStyle = color;
-      ctx.moveTo(cx - nx * halfGate, cy - ny * halfGate);
-      ctx.lineTo(cx + nx * halfGate, cy + ny * halfGate);
-      ctx.stroke();
-
-      // 체크포인트 도트
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 체크포인트 텍스트 배지 (미니 필 박스)
-      const bx = cx + badgeOffset.ox;
-      const by = cy + badgeOffset.oy;
-      ctx.save();
-      ctx.font = 'bold 9px monospace';
-      const tw = ctx.measureText(label).width;
-
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      if (typeof (ctx as any).roundRect === 'function') {
-        (ctx as any).roundRect(bx - 3, by - 8, tw + 6, 12, 2);
-      } else {
-        ctx.rect(bx - 3, by - 8, tw + 6, 12);
-      }
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = color;
-      ctx.fillText(label, bx, by + 1);
-      ctx.restore();
-    };
-
-    // S/F, S1, S2 체크포인트 마커 렌더링
-    drawCheckpointMarker(0, 'S/F', '#ffffff', { ox: 8, oy: -3 });
-    drawCheckpointMarker(cData.s1Index, 'S1', '#38bdf8', { ox: 8, oy: -3 });
-    drawCheckpointMarker(cData.s2Index, 'S2', '#a855f7', { ox: 8, oy: -3 });
-
-    // 5. 현재 시각의 전/후 틱 탐색 및 부드러운 선형 보간 (Lerp)
-    const ticks = this.minimapRecord.ticks;
-    const maxDuration = ticks[ticks.length - 1].timeMs;
-
-    let low = 0, high = ticks.length - 1;
-    while (low <= high) {
-      const mid = (low + high) >> 1;
-      if (ticks[mid].timeMs <= this.minimapCurrentTimeMs) low = mid + 1;
-      else high = mid - 1;
-    }
-    const i1 = Math.max(0, Math.min(ticks.length - 1, high));
-    const i2 = Math.min(ticks.length - 1, i1 + 1);
-    const t1 = ticks[i1];
-    const t2 = ticks[i2];
-    const dt = t2.timeMs - t1.timeMs;
-    const alpha = dt > 0 ? THREE.MathUtils.clamp((this.minimapCurrentTimeMs - t1.timeMs) / dt, 0, 1) : 0;
-
-    // 플레이어 좌표, 속도, 각도 보간 (끊김 없는 매끄러운 이동)
-    const playerX = THREE.MathUtils.lerp(t1.x, t2.x, alpha);
-    const playerZ = THREE.MathUtils.lerp(t1.z, t2.z, alpha);
-    const currentSpeed = (this.minimapCurrentTimeMs <= 50) ? 0 : THREE.MathUtils.lerp(t1.speedKmh, t2.speedKmh, alpha);
-    const currentLap = t1.lap || 1;
-
-    // Yaw 각도 최단호(Shortest-arc) 보간
-    let dYaw = t2.yaw - t1.yaw;
-    while (dYaw > Math.PI) dYaw -= Math.PI * 2;
-    while (dYaw < -Math.PI) dYaw += Math.PI * 2;
-    const currentYaw = t1.yaw + dYaw * alpha;
-
-    // 트랙 최근접점을 통한 현재 통과 섹터(1, 2, 3) 정확한 판정
-    let closestIdx = 0;
-    let minDistSq = Infinity;
-    for (let i = 0; i < cData.points.length; i++) {
-      const dx = cData.points[i].x - playerX;
-      const dz = cData.points[i].z - playerZ;
-      const distSq = dx * dx + dz * dz;
-      if (distSq < minDistSq) {
-        minDistSq = distSq;
-        closestIdx = i;
-      }
-    }
-    let currentSector = 1;
-    if (closestIdx >= cData.s2Index) {
-      currentSector = 3;
-    } else if (closestIdx >= cData.s1Index) {
-      currentSector = 2;
-    } else {
-      currentSector = 1;
-    }
-
-    // 6. 라이벌 상대 3대 차량 보간 렌더링
-    if (t1.opponents) {
-      t1.opponents.forEach((opp1, oppIdx) => {
-        const opp2 = t2.opponents?.[oppIdx] || opp1;
-        const oppX = THREE.MathUtils.lerp(opp1.x, opp2.x, alpha);
-        const oppZ = THREE.MathUtils.lerp(opp1.z, opp2.z, alpha);
-        const ox = toX(oppX);
-        const oy = toY(oppZ);
-        const color = this.minimapRecord?.metadata?.opponentConfigs?.[oppIdx]?.color || '#f59e0b';
-
-        ctx.fillStyle = color;
-        ctx.beginPath();
-        ctx.arc(ox, oy, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#000';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      });
-    }
-
-    // 7. 플레이어 차량 렌더링 (빛나는 코어 닷 + 명확한 전방 쉐브론 화살표)
-    const px = toX(playerX);
-    const py = toY(playerZ);
-    const playerColor = this.minimapRecord.metadata?.color || '#38bdf8';
-
-    // 정확한 화면 진행 방향 단위 벡터 계산:
-    // 120ms 앞선 전방 위치를 샘플링하여 스크린 좌표계 변화량(dx, dy)을 직접 구함 (Y축 반전/각도 오류 원천 방지)
-    const lookaheadTimeMs = Math.min(maxDuration, this.minimapCurrentTimeMs + 120);
-    let dirX = 0;
-    let dirY = 0;
-
-    if (lookaheadTimeMs > this.minimapCurrentTimeMs) {
-      let fLow = 0, fHigh = ticks.length - 1;
-      while (fLow <= fHigh) {
-        const mid = (fLow + fHigh) >> 1;
-        if (ticks[mid].timeMs <= lookaheadTimeMs) fLow = mid + 1;
-        else fHigh = mid - 1;
-      }
-      const fi1 = Math.max(0, Math.min(ticks.length - 1, fHigh));
-      const fi2 = Math.min(ticks.length - 1, fi1 + 1);
-      const ft1 = ticks[fi1];
-      const ft2 = ticks[fi2];
-      const fdt = ft2.timeMs - ft1.timeMs;
-      const fAlpha = fdt > 0 ? (lookaheadTimeMs - ft1.timeMs) / fdt : 0;
-      const fwdX = THREE.MathUtils.lerp(ft1.x, ft2.x, fAlpha);
-      const fwdZ = THREE.MathUtils.lerp(ft1.z, ft2.z, fAlpha);
-
-      dirX = toX(fwdX) - px;
-      dirY = toY(fwdZ) - py;
-    }
-
-    const moveLen = Math.hypot(dirX, dirY);
-    if (moveLen > 0.05) {
-      dirX /= moveLen;
-      dirY /= moveLen;
-    } else {
-      // 정지 상태 시 yaw 각도 기반 (스크린 좌표계에서 +Z는 +Y)
-      dirX = Math.sin(currentYaw);
-      dirY = Math.cos(currentYaw);
-      const yawLen = Math.hypot(dirX, dirY) || 1;
-      dirX /= yawLen;
-      dirY /= yawLen;
-    }
-
-    const normX = -dirY;
-    const normY = dirX;
-
-    // 7-1. 플레이어 코어 도트
-    ctx.save();
-    ctx.shadowColor = playerColor;
-    ctx.shadowBlur = 9;
-    ctx.fillStyle = playerColor;
-    ctx.beginPath();
-    ctx.arc(px, py, 5.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-
-    // 7-2. 날렵하고 명확한 전방 쉐브론 화살표 (진행 방향을 정확하게 가리킴)
-    const tipDist = 13;
-    const baseDist = 6;
-    const wingWidth = 4.5;
-
-    const tipX = px + dirX * tipDist;
-    const tipY = py + dirY * tipDist;
-    const leftX = px + dirX * baseDist + normX * wingWidth;
-    const leftY = py + dirY * baseDist + normY * wingWidth;
-    const rightX = px + dirX * baseDist - normX * wingWidth;
-    const rightY = py + dirY * baseDist - normY * wingWidth;
-    const innerX = px + dirX * (baseDist + 1.5);
-    const innerY = py + dirY * (baseDist + 1.5);
-
-    ctx.save();
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = playerColor;
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.moveTo(tipX, tipY);
-    ctx.lineTo(leftX, leftY);
-    ctx.lineTo(innerX, innerY);
-    ctx.lineTo(rightX, rightY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
-    // 8. 테크니컬 HUD 텍스트 (서킷 도로와 겹치지 않도록 우측 상단 빈 공간에 오른쪽 정렬 배치, 범례는 제거)
-    const totalLaps = this.minimapRecord.metadata?.totalLaps || 3;
-    const secBadgeColor = currentSector === 1 ? '#38bdf8' : (currentSector === 2 ? '#c084fc' : '#fbbf24');
-
-    ctx.save();
-    ctx.textAlign = 'right';
-
-    // 1행: 현재 속도 (km/h)
-    ctx.fillStyle = '#38bdf8';
-    ctx.font = 'bold 12px monospace';
-    ctx.fillText(`${currentSpeed.toFixed(0)} km/h`, w - 14, 18);
-
-    // 2행: LAP 및 SECTOR 정보 (우측 상단 정렬)
-    ctx.font = 'bold 10px monospace';
-    const secStr = `SEC ${currentSector}`;
-    const secWidth = ctx.measureText(secStr).width;
-    ctx.fillStyle = secBadgeColor;
-    ctx.fillText(secStr, w - 14, 33);
-
-    ctx.font = '10px monospace';
-    ctx.fillStyle = '#94a3b8';
-    ctx.fillText(`LAP ${currentLap}/${totalLaps} · `, w - 14 - secWidth, 33);
-
-    ctx.restore();
-
-    // 9. DOM 컨트롤 및 텔레메트리 업데이트
-    const timeDisplay = document.getElementById('inspector-time-display');
-    if (timeDisplay) {
-      timeDisplay.textContent = `${this.formatTime(this.minimapCurrentTimeMs)} / ${this.formatTime(maxDuration)}`;
-    }
-
-    const scrubber = document.getElementById('inspector-scrubber') as HTMLInputElement | null;
-    if (scrubber && !this.isScrubbing) {
-      scrubber.value = String(Math.round((this.minimapCurrentTimeMs / (maxDuration || 1)) * 1000));
-    }
-
-    const telemetryInfo = document.getElementById('inspector-telemetry-info');
-    if (telemetryInfo) {
-      telemetryInfo.innerHTML = `
-        <span>${currentSpeed.toFixed(0)} km/h</span> |
-        <span>LAP ${currentLap} / ${this.minimapRecord.metadata?.totalLaps || 3}</span> |
-        <span style="color: ${secBadgeColor}; font-weight: 700;">SECTOR ${currentSector}</span>
-      `;
-    }
-  }
-
-  /**
-   * 서킷 2D 커브 좌표 및 바운딩 박스 캐싱
-   */
-  private getCircuit2D(circuitId: CircuitId): CachedCircuit2D {
-    if (this.circuit2DCache.has(circuitId)) {
-      return this.circuit2DCache.get(circuitId)!;
-    }
-    const def = CIRCUIT_DEFINITIONS[circuitId] || CIRCUIT_DEFINITIONS.circuit_monaco;
-    const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
-    const threePts = curve.getPoints(180);
-    let minX = Infinity, maxX = -Infinity;
-    let minZ = Infinity, maxZ = -Infinity;
-    const points = threePts.map(p => {
-      if (p.x < minX) minX = p.x;
-      if (p.x > maxX) maxX = p.x;
-      if (p.z < minZ) minZ = p.z;
-      if (p.z > maxZ) maxZ = p.z;
-      return { x: p.x, z: p.z };
-    });
-    const s1Index = Math.round(points.length * 0.33);
-    const s2Index = Math.round(points.length * 0.66);
-    const cached: CachedCircuit2D = { points, minX, maxX, minZ, maxZ, s1Index, s2Index };
-    this.circuit2DCache.set(circuitId, cached);
-    return cached;
   }
 
   private getVehicleBadge(vehicleModelId: string): string {

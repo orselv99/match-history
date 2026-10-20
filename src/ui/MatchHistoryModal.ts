@@ -44,7 +44,6 @@ export class MatchHistoryModal extends BaseModal {
   private inspectorCard: HTMLElement | null;
   private inspectorBtnClose: HTMLElement | null;
   private inspectorTagMatchcode: HTMLElement | null;
-  private inspectorBadgeRank: HTMLElement | null;
   private inspectorContentBody: HTMLElement | null;
 
   private allRecords: CachedReplayRecord[] = [];
@@ -86,7 +85,6 @@ export class MatchHistoryModal extends BaseModal {
     this.inspectorCard = document.getElementById('history-inspector-card');
     this.inspectorBtnClose = document.getElementById('inspector-btn-close');
     this.inspectorTagMatchcode = document.getElementById('inspector-tag-matchcode');
-    this.inspectorBadgeRank = document.getElementById('inspector-badge-rank');
     this.inspectorContentBody = document.getElementById('inspector-content-body');
 
     this.bindEvents();
@@ -226,6 +224,14 @@ export class MatchHistoryModal extends BaseModal {
         this.minimapLastTimestamp = performance.now();
       }
     });
+
+    // 마우스 휠 이벤트 위임: 우측 미니맵 영역 위에서 휠을 굴려도 좌측 메타데이터 목록이 스크롤되도록 지원
+    this.inspectorCard?.addEventListener('wheel', (e) => {
+      const metaCol = this.inspectorContentBody?.querySelector('.inspector-meta-col') as HTMLElement | null;
+      if (metaCol && !metaCol.contains(e.target as Node)) {
+        metaCol.scrollTop += e.deltaY;
+      }
+    }, { passive: true });
   }
 
   public open(): void {
@@ -273,12 +279,6 @@ export class MatchHistoryModal extends BaseModal {
     // 헤더 태그 갱신
     if (this.inspectorTagMatchcode) {
       this.inspectorTagMatchcode.textContent = `MATCH // ${rec.matchCode}`;
-    }
-
-    const finishRank = rec.metadata?.raceResults?.find(r => r.isPlayer)?.rank || 1;
-    if (this.inspectorBadgeRank) {
-      this.inspectorBadgeRank.className = `detail-rank-badge ${finishRank === 1 ? 'detail-rank-1' : ''}`;
-      this.inspectorBadgeRank.textContent = `🏁 완주 결과: P${finishRank} / 4`;
     }
 
     // 본문 내용 렌더링
@@ -511,7 +511,7 @@ export class MatchHistoryModal extends BaseModal {
     const s3CumMs = s2CumMs + s3IndivMs;
 
     const s1SplitStr = s1Ms > 0 ? this.formatTime(s1Ms) : '--:--.---';
-    const s1CumStr = s1Ms > 0 ? this.formatTime(s1Ms) : '--:--.---';
+    const s1CumStr = '-'; // SECTOR 1은 이전 누적 시간이 없으므로 하이픈(-) 표시
     const s2SplitStr = s2IndivMs > 0 ? this.formatTime(s2IndivMs) : '--:--.---';
     const s2CumStr = s2IndivMs > 0 ? this.formatTime(s2CumMs) : '--:--.---';
     const s3SplitStr = s3IndivMs > 0 ? this.formatTime(s3IndivMs) : '--:--.---';
@@ -599,7 +599,7 @@ export class MatchHistoryModal extends BaseModal {
               <div class="sector-grid-row">
                 <span class="sector-tag s1">SECTOR 1</span>
                 <span class="sector-time-val text-right">${s1SplitStr}</span>
-                <span class="sector-cum-val text-right text-cyan">${s1CumStr}</span>
+                <span class="sector-cum-val text-right text-muted">${s1CumStr}</span>
               </div>
               <div class="sector-grid-row">
                 <span class="sector-tag s2">SECTOR 2</span>

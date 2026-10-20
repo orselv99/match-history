@@ -718,32 +718,41 @@
 }
 
 .inspector-content-body {
-  overflow-y: auto;
-  scrollbar-gutter: stable;
+  overflow: hidden;
   flex: 1;
-  padding: 20px;
+  padding: 16px 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
 .inspector-layout-grid {
   display: grid;
   grid-template-columns: 1fr 440px;
   gap: 20px;
-  align-items: start;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  align-items: center; /* 가운데 + 센터 완벽 정렬 */
 }
 
 .inspector-meta-col {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  max-height: 100%;
+  overflow-y: auto; /* 좌측 메타데이터 패널 단독 스크롤 */
+  scrollbar-gutter: stable;
+  padding-right: 6px;
+  padding-top: 10px; /* 상단 플로팅 라벨 여백 확보 */
+  padding-bottom: 12px;
+  box-sizing: border-box;
 }
 
 .inspector-minimap-col {
   align-self: center;
-  position: sticky;
-  top: 24px;
   margin: auto 0;
   background: rgba(0, 0, 0, 0.32);
   border: 1px solid var(--border-subtle);
@@ -753,11 +762,27 @@
   gap: 12px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
 }
 
 .inspector-minimap-col:hover {
   border-color: var(--border-strong);
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-height: 520px) {
+  .inspector-content-body {
+    overflow-y: auto;
+  }
+  .inspector-layout-grid {
+    height: auto;
+    min-height: 100%;
+  }
+  .inspector-meta-col {
+    height: auto;
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 
 .minimap-floating-label {
@@ -920,6 +945,14 @@
 .floating-card-value.text-accent-gold {
   color: #fbbf24;
   font-weight: 800;
+}
+
+.text-muted {
+  color: var(--text-muted) !important;
+}
+
+.text-cyan {
+  color: #38bdf8 !important;
 }
 
 /* 4행: 베스트 랩 섹터 기록 그리드 (SECTOR | 시간 | 누적시간) */

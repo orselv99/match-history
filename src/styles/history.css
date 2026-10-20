@@ -737,7 +737,7 @@
 .inspector-meta-col {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .inspector-minimap-col {
@@ -796,34 +796,279 @@
   margin-top: 4px;
 }
 
-.inspector-tech-box {
-  background: rgba(0, 0, 0, 0.25);
+/* =====================================================================
+   인스펙터 플로팅 그룹 및 6대 메트릭 카드 (Floating Outlined Cards)
+   ===================================================================== */
+.detail-floating-group {
+  position: relative;
   border: 1px solid var(--border-subtle);
-  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 16px 14px 14px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 6px;
 }
 
-.inspector-tech-grid {
+.floating-group-title {
+  position: absolute;
+  top: -8px;
+  left: 12px;
+  background: var(--surface-card); /* #1a1b20 */
+  padding: 0 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.floating-group-title .driver-name-highlight {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* 2열 3행 메트릭 그리드 (1행: 머신, 서킷 / 2행: 베스트 랩타임, 총 레이스 / 3행: 최고속도, 평균속도) */
+.detail-meta-grid-2col {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 12px;
+  margin-top: 4px;
 }
 
-.tech-item {
+.detail-floating-card {
+  position: relative;
+  border: 1px solid var(--border-subtle);
+  background: #14161c;
+  padding: 18px 10px 14px 10px;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.detail-floating-card:hover {
+  border-color: var(--border-strong);
+  background: #171920;
+}
+
+.floating-card-label {
+  position: absolute;
+  top: -7px;
+  left: 10px;
+  background: #14161c;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.detail-floating-card:hover .floating-card-label {
+  background: #171920;
+}
+
+.floating-card-value {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  word-break: break-word;
+}
+
+.floating-card-value.text-accent-gold {
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+/* 4행: 베스트 랩 섹터 기록 그리드 (SECTOR | 시간 | 누적시간) */
+.sector-record-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.sector-grid-header {
+  display: grid;
+  grid-template-columns: 95px 1fr 1fr;
+  align-items: center;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.sector-grid-row {
+  display: grid;
+  grid-template-columns: 95px 1fr 1fr;
+  align-items: center;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  transition: background 0.15s ease;
+}
+
+.sector-grid-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sector-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.sector-tag.s1 { color: #38bdf8; }
+.sector-tag.s2 { color: #fbbf24; }
+.sector-tag.s3 { color: #c084fc; }
+
+.sector-time-val {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.sector-cum-val {
+  font-weight: 700;
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* 5행: 레이스 완주 순위표 (1~4위) */
+.rank-finish-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.rank-finish-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  transition: background 0.15s ease;
+}
+
+.rank-finish-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.rank-finish-row.player-row {
+  border-color: rgba(196, 90, 114, 0.4);
+  background: rgba(196, 90, 114, 0.09);
+}
+
+.rank-badge-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 58px;
+}
+
+.rank-pos-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.rank-pos-badge.gold { color: #fbbf24; }
+.rank-pos-badge.silver { color: #e2e8f0; }
+.rank-pos-badge.bronze { color: #d97706; }
+.rank-pos-badge.fourth { color: var(--text-muted); }
+
+.rank-driver-name {
+  flex: 1;
+  margin: 0 10px;
+  color: var(--text-secondary);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rank-driver-name.player-driver {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.you-pill {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 4px;
+  background: var(--accent-spec);
+  color: #000;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.rank-time-val {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.player-row .rank-time-val {
+  color: var(--accent-spec);
+}
+
+/* 6행: 텔레메트리 리플레이 데이터 정보 (한줄 column-direction) */
+.inspector-tech-col-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.tech-row-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
 }
 
-.tech-k {
+.tech-row-item .tech-k {
   color: var(--text-muted);
+  letter-spacing: 0.03em;
 }
 
-.tech-v {
+.tech-row-item .tech-v {
   color: var(--text-primary);
   font-weight: 700;
 }

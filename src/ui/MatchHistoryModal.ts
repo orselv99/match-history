@@ -510,26 +510,39 @@ export class MatchHistoryModal extends BaseModal {
     const s2CumMs = s1Ms + s2IndivMs;
     const s3CumMs = s2CumMs + s3IndivMs;
 
-    const s1Str = s1Ms > 0 ? this.formatTime(s1Ms) : '--:--.---';
-    const s2Str = s2IndivMs > 0 ? `${this.formatTime(s2CumMs)} <span style="font-size: 11px; opacity: 0.65; margin-left: 4px;">(+${this.formatTime(s2IndivMs)})</span>` : '--:--.---';
-    const s3Str = s3IndivMs > 0 ? `${this.formatTime(s3CumMs)} <span style="font-size: 11px; opacity: 0.65; margin-left: 4px;">(+${this.formatTime(s3IndivMs)})</span>` : '--:--.---';
+    const s1SplitStr = s1Ms > 0 ? this.formatTime(s1Ms) : '--:--.---';
+    const s1CumStr = s1Ms > 0 ? this.formatTime(s1Ms) : '--:--.---';
+    const s2SplitStr = s2IndivMs > 0 ? this.formatTime(s2IndivMs) : '--:--.---';
+    const s2CumStr = s2IndivMs > 0 ? this.formatTime(s2CumMs) : '--:--.---';
+    const s3SplitStr = s3IndivMs > 0 ? this.formatTime(s3IndivMs) : '--:--.---';
+    const s3CumStr = s3IndivMs > 0 ? this.formatTime(s3CumMs) : '--:--.---';
 
     // 1~4위 순위표
     let raceResultsHtml = '';
     if (meta?.raceResults && meta.raceResults.length > 0) {
       raceResultsHtml = meta.raceResults.map(r => `
-        <div class="detail-sub-item">
-          <span class="detail-sub-k" style="${r.isPlayer ? 'color: var(--accent-spec); font-weight: 700;' : ''}">
-            ${r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : '4th'} P${r.rank} ${this.escapeHtml(r.driverName)} ${r.isPlayer ? '(YOU)' : ''}
+        <div class="rank-finish-row ${r.isPlayer ? 'player-row' : ''}">
+          <div class="rank-badge-wrap">
+            <span class="rank-pos-badge ${r.rank === 1 ? 'gold' : r.rank === 2 ? 'silver' : r.rank === 3 ? 'bronze' : 'fourth'}">
+              ${r.rank === 1 ? '🥇' : r.rank === 2 ? '🥈' : r.rank === 3 ? '🥉' : ''} P${r.rank}
+            </span>
+          </div>
+          <span class="rank-driver-name ${r.isPlayer ? 'player-driver' : ''}">
+            ${this.escapeHtml(r.driverName)}${r.isPlayer ? ' <span class="you-pill">YOU</span>' : ''}
           </span>
-          <span class="detail-sub-v" style="${r.isPlayer ? 'color: var(--accent-spec);' : ''}">${r.timeFormatted}</span>
+          <span class="rank-time-val">${r.timeFormatted}</span>
         </div>
       `).join('');
     } else {
       raceResultsHtml = `
-        <div class="detail-sub-item">
-          <span class="detail-sub-k" style="color: var(--accent-spec); font-weight: 700;">🥇 P1 ${driverName} (YOU)</span>
-          <span class="detail-sub-v" style="color: var(--accent-spec);">${bestLapStr}</span>
+        <div class="rank-finish-row player-row">
+          <div class="rank-badge-wrap">
+            <span class="rank-pos-badge gold">🥇 P1</span>
+          </div>
+          <span class="rank-driver-name player-driver">
+            ${driverName} <span class="you-pill">YOU</span>
+          </span>
+          <span class="rank-time-val">${bestLapStr}</span>
         </div>
       `;
     }
@@ -540,70 +553,95 @@ export class MatchHistoryModal extends BaseModal {
       <div class="inspector-layout-grid">
         <!-- 좌측: 메타데이터 컬럼 -->
         <div class="inspector-meta-col">
-          <div class="detail-meta-grid">
-            <div class="detail-cell">
-              <span class="detail-k">드라이버</span>
-              <span class="detail-v" style="color: #fff;">${driverName}</span>
-            </div>
-            <div class="detail-cell">
-              <span class="detail-k">머신</span>
-              <span class="detail-v">${vehicleName}</span>
-            </div>
-            <div class="detail-cell">
-              <span class="detail-k">서킷</span>
-              <span class="detail-v">${circuitTitle}</span>
-            </div>
-            <div class="detail-cell">
-              <span class="detail-k">베스트 랩타임</span>
-              <span class="detail-v" style="color: #fbbf24;">${bestLapStr}</span>
-            </div>
-            <div class="detail-cell">
-              <span class="detail-k">총 레이스 시간</span>
-              <span class="detail-v">${totalRaceStr}</span>
-            </div>
-            <div class="detail-cell">
-              <span class="detail-k">최고 / 평균속도</span>
-              <span class="detail-v">${topSpeedStr} / ${avgSpeedStr}</span>
-            </div>
-          </div>
-
-          <div class="detail-breakdown-row">
-            <!-- 베스트랩 섹터 기록 -->
-            <div class="detail-sub-group">
-              <div class="detail-sub-title">⏱ 베스트 랩 섹터 기록</div>
-              <div class="detail-sub-list">
-                <div class="detail-sub-item">
-                  <span class="detail-sub-k">SECTOR 1</span>
-                  <span class="detail-sub-v">${s1Str}</span>
-                </div>
-                <div class="detail-sub-item">
-                  <span class="detail-sub-k">SECTOR 2</span>
-                  <span class="detail-sub-v">${s2Str}</span>
-                </div>
-                <div class="detail-sub-item">
-                  <span class="detail-sub-k">SECTOR 3</span>
-                  <span class="detail-sub-v">${s3Str}</span>
-                </div>
+          <!-- 1~3행: 드라이버 Parent Grouping (총 6개의 카드) -->
+          <div class="detail-floating-group driver-parent-group">
+            <span class="floating-group-title">드라이버: <strong class="driver-name-highlight">${driverName}</strong></span>
+            <div class="detail-meta-grid-2col">
+              <!-- 1행: 머신, 서킷 -->
+              <div class="detail-floating-card">
+                <span class="floating-card-label">머신</span>
+                <span class="floating-card-value">${vehicleName}</span>
               </div>
-            </div>
-
-            <!-- 1~4위 경기 최종 순위표 -->
-            <div class="detail-sub-group">
-              <div class="detail-sub-title">🏆 레이스 완주 순위 (1~4위)</div>
-              <div class="detail-sub-list">
-                ${raceResultsHtml}
+              <div class="detail-floating-card">
+                <span class="floating-card-label">서킷</span>
+                <span class="floating-card-value">${circuitTitle}</span>
+              </div>
+              <!-- 2행: 베스트 랩타임, 총 레이스 시간 -->
+              <div class="detail-floating-card">
+                <span class="floating-card-label">베스트 랩타임</span>
+                <span class="floating-card-value text-accent-gold">${bestLapStr}</span>
+              </div>
+              <div class="detail-floating-card">
+                <span class="floating-card-label">총 레이스 시간</span>
+                <span class="floating-card-value">${totalRaceStr}</span>
+              </div>
+              <!-- 3행: 최고속도, 평균속도 -->
+              <div class="detail-floating-card">
+                <span class="floating-card-label">최고속도</span>
+                <span class="floating-card-value">${topSpeedStr}</span>
+              </div>
+              <div class="detail-floating-card">
+                <span class="floating-card-label">평균속도</span>
+                <span class="floating-card-value">${avgSpeedStr}</span>
               </div>
             </div>
           </div>
 
-          <!-- 텔레메트리 & 리플레이 데이터 규격 -->
-          <div class="inspector-tech-box">
-            <div class="detail-sub-title">📊 텔레메트리 & 리플레이 데이터 정보</div>
-            <div class="inspector-tech-grid">
-              <div class="tech-item"><span class="tech-k">샘플링 레이트</span><span class="tech-v">8Hz / Catmull-Rom 3차 보간</span></div>
-              <div class="tech-item"><span class="tech-k">기록 프레임 수</span><span class="tech-v">${rec.ticks.length.toLocaleString()} 틱</span></div>
-              <div class="tech-item"><span class="tech-k">데이터 압축률</span><span class="tech-v text-cyan">95.5% (고정소수점 패킷)</span></div>
-              <div class="tech-item"><span class="tech-k">저장 일시</span><span class="tech-v">${this.formatDate(rec.savedAt || rec.createdAt)}</span></div>
+          <!-- 4행: 베스트 랩 섹터 기록 -->
+          <div class="detail-floating-group">
+            <span class="floating-group-title">⏱ 베스트 랩 섹터 기록</span>
+            <div class="sector-record-grid">
+              <div class="sector-grid-header">
+                <span>SECTOR</span>
+                <span class="text-right">시간</span>
+                <span class="text-right">누적시간</span>
+              </div>
+              <div class="sector-grid-row">
+                <span class="sector-tag s1">SECTOR 1</span>
+                <span class="sector-time-val text-right">${s1SplitStr}</span>
+                <span class="sector-cum-val text-right text-cyan">${s1CumStr}</span>
+              </div>
+              <div class="sector-grid-row">
+                <span class="sector-tag s2">SECTOR 2</span>
+                <span class="sector-time-val text-right">${s2SplitStr}</span>
+                <span class="sector-cum-val text-right text-cyan">${s2CumStr}</span>
+              </div>
+              <div class="sector-grid-row">
+                <span class="sector-tag s3">SECTOR 3</span>
+                <span class="sector-time-val text-right">${s3SplitStr}</span>
+                <span class="sector-cum-val text-right text-cyan">${s3CumStr}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5행: 레이스 완주 순위 -->
+          <div class="detail-floating-group">
+            <span class="floating-group-title">🏆 레이스 완주 순위 (1~4위)</span>
+            <div class="rank-finish-list">
+              ${raceResultsHtml}
+            </div>
+          </div>
+
+          <!-- 6행: 텔레메트리 리플레이 데이터 정보 -->
+          <div class="detail-floating-group">
+            <span class="floating-group-title">📊 텔레메트리 & 리플레이 데이터 정보</span>
+            <div class="inspector-tech-col-list">
+              <div class="tech-row-item">
+                <span class="tech-k">샘플링 레이트</span>
+                <span class="tech-v">8Hz / Catmull-Rom 3차 보간</span>
+              </div>
+              <div class="tech-row-item">
+                <span class="tech-k">기록 프레임 수</span>
+                <span class="tech-v">${rec.ticks.length.toLocaleString()} 틱</span>
+              </div>
+              <div class="tech-row-item">
+                <span class="tech-k">데이터 압축률</span>
+                <span class="tech-v text-cyan">95.5% (고정소수점 패킷)</span>
+              </div>
+              <div class="tech-row-item">
+                <span class="tech-k">저장 일시</span>
+                <span class="tech-v">${this.formatDate(rec.savedAt || rec.createdAt)}</span>
+              </div>
             </div>
           </div>
         </div>

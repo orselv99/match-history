@@ -101,8 +101,8 @@ export class PauseModal extends BaseModal<PauseModalInfo> {
         if (this.resumeDesc) this.resumeDesc.textContent = '현재 위치와 시간에서 리플레이를 계속 시청합니다 [ESC]';
         if (this.settingsNum) this.settingsNum.textContent = '02';
         if (this.exitNum) this.exitNum.textContent = '03';
-        if (this.exitTitle) this.exitTitle.textContent = '리플레이 종료 (메인 메뉴로 나가기)';
-        if (this.exitDesc) this.exitDesc.textContent = '리플레이 뷰어를 종료하고 로비 메뉴로 돌아갑니다';
+        if (this.exitTitle) this.exitTitle.textContent = '인스펙터로 돌아가기';
+        if (this.exitDesc) this.exitDesc.textContent = '3D 리플레이를 종료하고 경기 상세 인스펙터 화면으로 돌아갑니다';
       } else {
         if (this.pauseTag) this.pauseTag.textContent = '경기 일시 정지';
         if (this.pauseTitle) this.pauseTitle.textContent = '일시정지';

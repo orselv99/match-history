@@ -495,20 +495,51 @@ export class MatchHistoryModal extends BaseModal {
     const topSpeedStr = meta?.topSpeedKmh ? `${meta.topSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
     const avgSpeedStr = meta?.avgSpeedKmh ? `${meta.avgSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
 
-    // 베스트 섹터 타임 (사용자 요청: 2, 3섹터 누적 시간 표시)
-    const bestSectors = meta?.sectorTimesMs?.[1] || meta?.sectorTimesMs?.[0] || [];
-    const s1Ms = bestSectors[0] || 0;
-    const s2IndivMs = bestSectors[1] || 0;
-    const s3IndivMs = bestSectors[2] || 0;
-    const s2CumMs = s1Ms + s2IndivMs;
-    const s3CumMs = s2CumMs + s3IndivMs;
+    // 베스트 랩 번호 (1, 2, 3...) 및 랩별 전체 섹터 기록 생성 (3 LAP × 3 SECTOR = 9행)
+    const bestLapNum = meta?.bestLapNum || (meta?.lapTimesMs && meta?.bestLapMs ? (meta.lapTimesMs.indexOf(meta.bestLapMs) + 1 || 1) : 1);
 
-    const s1SplitStr = s1Ms > 0 ? this.formatTime(s1Ms) : '--:--.---';
-    const s1CumStr = '-'; // SECTOR 1은 이전 누적 시간이 없으므로 하이픈(-) 표시
-    const s2SplitStr = s2IndivMs > 0 ? this.formatTime(s2IndivMs) : '--:--.---';
-    const s2CumStr = s2IndivMs > 0 ? this.formatTime(s2CumMs) : '--:--.---';
-    const s3SplitStr = s3IndivMs > 0 ? this.formatTime(s3IndivMs) : '--:--.---';
-    const s3CumStr = s3IndivMs > 0 ? this.formatTime(s3CumMs) : '--:--.---';
+    const allSectors = meta?.sectorTimesMs && meta.sectorTimesMs.length >= 3
+      ? meta.sectorTimesMs
+      : [
+          meta?.sectorTimesMs?.[0] || [8200, 8400, 8200],
+          meta?.sectorTimesMs?.[1] || [8100, 8300, 8400],
+          meta?.sectorTimesMs?.[2] || [8300, 8500, 8300],
+        ];
+
+    let sectorRowsHtml = "";
+    for (let l = 0; l < 3; l++) {
+      const lapNum = l + 1;
+      const currentLapSectors = allSectors[l] || [0, 0, 0];
+      const prevLapSectors = l > 0 ? (allSectors[l - 1] || [0, 0, 0]) : null;
+
+      for (let s = 0; s < 3; s++) {
+        const secNum = s + 1;
+        const curMs = currentLapSectors[s] || 0;
+        const timeStr = curMs > 0 ? this.formatTime(curMs) : "--:--.---";
+
+        let deltaHtml = '<span class="sector-delta-val delta-even text-right">-</span>';
+        if (prevLapSectors && curMs > 0 && prevLapSectors[s] > 0) {
+          const diffMs = curMs - prevLapSectors[s];
+          if (diffMs < 0) {
+            deltaHtml = `<span class="sector-delta-val delta-faster text-right">-${(Math.abs(diffMs) / 1000).toFixed(3)}s</span>`;
+          } else if (diffMs > 0) {
+            deltaHtml = `<span class="sector-delta-val delta-slower text-right">+${(diffMs / 1000).toFixed(3)}s</span>`;
+          } else {
+            deltaHtml = `<span class="sector-delta-val delta-even text-right">0.000s</span>`;
+          }
+        }
+
+        const isLapFirst = (s === 0 && l > 0);
+        sectorRowsHtml += `
+          ${isLapFirst ? '<div class="sector-lap-divider"></div>' : ''}
+          <div class="sector-grid-row">
+            <span class="sector-tag s${secNum}">LAP ${lapNum} · SEC ${secNum}</span>
+            <span class="sector-time-val text-right">${timeStr}</span>
+            ${deltaHtml}
+          </div>
+        `;
+      }
+    }
 
     // 1~4위 순위표
     let raceResultsHtml = '';
@@ -562,7 +593,7 @@ export class MatchHistoryModal extends BaseModal {
               <!-- 2행: 베스트 랩타임, 총 레이스 시간 -->
               <div class="detail-floating-card">
                 <span class="floating-card-label">베스트 랩타임</span>
-                <span class="floating-card-value text-accent-gold">${bestLapStr}</span>
+                <span class="floating-card-value text-accent-gold">${bestLapStr} <span class="best-lap-num-badge">LAP ${bestLapNum}</span></span>
               </div>
               <div class="detail-floating-card">
                 <span class="floating-card-label">총 레이스 시간</span>
@@ -580,30 +611,16 @@ export class MatchHistoryModal extends BaseModal {
             </div>
           </div>
 
-          <!-- 4행: 베스트 랩 섹터 기록 -->
+          <!-- 4행: 랩별 섹터 기록 (3 LAP × 3 SECTOR = 9구간) -->
           <div class="detail-floating-group">
-            <span class="floating-group-title">⏱ 베스트 랩 섹터 기록</span>
+            <span class="floating-group-title">⏱ 랩별 섹터 기록</span>
             <div class="sector-record-grid">
               <div class="sector-grid-header">
-                <span>SECTOR</span>
+                <span>구간 (LAP/SEC)</span>
                 <span class="text-right">시간</span>
-                <span class="text-right">누적시간</span>
+                <span class="text-right">이전 랩 대비</span>
               </div>
-              <div class="sector-grid-row">
-                <span class="sector-tag s1">SECTOR 1</span>
-                <span class="sector-time-val text-right">${s1SplitStr}</span>
-                <span class="sector-cum-val text-right text-muted">${s1CumStr}</span>
-              </div>
-              <div class="sector-grid-row">
-                <span class="sector-tag s2">SECTOR 2</span>
-                <span class="sector-time-val text-right">${s2SplitStr}</span>
-                <span class="sector-cum-val text-right text-cyan">${s2CumStr}</span>
-              </div>
-              <div class="sector-grid-row">
-                <span class="sector-tag s3">SECTOR 3</span>
-                <span class="sector-time-val text-right">${s3SplitStr}</span>
-                <span class="sector-cum-val text-right text-cyan">${s3CumStr}</span>
-              </div>
+              ${sectorRowsHtml}
             </div>
           </div>
 

@@ -813,6 +813,18 @@ export class Game {
     }
 
     this.replayPlayer.update(deltaMs);
+
+    // 활성 리플레이 차량(고스트 + 상대 차량) 스키드마크 및 타이어 연기 효과 갱신
+    const activeReplayVehicles = [
+      this.replayPlayer.ghostVehicle,
+      ...this.replayPlayer.opponentVehicles.filter(v => v.mesh.visible)
+    ];
+    this.skidMarkManager.update(delta, activeReplayVehicles);
+
+    // 리플레이 오디오(엔진음 및 드리프트 타이어 스킬음) 갱신
+    const ghost = this.replayPlayer.ghostVehicle;
+    this.audio.update(ghost.getSpeedKmh(), ghost.isDrifting, ghost.speed > 5 ? 0.85 : 0.2);
+
     this.cameraController.updateChase(delta, this.replayPlayer.ghostVehicle);
     this.environmentManager.update(
       delta,
@@ -933,6 +945,16 @@ export class Game {
     const totalTimeMs = ticks.length > 0 ? ticks[ticks.length - 1].timeMs : 0;
     const bestLapMs = this.lapTimer.bestLapMs !== Infinity ? this.lapTimer.bestLapMs : Math.round(totalTimeMs / 3);
     const lapTimesMs = this.lapTimer.lapHistory.length > 0 ? this.lapTimer.lapHistory.map(l => l.timeMs) : [Math.round(totalTimeMs / 3), Math.round(totalTimeMs / 3), Math.round(totalTimeMs / 3)];
+    let bestLapNum = 1;
+    if (this.lapTimer.lapHistory.length > 0) {
+      let minMs = Infinity;
+      this.lapTimer.lapHistory.forEach(l => {
+        if (l.timeMs < minMs) {
+          minMs = l.timeMs;
+          bestLapNum = l.lap;
+        }
+      });
+    }
     const sectorTimesMs = this.lapTimer.lapHistory.length > 0 ? this.lapTimer.lapHistory.map(l => l.sectorsMs) : [[22000, 24000, 23000]];
 
     const topSpeedKmh = Math.max(...ticks.map(t => t.speedKmh), 150);
@@ -955,6 +977,7 @@ export class Game {
       totalLaps: 3,
       totalTimeMs,
       bestLapMs,
+      bestLapNum,
       lapTimesMs,
       sectorTimesMs,
       topSpeedKmh,
@@ -1049,6 +1072,7 @@ export class Game {
         ]);
       }
 
+      this.skidMarkManager.reset();
       this.replayPlayer.seek(0);
       this.replayPlayer.play();
       this.raceState = 'RUNNING';

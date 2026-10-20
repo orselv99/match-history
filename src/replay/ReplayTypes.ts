@@ -53,6 +53,7 @@ export interface MatchSummaryMetadata {
   totalLaps: number;
   totalTimeMs: number;
   bestLapMs: number;
+  bestLapNum?: number;
   lapTimesMs: number[];
   sectorTimesMs: number[][]; // [lap1: [s1, s2, s3], lap2: ...]
   topSpeedKmh: number;

@@ -184,6 +184,12 @@ export class ReplayPlayer {
     const interpSpeedKmh = THREE.MathUtils.lerp(t1.speedKmh, t2.speedKmh, alpha);
     this.ghostVehicle.speed = interpSpeedKmh / 3.6;
     this.ghostVehicle.isDrifting = t1.isDrifting;
+    const interpBrake = THREE.MathUtils.lerp(t1.brake || 0, t2.brake || 0, alpha);
+    this.ghostVehicle.brakeInput = interpBrake;
+    if (this.ghostVehicle.brakeLightMaterial) {
+      const isBraking = interpBrake > 0.1 || this.ghostVehicle.isDrifting;
+      this.ghostVehicle.brakeLightMaterial.emissiveIntensity = isBraking ? 3.2 : 0.2;
+    }
     this.currentLap = t1.lap || 1;
 
     const steer = THREE.MathUtils.lerp(t1.steer, t2.steer, alpha);

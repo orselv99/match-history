@@ -38,6 +38,7 @@ export class Vehicle {
   public pitch: number = 0; // Pitch 각도 (라디안, 오르막 음수 / 내리막 양수)
   public slipAngle: number = 0; // 드리프트 시 횡방향 미끄러짐 각도
   public isDrifting: boolean = false;
+  public brakeInput: number = 0;
   public driftStamina: number = 100.0; // 스태미나 (0~100%)
   public isSpinningOut: boolean = false; // 스핀아웃 페널티 상태
   public spinoutTimer: number = 0; // 스핀아웃 지속 타이머
@@ -175,6 +176,7 @@ export class Vehicle {
     weather: WeatherType = 'clear'
   ): void {
     this.lastLandingImpact = 0;
+    this.brakeInput = brake;
 
     // 1. 가속, 감속 및 경사면 중력 가감속(Gravity Slope Effect) 연산
     let appliedAccel = 0;
@@ -440,6 +442,7 @@ export class Vehicle {
     this.suspensionOffset = 0;
     this.suspensionVelocity = 0;
     this.lastLandingImpact = 0;
+    this.brakeInput = 0;
     this.mesh.position.copy(this.position);
     this.mesh.rotation.order = 'YXZ';
     this.mesh.rotation.set(0, this.heading, 0);

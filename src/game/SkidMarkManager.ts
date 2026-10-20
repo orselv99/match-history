@@ -141,7 +141,8 @@ export class SkidMarkManager {
 
       const isDrifting = vehicle.isDrifting;
       const speed = Math.abs(vehicle.speed);
-      const isHeavySlip = isDrifting && speed > 2.0;
+      const isBrakeSkid = (vehicle.brakeInput || 0) > 0.65 && speed > 8.0;
+      const isHeavySlip = (isDrifting && speed > 2.0) || isBrakeSkid;
 
       const wheels = vehicle.getRearWheelWorldPositions();
       const leftWheelPos = wheels.left;

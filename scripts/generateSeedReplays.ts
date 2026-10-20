@@ -265,7 +265,7 @@ function main() {
         },
       ];
 
-      const { ticks, lapTimes, totalTimeMs, bestLapMs, sectorTimes, avgSpeedKmh } = generateTicksForSeed(
+      const { ticks, lapTimes, totalTimeMs, bestLapMs, bestLapNum, sectorTimes, avgSpeedKmh } = generateTicksForSeed(
         plan.circuitId,
         topSpeedKmh,
         playerRank,

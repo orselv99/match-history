@@ -29,7 +29,7 @@ export class CameraController {
     const heading = targetVehicle.heading + targetVehicle.slipAngle;
     const sinH = Math.sin(heading);
     const cosH = Math.cos(heading);
-    const pitchLookOffset = -Math.sin(targetVehicle.pitch) * 3.5;
+    const pitchLookOffset = -Math.sin(targetVehicle.pitch) * 0.8;
     const isFirstPerson = this.viewMode === 'FIRST_PERSON';
 
     if (isFirstPerson) {
@@ -62,7 +62,8 @@ export class CameraController {
     const heading = targetVehicle.heading + targetVehicle.slipAngle;
     const sinH = Math.sin(heading);
     const cosH = Math.cos(heading);
-    const pitchLookOffset = -Math.sin(targetVehicle.pitch) * 3.5;
+    // 가속/피칭 시 화면 출렁거림(꿀렁거림) 방지를 위해 피치 영향 계수 완화 (3.5 -> 0.8)
+    const pitchLookOffset = -Math.sin(targetVehicle.pitch) * (this.viewMode === 'FIRST_PERSON' ? 0.5 : 0.8);
     const isFirstPerson = this.viewMode === 'FIRST_PERSON';
 
     const targetCamPos = isFirstPerson
@@ -82,11 +83,13 @@ export class CameraController {
 
     const lookAhead = isFirstPerson ? 32.0 : 4.0;
     const lookHeight = isFirstPerson ? 0.90 : 1.2;
-    this.cameraLookTarget.set(
+    const desiredLookTarget = new THREE.Vector3(
       targetVehicle.position.x + sinH * lookAhead,
       targetVehicle.position.y + lookHeight + pitchLookOffset,
       targetVehicle.position.z + cosH * lookAhead
     );
+    // lookAt 타겟을 부드럽게 보간하여 가속/감속 전환 시 시야가 울렁거리는 현상 제거
+    this.cameraLookTarget.lerp(desiredLookTarget, Math.min(1.0, 14.0 * delta));
     this.camera.lookAt(this.cameraLookTarget);
 
     // 충돌 시 다이내믹 카메라 쉐이크(Camera Shake) 감쇠 적용
@@ -102,14 +105,14 @@ export class CameraController {
     const speedKmh = targetVehicle.getSpeedKmh();
     const baseFov = isFirstPerson ? 72 : 65;
     let targetFov = baseFov;
-    if (this.dynamicFovEnabled && speedKmh > 95) {
-      // 100km/h: ~68°/75°, 200km/h: 80°~88°
-      const fovBoost = Math.min(16, (speedKmh - 95) * 0.14);
+    if (this.dynamicFovEnabled && speedKmh > 105) {
+      // 과도한 화면 꿀렁거림을 방지하기 위해 FOV 부스트 폭을 최대 7도로 안정화
+      const fovBoost = Math.min(7, (speedKmh - 105) * 0.055);
       targetFov = baseFov + fovBoost;
     }
 
     if (Math.abs(this.camera.fov - targetFov) > 0.05) {
-      this.camera.fov += (targetFov - this.camera.fov) * Math.min(1.0, 4.5 * delta);
+      this.camera.fov += (targetFov - this.camera.fov) * Math.min(1.0, 2.5 * delta);
       this.camera.updateProjectionMatrix();
     }
 

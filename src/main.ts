@@ -77,8 +77,11 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  let lastInspectedMatchCode: string | null = null;
+
   const matchHistoryModal = new MatchHistoryModal({
     onPlayReplay: (record) => {
+      lastInspectedMatchCode = record.matchCode;
       // 1. 다른 서킷일 경우 서킷 로드
       const recCircuitId = record.metadata.circuitId || 'circuit_monaco';
       if (recCircuitId && recCircuitId !== game.currentCircuitId) {
@@ -219,7 +222,18 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     },
     onSettings: () => settingsModal.open(),
-    onExit: () => setModeUI('TITLE'),
+    onExit: () => {
+      if (game.mode === 'REPLAY') {
+        game.replayPlayer.pause();
+        setModeUI('TITLE');
+        matchHistoryModal.open();
+        if (lastInspectedMatchCode) {
+          matchHistoryModal.openInspector(lastInspectedMatchCode);
+        }
+      } else {
+        setModeUI('TITLE');
+      }
+    },
   });
 
   // 모달 중앙 관리자 등록

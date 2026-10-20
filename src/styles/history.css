@@ -955,17 +955,17 @@
   color: #38bdf8 !important;
 }
 
-/* 4행: 베스트 랩 섹터 기록 그리드 (SECTOR | 시간 | 누적시간) */
+/* 4행: 랩별 섹터 기록 그리드 (구간 | 시간 | 이전 랩 대비) */
 .sector-record-grid {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   margin-top: 4px;
 }
 
 .sector-grid-header {
   display: grid;
-  grid-template-columns: 95px 1fr 1fr;
+  grid-template-columns: 115px 1fr 1fr;
   align-items: center;
   padding: 4px 10px;
   font-family: var(--font-mono);
@@ -978,9 +978,9 @@
 
 .sector-grid-row {
   display: grid;
-  grid-template-columns: 95px 1fr 1fr;
+  grid-template-columns: 115px 1fr 1fr;
   align-items: center;
-  padding: 6px 10px;
+  padding: 4px 10px;
   background: rgba(0, 0, 0, 0.22);
   border: 1px solid rgba(255, 255, 255, 0.04);
   font-family: var(--font-mono);
@@ -989,7 +989,12 @@
 }
 
 .sector-grid-row:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.sector-lap-divider {
+  margin: 4px 0 2px 0;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
 }
 
 .sector-tag {
@@ -1010,8 +1015,36 @@
   font-weight: 600;
 }
 
-.sector-cum-val {
+.sector-delta-val {
+  font-family: var(--font-mono);
   font-weight: 700;
+  font-size: 11px;
+}
+
+.sector-delta-val.delta-faster {
+  color: #34d399; /* Emerald 400: 이전 랩 대비 시간 단축 (빠름) */
+}
+
+.sector-delta-val.delta-slower {
+  color: #fb7185; /* Rose 400: 이전 랩 대비 지연 (느림) */
+}
+
+.sector-delta-val.delta-even {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.best-lap-num-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-left: 6px;
+  letter-spacing: 0.04em;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 1px 5px;
+  vertical-align: middle;
+  display: inline-block;
 }
 
 .text-right {

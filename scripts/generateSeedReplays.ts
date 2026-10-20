@@ -58,7 +58,7 @@ function generateTicksForSeed(
   const circuitLength = curve.getLength();
 
   // 10Hz 샘플링 (0.1초당 1틱) - 고주파 보간 및 리얼타임 레이싱 정확도 확보
-  const FPS = 10;
+  const FPS = 30;
   const dt = 1 / FPS;
   const dtMs = 1000 / FPS;
 
@@ -85,7 +85,7 @@ function generateTicksForSeed(
   // 순위 및 드라이버 스킬에 따른 속도 미세 베리에이션
   const speedScale = 1.0 - (playerRank - 1) * 0.015 - (cIdx % 5) * 0.006;
   const actualTopSpeed = topSpeedKmh * speedScale;
-  const minCornerSpeedKmh = circuitId === 'circuit_monaco' ? 95 : (circuitId === 'circuit_monza' ? 115 : (circuitId === 'circuit_spa' ? 105 : 110));
+  const minCornerSpeedKmh = circuitId === 'circuit_monaco' ? 142 : (circuitId === 'circuit_monza' ? 172 : (circuitId === 'circuit_spa' ? 158 : 155));
 
   let totalSpeedAccum = 0;
   let tickCount = 0;
@@ -109,8 +109,8 @@ function generateTicksForSeed(
     let speedKmh = actualTopSpeed - (actualTopSpeed - minCornerSpeedKmh) * cornerFactor;
 
     // 랩 1 스타트 가속 시뮬레이션
-    if (lap === 1 && timeMs < 3200) {
-      speedKmh = Math.min(speedKmh, (timeMs / 3200) * (actualTopSpeed * 0.85) + 35);
+    if (lap === 1 && timeMs < 2000) {
+      speedKmh = Math.min(speedKmh, (timeMs / 2000) * (actualTopSpeed * 0.85) + 50);
     }
 
     const speedMs = speedKmh / 3.6;
@@ -143,10 +143,10 @@ function generateTicksForSeed(
       const oppHeading = Math.atan2(oppTangent.x, oppTangent.z);
 
       return {
-        x: Number(oppPt.x.toFixed(1)),
-        y: Number(oppPt.y.toFixed(1)),
-        z: Number(oppPt.z.toFixed(1)),
-        yaw: Number(oppHeading.toFixed(3)),
+        x: Number(oppPt.x.toFixed(3)),
+        y: Number(oppPt.y.toFixed(3)),
+        z: Number(oppPt.z.toFixed(3)),
+        yaw: Number(oppHeading.toFixed(4)),
         speedKmh: Number((speedKmh * 0.98).toFixed(1)),
       };
     });
@@ -156,12 +156,12 @@ function generateTicksForSeed(
 
     ticks.push({
       timeMs: Math.round(timeMs),
-      x: Number(playerPos.x.toFixed(1)),
-      y: Number(playerPos.y.toFixed(1)),
-      z: Number(playerPos.z.toFixed(1)),
-      yaw: Number(heading.toFixed(3)),
-      pitch: Number(pitch.toFixed(3)),
-      roll: Number(roll.toFixed(3)),
+      x: Number(playerPos.x.toFixed(3)),
+      y: Number(playerPos.y.toFixed(3)),
+      z: Number(playerPos.z.toFixed(3)),
+      yaw: Number(heading.toFixed(4)),
+      pitch: Number(pitch.toFixed(4)),
+      roll: Number(roll.toFixed(4)),
       speedKmh: Number(speedKmh.toFixed(1)),
       steer: Number(steer.toFixed(2)),
       throttle: Number(throttle.toFixed(2)),

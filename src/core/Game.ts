@@ -505,8 +505,12 @@ export class Game {
       this.audio.playCountdownBeep(true);
       this.raceState = 'RUNNING';
 
-      this.lapTimer.start();
-      this.recorder.start();
+      if (this.mode === 'REPLAY') {
+        this.replayPlayer.play();
+      } else {
+        this.lapTimer.start();
+        this.recorder.start();
+      }
     }
   }
 
@@ -787,6 +791,18 @@ export class Game {
   private updateReplay(delta: number, deltaMs: number): void {
     this.mirrorRenderer.deactivate();
 
+    if (this.raceState === 'COUNTDOWN') {
+      this.cameraController.updateChase(delta, this.replayPlayer.ghostVehicle);
+      this.environmentManager.update(
+        delta,
+        this.replayPlayer.ghostVehicle.position,
+        this.replayPlayer.ghostVehicle.heading,
+        this.replayPlayer.ghostVehicle.speed
+      );
+      this.emitUIState();
+      return;
+    }
+
     if (this.raceState === 'FINISHED') {
       // 일반게임과 동일한 도착 컷씬: 결승선 통과 후 부드럽게 감속하여 정지 및 정면 좌측 앵글 연출
       const leadVehicle = this.replayPlayer.ghostVehicle;
@@ -820,6 +836,7 @@ export class Game {
       ...this.replayPlayer.opponentVehicles.filter(v => v.mesh.visible)
     ];
     this.skidMarkManager.update(delta, activeReplayVehicles);
+    this.collisionManager.updateReplay(delta, activeReplayVehicles, this.replayPlayer.ghostVehicle);
 
     // 리플레이 오디오(엔진음 및 드리프트 타이어 스킬음) 갱신
     const ghost = this.replayPlayer.ghostVehicle;
@@ -1073,9 +1090,12 @@ export class Game {
       }
 
       this.skidMarkManager.reset();
+      this.collisionManager.reset();
       this.replayPlayer.seek(0);
-      this.replayPlayer.play();
-      this.raceState = 'RUNNING';
+      this.replayPlayer.pause();
+      this.raceState = 'COUNTDOWN';
+      this.countdownTimer = 3.0;
+      this.lastBeepNumber = -1;
       this.cameraController.snapToTarget(this.replayPlayer.ghostVehicle);
     } else if (mode === 'DEMO') {
       this.audio.playInGameBgm();

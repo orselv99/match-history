@@ -352,6 +352,61 @@ export class CollisionManager {
     this.sparkColAttr.needsUpdate = true;
   }
 
+
+  /**
+   * 3D 리플레이 전용 충돌 감지 및 불꽃(스파크) 파티클 갱신
+   * - 틱 데이터로 복원된 차량 위치를 보존하면서 접촉 시 화려한 메탈 스파크 및 충돌 사운드 연출
+   */
+  public updateReplay(delta: number, vehicles: Vehicle[], playerVehicle?: Vehicle): void {
+    this.collisionCooldowns.forEach((time, key) => {
+      const nextTime = time - delta;
+      if (nextTime <= 0) {
+        this.collisionCooldowns.delete(key);
+      } else {
+        this.collisionCooldowns.set(key, nextTime);
+      }
+    });
+
+    const activeVehicles = vehicles.filter(v => v.mesh.visible);
+    const n = activeVehicles.length;
+
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const v1 = activeVehicles[i];
+        const v2 = activeVehicles[j];
+
+        if (Math.abs(v1.position.y - v2.position.y) > 2.2) continue;
+
+        const distSq = v1.position.distanceToSquared(v2.position);
+        if (distSq < 7.29) {
+          const pairKey = v1.id < v2.id ? `${v1.id}_${v2.id}` : `${v2.id}_${v1.id}`;
+          const cd = this.collisionCooldowns.get(pairKey) || 0;
+
+          if (cd <= 0) {
+            this.collisionCooldowns.set(pairKey, 0.25);
+            const contact = new THREE.Vector3().addVectors(v1.position, v2.position).multiplyScalar(0.5);
+            contact.y = Math.max(v1.position.y, v2.position.y) + 0.35;
+
+            const impactSpeed = Math.max(8.0, Math.abs(v1.speed - v2.speed) * 3.6);
+            this.emitSparks(contact, impactSpeed);
+
+            if (this.onCollision) {
+              this.onCollision({
+                vehicleA: v1,
+                vehicleB: v2,
+                contactPoint: contact,
+                impactSpeed,
+                isPlayerInvolved: (v1 === playerVehicle || v2 === playerVehicle),
+              });
+            }
+          }
+        }
+      }
+    }
+
+    this.updateSparks(delta);
+  }
+
   public reset(): void {
     this.sparks = [];
     this.collisionCooldowns.clear();

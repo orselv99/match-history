@@ -646,12 +646,10 @@ export class MatchHistoryModal extends BaseModal {
           </div>
         </div>
 
-        <!-- 우측: 2D 미니맵 컬럼 -->
-        <div class="inspector-minimap-col">
-          <div class="minimap-header">
-            <span class="minimap-title">📡 2D 미니맵 레이스 궤적</span>
-            <span class="minimap-time-tag" id="inspector-time-display">00:00.000 / ${totalDurationStr}</span>
-          </div>
+        <!-- 우측: 2D 미니맵 컬럼 (우측 가운데 Floating Group) -->
+        <div class="inspector-minimap-col detail-floating-group minimap-floating-card">
+          <span class="floating-group-title minimap-floating-label">📡 2D 미니맵 레이스 궤적</span>
+          <span class="floating-group-title minimap-floating-time" id="inspector-time-display">00:00.000 / ${totalDurationStr}</span>
 
           <div class="inspector-canvas-wrapper">
             <canvas id="inspector-minimap-canvas" width="440" height="260"></canvas>

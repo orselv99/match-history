@@ -741,12 +741,36 @@
 }
 
 .inspector-minimap-col {
-  background: rgba(0, 0, 0, 0.35);
+  align-self: center;
+  position: sticky;
+  top: 24px;
+  margin: auto 0;
+  background: rgba(0, 0, 0, 0.32);
   border: 1px solid var(--border-subtle);
-  padding: 16px;
+  padding: 18px 14px 14px 14px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.inspector-minimap-col:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+}
+
+.minimap-floating-label {
+  top: -8px;
+  left: 14px;
+}
+
+.minimap-floating-time {
+  top: -8px;
+  left: auto !important;
+  right: 14px;
+  color: #38bdf8 !important;
+  font-weight: 700;
 }
 
 .inspector-canvas-wrapper {

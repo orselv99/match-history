@@ -195,7 +195,7 @@ export class MatchHistoryModal extends BaseModal {
   }
 
   public open(): void {
-    super.show();
+    this.showModal();
     this.closeInspector();
     this.loadAndRender();
   }
@@ -214,7 +214,7 @@ export class MatchHistoryModal extends BaseModal {
   public closeEntireModal(): void {
     this.closeInspector();
     this.minimapPlayer.stop();
-    super.close();
+    this.hideModal();
   }
 
   /**

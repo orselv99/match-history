@@ -141,11 +141,7 @@ export class MatchHistoryTable {
     } else if (this.sortMode === 'recent') {
       baseList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
     } else if (this.sortMode === 'top_speed') {
-      baseList.sort((a, b) => {
-        const spdB = b.metadata?.topSpeedKmh ?? (b.metadata as any)?.maxSpeedKmh ?? 0;
-        const spdA = a.metadata?.topSpeedKmh ?? (a.metadata as any)?.maxSpeedKmh ?? 0;
-        return spdB - spdA;
-      });
+      baseList.sort((a, b) => (b.metadata?.topSpeedKmh || 0) - (a.metadata?.topSpeedKmh || 0));
     }
 
     // 3. 각 레코드에 고유 순위(rankNum) 부여 (검색 시 1위로 리셋되는 버그 원천 해결)
@@ -159,7 +155,7 @@ export class MatchHistoryTable {
     if (this.searchQuery) {
       filtered = rankedList.filter(({ rec }) => {
         const recCircuitId = rec.metadata?.circuitId || 'circuit_monaco';
-        const driverName = (rec.metadata?.driverName || (rec.metadata as any)?.userNickname || '').toLowerCase();
+        const driverName = (rec.metadata?.driverName || '').toLowerCase();
         const code = (rec.matchCode || '').toLowerCase();
         const circuitTitle = (CIRCUIT_DEFINITIONS[recCircuitId]?.title || '').toLowerCase();
         return driverName.includes(this.searchQuery) || code.includes(this.searchQuery) || circuitTitle.includes(this.searchQuery);
@@ -201,13 +197,12 @@ export class MatchHistoryTable {
         rankRowClass = `rank-row-top rank-${rankNum}`;
       }
 
-      const driverName = this.escapeHtml(meta?.driverName || (meta as any)?.userNickname || 'Driver');
-      const vehicleBadge = this.getVehicleBadge(meta?.vehicleModelId || (meta as any)?.vehicleId || 'gt_turbo');
+      const driverName = this.escapeHtml(meta?.driverName || 'Driver');
+      const vehicleBadge = this.getVehicleBadge(meta?.vehicleModelId || 'gt_turbo');
       const recCircuitId = meta?.circuitId || 'circuit_monaco';
       const circuitTitle = this.getCircuitTitle(recCircuitId);
       const lapTime = meta?.bestLapMs ? this.formatTime(meta.bestLapMs) : '--:--.---';
-      const spd = meta?.topSpeedKmh ?? (meta as any)?.maxSpeedKmh;
-      const topSpeed = spd ? `${spd.toFixed(1)} km/h` : '--.- km/h';
+      const topSpeed = meta?.topSpeedKmh ? `${meta.topSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
       const dateStr = this.formatDate(rec.savedAt || rec.createdAt);
 
       return `
@@ -269,13 +264,13 @@ export class MatchHistoryTable {
     }
 
     this.paginationContainer.innerHTML = `
+      <div class="pagination-info">전체 <strong>${totalCount}</strong>건 중 <strong>${startIndex + 1} - ${startIndex + pageItemCount}</strong></div>
       <div class="pagination-controls">
-        <button type="button" class="page-btn page-prev" data-page="${Math.max(1, current - 1)}" ${current <= 1 ? 'disabled' : ''}>◀ 이전</button>
-        <div class="page-numbers-wrap">${pageButtonsHtml}</div>
-        <button type="button" class="page-btn page-next" data-page="${Math.min(totalPages, current + 1)}" ${current >= totalPages ? 'disabled' : ''}>다음 ▶</button>
-      </div>
-      <div class="pagination-info">
-        전체 <strong>${totalCount}</strong>건 중 <strong>${startIndex + 1} - ${startIndex + pageItemCount}</strong> 표시 (페이지 ${current} / ${totalPages})
+        <button type="button" class="page-btn page-nav" data-page="1" title="첫 페이지" ${current === 1 ? 'disabled' : ''}>«</button>
+        <button type="button" class="page-btn page-nav" data-page="${Math.max(1, current - 1)}" title="이전 페이지" ${current === 1 ? 'disabled' : ''}>‹</button>
+        ${pageButtonsHtml}
+        <button type="button" class="page-btn page-nav" data-page="${Math.min(totalPages, current + 1)}" title="다음 페이지" ${current === totalPages ? 'disabled' : ''}>›</button>
+        <button type="button" class="page-btn page-nav" data-page="${totalPages}" title="마지막 페이지" ${current === totalPages ? 'disabled' : ''}>»</button>
       </div>
     `;
   }

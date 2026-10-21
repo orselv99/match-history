@@ -52,18 +52,21 @@ export interface MatchSummaryMetadata {
   opponentConfigs?: Array<{ vehicleModelId?: string; color?: string; driverName?: string }>;
   totalLaps: number;
   totalTimeMs: number;
+  totalTimeFormatted?: string;
   bestLapMs: number;
-  bestLapNum?: number;
+  bestLapFormatted?: string;
+  bestLapNum: number;
   lapTimesMs: number[];
   sectorTimesMs: number[][]; // [lap1: [s1, s2, s3], lap2: ...]
   topSpeedKmh: number;
   avgSpeedKmh: number;
+  rank: number;
   createdAt: string;
   rawJsonBytes?: number;
   quantizedBinaryBytes?: number;
   compressedBytes?: number;
   compressionRatioPercent?: number; // e.g. 98.5%
-  raceResults?: RaceResultEntry[];
+  raceResults: RaceResultEntry[];
   viewMode?: 'FIRST_PERSON' | 'THIRD_PERSON';
 }
 

@@ -453,30 +453,28 @@ function main() {
         color: r.color,
       }));
 
-      // 5. 메타데이터 생성
+      // 5. 메타데이터 생성 (통일된 최신 표준 스키마)
       const metadata: MatchSummaryMetadata = {
         matchCode,
-        circuitId: plan.circuitId,
+        userId: `seed_pilot_${cIdx + 1}`,
         driverName,
+        circuitId: plan.circuitId,
         vehicleModelId,
         color,
         viewMode,
-        timestamp: Date.now() - (plan.count - cIdx) * 3600000 * 3, // 3시간 간격 타임스탬프
         totalTimeMs: sim.totalTimeMs,
         totalTimeFormatted: formatMs(sim.totalTimeMs),
         bestLapMs: sim.bestLapMs,
         bestLapFormatted: formatMs(sim.bestLapMs),
-        bestLapNumber: sim.bestLapNum,
-        lapTimes: sim.lapTimes,
-        sectorTimes: sim.sectorTimes,
+        bestLapNum: sim.bestLapNum,
+        lapTimesMs: sim.lapTimes,
+        sectorTimesMs: sim.sectorTimes,
         avgSpeedKmh: sim.avgSpeedKmh,
         topSpeedKmh,
-        maxSpeedKmh: topSpeedKmh,
         rank: playerRank,
-        totalRacers: 4,
         totalLaps: 3,
+        createdAt: new Date(Date.now() - (plan.count - cIdx) * 3600000 * 3).toISOString(),
         opponentConfigs,
-        opponents: opponentsResult,
         raceResults,
       };
 

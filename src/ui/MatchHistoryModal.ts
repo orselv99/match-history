@@ -313,11 +313,11 @@ export class MatchHistoryModal extends BaseModal {
       }
     }
 
-    // 최고속 탐색 (topSpeedKmh / maxSpeedKmh 호환)
+    // 최고속 탐색
     if (this.statSpeed) {
       let maxSpeed = 0;
       for (const r of this.allRecords) {
-        const spd = r.metadata?.topSpeedKmh ?? (r.metadata as any)?.maxSpeedKmh;
+        const spd = r.metadata?.topSpeedKmh;
         if (typeof spd === 'number' && spd > maxSpeed) {
           maxSpeed = spd;
         }
@@ -331,16 +331,14 @@ export class MatchHistoryModal extends BaseModal {
    */
   private buildInspectorContentHtml(rec: CachedReplayRecord): string {
     const meta = rec.metadata;
-    const driverName = this.table.escapeHtml(meta?.driverName || (meta as any)?.userNickname || 'Driver');
+    const driverName = this.table.escapeHtml(meta?.driverName || 'Driver');
     const recCircuitId = meta?.circuitId || 'circuit_monaco';
     const circuitTitle = this.table.getCircuitTitle(recCircuitId);
     const vehicleName = this.table.getVehicleName(meta?.vehicleModelId || 'gt_turbo');
-    const isFirstPerson = meta?.viewMode === 'FIRST_PERSON';
     const playerColor = meta?.color || '#38bdf8';
     const bestLapStr = meta?.bestLapMs ? this.table.formatTime(meta.bestLapMs) : '--:--.---';
     const totalRaceStr = meta?.totalTimeMs ? this.table.formatTime(meta.totalTimeMs) : '--:--.---';
-    const spd = meta?.topSpeedKmh ?? (meta as any)?.maxSpeedKmh;
-    const topSpeedStr = spd ? `${spd.toFixed(1)} km/h` : '--.- km/h';
+    const topSpeedStr = meta?.topSpeedKmh ? `${meta.topSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
     const avgSpeedStr = meta?.avgSpeedKmh ? `${meta.avgSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
 
     // 베스트 랩 번호 (1, 2, 3...) 및 랩별 전체 섹터 기록 생성 (3 LAP × 3 SECTOR = 9행)
@@ -389,33 +387,11 @@ export class MatchHistoryModal extends BaseModal {
       }
     }
 
-    // 1~4위 완주 순위표 (raceResults 또는 opponents 종합)
-    let results: any[] = (meta?.raceResults && meta.raceResults.length > 1) ? meta.raceResults : [];
-    if (results.length === 0 && (meta as any)?.opponents && (meta as any).opponents.length > 0) {
-      const pTimeMs = meta?.totalTimeMs || 0;
-      results = [
-        {
-          rank: (meta as any)?.rank || 1,
-          driverName: meta?.driverName || driverName,
-          timeMs: pTimeMs,
-          timeFormatted: (meta as any).totalTimeFormatted || bestLapStr,
-          isPlayer: true,
-          color: meta?.color || '#38bdf8',
-        },
-        ...(meta as any).opponents.map((opp: any) => ({
-          rank: 1,
-          driverName: opp.driverName,
-          timeMs: opp.totalTimeMs || 0,
-          timeFormatted: opp.totalTimeFormatted || '--:--.---',
-          isPlayer: false,
-          color: opp.color,
-        }))
-      ].sort((a, b) => a.timeMs - b.timeMs).map((item, idx) => ({ ...item, rank: idx + 1 }));
-    }
-
+    // 1~4위 순위표 (정규 raceResults 렌더링)
     let raceResultsHtml = '';
+    const results = meta?.raceResults || [];
     if (results.length > 0) {
-      raceResultsHtml = results.map((r: any) => `
+      raceResultsHtml = results.map(r => `
         <div class="rank-finish-row ${r.isPlayer ? 'player-row' : ''}">
           <div class="rank-badge-wrap">
             <span class="rank-pos-badge ${r.rank === 1 ? 'gold' : r.rank === 2 ? 'silver' : r.rank === 3 ? 'bronze' : 'fourth'}">
@@ -448,109 +424,76 @@ export class MatchHistoryModal extends BaseModal {
       <div class="inspector-layout-grid">
         <!-- 좌측: 메타데이터 컬럼 -->
         <div class="inspector-meta-col">
-          <!-- 1행: 드라이버 프로필 & 경기 식별자 -->
-          <div class="detail-floating-group">
-            <span class="floating-group-title">👤 드라이버 & 경기 정보</span>
-            <div class="detail-floating-grid col-3">
+          <!-- 1~3행: 드라이버 Parent Grouping (총 6개의 카드) -->
+          <div class="detail-floating-group driver-parent-group">
+            <span class="floating-group-title">🪛 드라이버: <strong class="driver-name-highlight">${driverName}</strong></span>
+            <div class="detail-meta-grid-2col">
+              <!-- 1행: 머신, 서킷 -->
               <div class="detail-floating-card">
-                <span class="floating-card-label">드라이버</span>
-                <span class="floating-card-value text-cyan">${driverName}</span>
+                <span class="floating-card-label">머신</span>
+                <span class="floating-card-value">${vehicleName}</span>
               </div>
               <div class="detail-floating-card">
-                <span class="floating-card-label">경기 코드</span>
-                <span class="floating-card-value text-accent font-mono">${rec.matchCode}</span>
+                <span class="floating-card-label">서킷</span>
+                <span class="floating-card-value circuit-name-val">${this.table.formatCircuitTitle(circuitTitle)}</span>
               </div>
+              <!-- 2행: 베스트 랩타임, 총 레이스 시간 -->
               <div class="detail-floating-card">
-                <span class="floating-card-label">시점 모드</span>
-                <span class="floating-card-value text-white">${isFirstPerson ? '1인칭 (FPV)' : '3인칭 (TPV)'}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 2행: 머신 스펙 & 서킷 위치 -->
-          <div class="detail-floating-group">
-            <span class="floating-group-title">🏎️ 머신 & 서킷 환경</span>
-            <div class="detail-floating-grid col-2">
-              <div class="detail-floating-card">
-                <span class="floating-card-label">탑승 머신</span>
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <span style="display: inline-block; width: 10px; height: 10px; background: ${playerColor}; border: 1px solid rgba(255,255,255,0.4); border-radius: 1px;"></span>
-                  <span class="floating-card-value text-white">${vehicleName}</span>
-                </div>
-              </div>
-              <div class="detail-floating-card">
-                <span class="floating-card-label">개최 서킷</span>
-                <span class="floating-card-value text-gold">${circuitTitle}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- 3행: 최고 랩타임 & 총 레이스 시간 -->
-          <div class="detail-floating-group">
-            <span class="floating-group-title">⏱️ 랩타임 & 레이스 기록</span>
-            <div class="detail-floating-grid col-2">
-              <div class="detail-floating-card highlight-card">
-                <span class="floating-card-label">🏆 BEST LAP (LAP ${bestLapNum})</span>
-                <span class="floating-card-value text-gold font-mono" style="font-size: 16px;">${bestLapStr}</span>
+                <span class="floating-card-label">베스트 랩타임</span>
+                <span class="floating-card-value text-accent-gold">${bestLapStr} <span class="best-lap-num-badge">LAP ${bestLapNum}</span></span>
               </div>
               <div class="detail-floating-card">
                 <span class="floating-card-label">총 레이스 시간</span>
-                <span class="floating-card-value text-white font-mono" style="font-size: 16px;">${totalRaceStr}</span>
+                <span class="floating-card-value">${totalRaceStr}</span>
               </div>
-            </div>
-          </div>
-
-          <!-- 4행: 최고속도, 평균속도 -->
-          <div class="detail-floating-group">
-            <span class="floating-group-title">⚡ 텔레메트리 속도 통계</span>
-            <div class="detail-floating-grid col-2">
+              <!-- 3행: 최고속도, 평균속도 -->
               <div class="detail-floating-card">
                 <span class="floating-card-label">최고속도</span>
-                <span class="floating-card-value text-cyan font-mono" style="font-size: 16px;">${topSpeedStr}</span>
+                <span class="floating-card-value">${topSpeedStr}</span>
               </div>
               <div class="detail-floating-card">
                 <span class="floating-card-label">평균속도</span>
-                <span class="floating-card-value text-white font-mono" style="font-size: 16px;">${avgSpeedStr}</span>
+                <span class="floating-card-value">${avgSpeedStr}</span>
               </div>
             </div>
           </div>
 
-          <!-- 5행: 3 랩 × 3 섹터 (총 9행 정밀 분석) -->
+          <!-- 4행: 랩별 섹터 기록 (3 LAP × 3 SECTOR = 9구간) -->
           <div class="detail-floating-group">
-            <span class="floating-group-title">📊 랩별 섹터(Sector) 세부 타임 스탬프</span>
-            <div class="sector-grid-table">
+            <span class="floating-group-title">⏱ 랩별 섹터 기록</span>
+            <div class="sector-record-grid">
               <div class="sector-grid-header">
-                <span>섹터</span>
-                <span class="text-right">기록</span>
-                <span class="text-right">직전랩 대비</span>
+                <span>구간 (LAP/SEC)</span>
+                <span class="text-right">시간</span>
+                <span class="text-right">이전 랩 대비</span>
               </div>
               ${sectorRowsHtml}
             </div>
           </div>
 
-          <!-- 6행: 레이스 완주 순위 (1~4위) -->
+          <!-- 5행: 레이스 완주 순위 -->
           <div class="detail-floating-group">
-            <span class="floating-group-title">🏁 레이스 완주 순위</span>
+            <span class="floating-group-title">🏆 레이스 완주 순위</span>
             <div class="rank-finish-list">
               ${raceResultsHtml}
             </div>
           </div>
 
-          <!-- 7행: 텔레메트리 레코드 정보 -->
+          <!-- 6행: 텔레메트리 리플레이 데이터 정보 -->
           <div class="detail-floating-group">
-            <span class="floating-group-title">💾 텔레메트리 레코드 사양</span>
-            <div class="tech-spec-grid">
+            <span class="floating-group-title">📊 텔레메트리 & 리플레이 데이터 정보</span>
+            <div class="inspector-tech-col-list">
               <div class="tech-row-item">
                 <span class="tech-k">샘플링 레이트</span>
-                <span class="tech-v text-white">15 Hz (66.6ms)</span>
+                <span class="tech-v">30Hz / Catmull-Rom 3차 보간</span>
               </div>
               <div class="tech-row-item">
-                <span class="tech-k">저장 틱 수</span>
-                <span class="tech-v font-mono text-cyan">${rec.ticks.length.toLocaleString()} Ticks</span>
+                <span class="tech-k">기록 프레임 수</span>
+                <span class="tech-v">${rec.ticks.length.toLocaleString()} 틱</span>
               </div>
               <div class="tech-row-item">
-                <span class="tech-k">압축 방식</span>
-                <span class="tech-v text-cyan">95.5% (양자화 트랙)</span>
+                <span class="tech-k">데이터 압축률</span>
+                <span class="tech-v text-cyan">95.5% (고정소수점 패킷)</span>
               </div>
               <div class="tech-row-item">
                 <span class="tech-k">저장 일시</span>
@@ -560,9 +503,9 @@ export class MatchHistoryModal extends BaseModal {
           </div>
         </div>
 
-        <!-- 우측: 2D 미니맵 플레이어 -->
+        <!-- 우측: 2D 미니맵 컬럼 (우측 가운데 Floating Group) -->
         <div class="inspector-minimap-col detail-floating-group minimap-floating-card">
-          <span class="floating-group-title minimap-floating-label">🛰️ 2D 미니맵 레이스 뷰</span>
+          <span class="floating-group-title minimap-floating-label">📡 2D 미니맵 레이스 궤적</span>
           <span class="floating-group-title minimap-floating-time" id="inspector-time-display">00:00.000 / ${totalDurationStr}</span>
 
           <div class="inspector-canvas-wrapper">

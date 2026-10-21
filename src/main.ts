@@ -196,7 +196,7 @@ window.addEventListener('DOMContentLoaded', () => {
   game.onFinishCallback = async (metadata: MatchSummaryMetadata) => {
     lastRaceMetadata = metadata;
     const ticks = game.recorder.getTicks();
-    if (ticks.length > 0) {
+    if (ticks.length > 0 && game.mode === 'DRIVING') {
       try {
         const res = await appDB.saveReplay(metadata.matchCode, ticks, metadata);
         showToast(`💾 [${metadata.matchCode}] 주행 데이터가 자동 저장되었습니다. (${res.totalCount}/30)`);
@@ -204,7 +204,7 @@ window.addEventListener('DOMContentLoaded', () => {
         console.warn('[AutoSave] Failed to save replay to IndexedDB:', e);
       }
     }
-    finishModal.show(metadata);
+    finishModal.show(metadata, game.mode === 'REPLAY');
   };
 
   // 5. 일시정지 (Pause) 모달

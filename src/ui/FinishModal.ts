@@ -59,6 +59,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
   private raceResultsTbody: HTMLElement | null;
   private serverTop5Tbody: HTMLElement | null;
   private serverStatusTag: HTMLElement | null;
+  private btnRestart: HTMLElement | null = null;
 
   private latestMetadata: MatchSummaryMetadata | null = null;
   private isPhotoMode: boolean = false;
@@ -77,6 +78,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
     const btnReplay = document.getElementById('modal-btn-replay');
     const btnRestart = document.getElementById('modal-btn-restart');
     const btnTitle = document.getElementById('modal-btn-title');
+    this.btnRestart = btnRestart;
 
     btnPhoto?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -224,7 +226,15 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
     super.close();
   }
 
-  public open(metadata?: MatchSummaryMetadata): void {
+  public override show(metadata?: MatchSummaryMetadata, isReplayMode: boolean = false): void {
+    this.open(metadata, isReplayMode);
+  }
+
+  public open(metadata?: MatchSummaryMetadata, isReplayMode: boolean = false): void {
+    if (this.btnRestart) {
+      this.btnRestart.style.display = isReplayMode ? 'none' : '';
+    }
+
     if (metadata) {
       this.latestMetadata = metadata;
 
@@ -234,29 +244,7 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
       }
 
       // 1. 인게임 레이스 최종 순위 ('순위, 이름, 시간')
-      let results = metadata.raceResults || [];
-      if (results.length <= 1 && (metadata as any).opponents && (metadata as any).opponents.length > 0) {
-        const pTimeMs = metadata.totalTimeMs || 0;
-        results = [
-          {
-            rank: (metadata as any).rank || 1,
-            driverName: metadata.driverName || 'Player',
-            timeMs: pTimeMs,
-            timeFormatted: (metadata as any).totalTimeFormatted || this.formatMs(pTimeMs),
-            isPlayer: true,
-            color: metadata.color || '#38bdf8',
-          },
-          ...(metadata as any).opponents.map((opp: any) => ({
-            rank: 1,
-            driverName: opp.driverName,
-            timeMs: opp.totalTimeMs || 0,
-            timeFormatted: opp.totalTimeFormatted || this.formatMs(opp.totalTimeMs || 0),
-            isPlayer: false,
-            color: opp.color,
-          }))
-        ].sort((a, b) => a.timeMs - b.timeMs).map((item, idx) => ({ ...item, rank: idx + 1 }));
-      }
-      this.renderRaceResults(results);
+      this.renderRaceResults(metadata.raceResults || []);
 
       // 2. 서버 서킷 상위 5위 랭킹 비동기 조회 (Fallback 지원)
       this.loadServerTop5(metadata.circuitId);

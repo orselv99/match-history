@@ -148,8 +148,8 @@ export interface OpponentConfig {
 }
 
 export const OPPONENT_CONFIGS: OpponentConfig[] = [
-  { id: 1, driverName: 'OPPONENT_01 // APEX_RED', color: '#ef4444', baseSpeed: 47.0, laneOffset: -2.2 },
-  { id: 2, driverName: 'OPPONENT_02 // SWISS_ROSE', color: '#c45a72', baseSpeed: 49.2, laneOffset: 2.2 },
-  { id: 3, driverName: 'OPPONENT_03 // PASTEL_SKY', color: '#7dd3fc', baseSpeed: 45.8, laneOffset: -2.2 },
-  { id: 4, driverName: 'OPPONENT_04 // AMBER_GOLD', color: '#f59e0b', baseSpeed: 48.0, laneOffset: 2.2 },
+  { id: 1, driverName: '스피드마스터', color: '#ef4444', baseSpeed: 47.0, laneOffset: -2.2 },
+  { id: 2, driverName: 'Monaco Ghost', color: '#c45a72', baseSpeed: 49.2, laneOffset: 2.2 },
+  { id: 3, driverName: '질주본능', color: '#7dd3fc', baseSpeed: 45.8, laneOffset: -2.2 },
+  { id: 4, driverName: 'Turbo Nova', color: '#f59e0b', baseSpeed: 48.0, laneOffset: 2.2 },
 ];

@@ -3,6 +3,7 @@ import { Vehicle } from './Vehicle.ts';
 import { Circuit } from './Circuit.ts';
 import { STARTING_GRID_SLOTS } from '../data/circuits.ts';
 import { OPPONENT_CONFIGS, type VehicleModelId } from '../data/vehicles.ts';
+import { getRandomDriverNames } from '../data/gameConstants.ts';
 import {
   type OpponentAgent,
   simulateOpponentAI,
@@ -99,14 +100,35 @@ export class OpponentManager {
   }
 
   /**
+   * 플레이어 닉네임과 중복되지 않도록 고유한 AI 드라이버 이름들을 동적 할당하고 3D 네임태그 갱신
+   */
+  public assignRivalDriverNames(playerDriverName: string = 'Apex Hunter'): void {
+    const allNames = getRandomDriverNames();
+    const available = allNames.filter(n => n && n !== playerDriverName && !n.includes(playerDriverName));
+    const shuffled = [...available].sort(() => Math.random() - 0.5);
+
+    this.agents.forEach((agent, idx) => {
+      if (idx === 0) {
+        agent.driverName = playerDriverName;
+      } else {
+        const assignedName = shuffled[(idx - 1) % shuffled.length] || `Rival ${idx}`;
+        agent.driverName = assignedName;
+      }
+      agent.vehicle.setNameTag(agent.driverName, agent.color);
+    });
+  }
+
+  /**
    * 스타팅 그리드 박스에 차량 나란히 정렬 배치 (Grid Alignment)
    * @param asRivals 플레이어 주행 모드 시 (슬롯 0은 플레이어 전용, 상대는 1, 2, 3번 슬롯에 배치)
    */
-  public resetToGrids(asRivals: boolean = false, playerSlot: number = 0): void {
+  public resetToGrids(asRivals: boolean = false, playerSlot: number = 0, playerDriverName: string = 'Apex Hunter'): void {
     this.isRivalsMode = asRivals;
     this.isActive = true;
     this.group.visible = true;
     this.isAllFinished = false;
+
+    this.assignRivalDriverNames(playerDriverName);
 
     const circuitLength = this.circuit.circuitCurve.getLength();
     this.raceTimeMs = 0;
@@ -155,8 +177,8 @@ export class OpponentManager {
     return this.agents.find(a => a.assignedSlot === slotIndex);
   }
 
-  public activate(asRivals: boolean = false, playerSlot: number = 0): void {
-    this.resetToGrids(asRivals, playerSlot);
+  public activate(asRivals: boolean = false, playerSlot: number = 0, playerDriverName: string = 'Apex Hunter'): void {
+    this.resetToGrids(asRivals, playerSlot, playerDriverName);
   }
 
   public deactivate(): void {
@@ -241,7 +263,7 @@ export class OpponentManager {
 
   private checkSectorAndLapProgress(agent: OpponentAgent, idx: number): void {
     const isEligible = this.isRivalsMode ? (idx !== 0) : true;
-    const displayName = (!this.isRivalsMode && idx === 0) ? 'Player' : agent.driverName;
+    const displayName = agent.driverName || (idx === 0 ? 'Player' : `Rival ${idx}`);
 
     if (agent.prevT > 0.85 && agent.t < 0.15) {
       if (!agent.hasPassedStartLine) {

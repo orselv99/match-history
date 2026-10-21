@@ -118,6 +118,11 @@ export function createGroundBeamMesh(): THREE.Mesh {
  * 차량 상단 3D 빌보드 네임태그 스프라이트 생성
  */
 export function createNameTagSprite(driverName: string, color: string, visible: boolean): THREE.Sprite {
+  if (typeof document === 'undefined') {
+    const s = new THREE.Sprite();
+    s.visible = visible;
+    return s;
+  }
   const canvas = document.createElement('canvas');
   canvas.width = 384;
   canvas.height = 96;

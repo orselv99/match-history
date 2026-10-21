@@ -215,7 +215,7 @@ export class RaceSimulationCoordinator {
           audio.playCheckpointBeep();
           const sectorName = cpId === 1 ? 'S1' : cpId === 2 ? 'S2' : '도착선';
           if (this.deps.onSectorPassed) {
-            this.deps.onSectorPassed('Player', sectorName, sectorTimeMs);
+            this.deps.onSectorPassed(lifecycle.currentDriverName || 'Apex Hunter', sectorName, sectorTimeMs);
           }
         }
       );
@@ -498,9 +498,13 @@ export class RaceSimulationCoordinator {
       const playerAgent = oppMgr.agents[0];
       const playerProg = playerAgent ? (playerAgent.hasPassedStartLine ? (playerAgent.currentLap - 1) + playerAgent.t : playerAgent.t - 1.0) : 0;
       if (playerAgent) {
+        let pName = lifecycle.currentDriverName || playerAgent.driverName || 'Apex Hunter';
+        if (pName.includes(' // ')) {
+          pName = pName.split(' // ')[0];
+        }
         list.push({
           id: 'agent_0',
-          driverName: playerAgent.driverName.includes(' // ') ? playerAgent.driverName.split(' // ')[0] : playerAgent.driverName,
+          driverName: pName,
           isPlayer: true,
           color: playerAgent.color,
           prog: playerProg,
@@ -510,9 +514,13 @@ export class RaceSimulationCoordinator {
         const a = oppMgr.agents[i];
         if (!a || !a.vehicle.mesh.visible) continue;
         const oppProg = a.hasPassedStartLine ? (a.currentLap - 1) + a.t : a.t - 1.0;
+        let displayName = a.driverName;
+        if (displayName.includes(' // ')) {
+          displayName = displayName.split(' // ')[0];
+        }
         list.push({
           id: `agent_${i}`,
-          driverName: a.driverName.includes(' // ') ? a.driverName.split(' // ')[0] : a.driverName,
+          driverName: displayName,
           isPlayer: false,
           color: a.color,
           prog: oppProg,

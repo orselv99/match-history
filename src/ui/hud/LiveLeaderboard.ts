@@ -29,8 +29,8 @@ export class LiveLeaderboard {
     if (!showLeaderboard || !standings) return;
 
     // 1. 엔트리 키 변경 감지 시(모드 전환 등) 기존 노드 재생성
-    const currentKeys = standings.map(s => s.id).join(',');
-    const existingKeys = Array.from(this.racerRowMap.keys()).join(',');
+    const currentKeys = standings.map(s => s.id).sort().join(',');
+    const existingKeys = Array.from(this.racerRowMap.keys()).sort().join(',');
     if (currentKeys !== existingKeys) {
       this.leaderboardEl.innerHTML = '';
       this.racerRowMap.clear();
@@ -78,6 +78,17 @@ export class LiveLeaderboard {
       const expectedHtml = `${racer.driverName}${racer.isPlayer ? ' <span class="tower-you-tag">YOU</span>' : ''}`;
       if (item.nameEl.innerHTML !== expectedHtml) {
         item.nameEl.innerHTML = expectedHtml;
+      }
+
+      if (racer.isPlayer && !item.rowEl.classList.contains('is-player')) {
+        item.rowEl.classList.add('is-player');
+      } else if (!racer.isPlayer && item.rowEl.classList.contains('is-player')) {
+        item.rowEl.classList.remove('is-player');
+      }
+
+      const colorPill = item.rowEl.querySelector('.tower-color-pill') as HTMLElement | null;
+      if (colorPill && racer.color && colorPill.style.backgroundColor !== racer.color) {
+        colorPill.style.backgroundColor = racer.color;
       }
 
       item.badgeEl.textContent = `${racer.rank}`;

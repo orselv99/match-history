@@ -151,7 +151,7 @@ export class RaceLifecycleManager {
     playerVehicle.reset(gridPos.position, gridPos.heading);
 
     if (this.mode === 'DRIVING') {
-      oppMgr.resetToGrids(true, this.playerGridSlot);
+      oppMgr.resetToGrids(true, this.playerGridSlot, this.currentDriverName || 'Apex Hunter');
     }
 
     this.deps.getSkidMarkManager().reset();
@@ -197,10 +197,10 @@ export class RaceLifecycleManager {
       this.playerGridSlot = Math.floor(Math.random() * 4);
       const gridPos = circuit.getGridPosition(this.playerGridSlot);
       playerVehicle.reset(gridPos.position, gridPos.heading);
-      oppMgr.resetToGrids(true, this.playerGridSlot);
+      oppMgr.resetToGrids(true, this.playerGridSlot, this.currentDriverName || 'Apex Hunter');
     } else {
       this.playerGridSlot = 0;
-      oppMgr.resetToGrids(false, 0);
+      oppMgr.resetToGrids(false, 0, this.currentDriverName || 'Apex Hunter');
     }
 
     this.deps.getStartCutsceneController().setup(

@@ -108,8 +108,9 @@ export class GameStateManager {
       audio.playInGameBgm();
       playerVehicle.mesh.visible = false;
       replayPlayer.hideGhost();
-      opponentManager.setSlotConfig(0, playerVehicle.currentVehicleModelId, playerVehicle.color);
-      opponentManager.activate(false);
+      const driverName = lifecycle.currentDriverName || 'Apex Hunter';
+      opponentManager.setSlotConfig(0, playerVehicle.currentVehicleModelId, playerVehicle.color, driverName);
+      opponentManager.activate(false, 0, driverName);
       if (opponentManager.agents[0]) {
         opponentManager.agents[0].vehicle.setHeadlights(playerVehicle.headlightsEnabled);
       }
@@ -122,7 +123,8 @@ export class GameStateManager {
       audio.playInGameBgm();
       playerVehicle.mesh.visible = true;
       replayPlayer.hideGhost();
-      opponentManager.activate(true);
+      const driverName = lifecycle.currentDriverName || 'Apex Hunter';
+      opponentManager.activate(true, 0, driverName);
       lifecycle.resetVehicleToStart();
       lifecycle.raceState = 'READY';
       lifecycle.countdownTimer = 3.0;

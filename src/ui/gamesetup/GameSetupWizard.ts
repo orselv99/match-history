@@ -37,7 +37,6 @@ export class GameSetupWizard extends BaseModal {
   private btnNext: HTMLElement | null;
   private btnStart: HTMLElement | null;
   private btnReset: HTMLElement | null;
-  private btnRandomAll: HTMLElement | null;
   private currentStepTitle: HTMLElement | null;
 
   private stepTabs: NodeListOf<HTMLElement>;
@@ -97,7 +96,6 @@ export class GameSetupWizard extends BaseModal {
     this.btnNext = document.getElementById('wizard-btn-next');
     this.btnStart = document.getElementById('wizard-btn-start');
     this.btnReset = document.getElementById('wizard-btn-reset');
-    this.btnRandomAll = document.getElementById('wizard-btn-random-all');
     this.currentStepTitle = document.getElementById('wizard-current-step-title');
 
     this.stepTabs = document.querySelectorAll<HTMLElement>('.wizard-step-tab');
@@ -170,7 +168,6 @@ export class GameSetupWizard extends BaseModal {
       this.syncBriefing();
     });
 
-    this.btnRandomAll?.addEventListener('click', () => this.randomizeAll());
     this.btnReset?.addEventListener('click', () => this.resetDefaults());
 
     this.btnStart?.addEventListener('click', () => {
@@ -243,14 +240,6 @@ export class GameSetupWizard extends BaseModal {
       this.selectedColor,
       this.environmentStep.getSummaryText()
     );
-  }
-
-  public randomizeAll(): void {
-    this.briefingStep.pickRandomName();
-    this.circuitStep.randomize();
-    this.vehicleStep.randomize();
-    this.environmentStep.randomize();
-    this.syncBriefing();
   }
 
   public resetDefaults(): void {

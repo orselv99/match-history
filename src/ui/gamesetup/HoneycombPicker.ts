@@ -34,13 +34,9 @@ export class HoneycombPicker {
   private render(): void {
     this.container.innerHTML = `
       <div class="honeycomb-picker-box">
+        <div id="honeycomb-swatch" class="honeycomb-swatch-top-right" style="background-color: ${this.selectedHex};"></div>
         <div class="honeycomb-svg-wrap">
           <svg class="honeycomb-svg" viewBox="-112 -100 224 200"></svg>
-        </div>
-        <div class="honeycomb-meta-row">
-          <div class="honeycomb-swatch-group">
-            <div id="honeycomb-swatch" class="honeycomb-swatch-current" style="background-color: ${this.selectedHex};"></div>
-          </div>
         </div>
       </div>
     `;

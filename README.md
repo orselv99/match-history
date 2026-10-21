@@ -120,17 +120,18 @@ artifacts_0/
 │   │   │   ├── SectorNotification.ts # 섹터/도착선 통과 순차 알림 텍스트 컴포넌트
 │   │   │   ├── SpeedometerWidget.ts # 속도계, 기어 단수, RPM 타코미터, 드리프트 스태미나 바
 │   │   │   └── index.ts            # HUD 서브시스템 배럴 내보내기
+│   │   ├── settings/               # 환경 설정 서브시스템
+│   │   │   ├── AudioSettingsTab.ts # 볼륨, 음소거, 오디오 캐시 전담 탭
+│   │   │   ├── ControlsSettingsTab.ts # 키 바인딩, 프리셋, 스티어 감도, 카메라 뷰 전담 탭
+│   │   │   ├── GraphicsSettingsTab.ts # GPU 감지, 프리셋(HIGH/MED/LOW), 그래픽 옵션 전담 탭
+│   │   │   ├── SettingsModal.ts    # 환경 설정 모달 메인 오케스트레이터
+│   │   │   └── index.ts            # 환경 설정 서브시스템 배럴 내보내기
 │   │   ├── BaseModal.ts            # 공통 모달 베이스 추상 클래스
 │   │   ├── FinishModal.ts          # 레이스 완주 및 결과 요약 모달
-│   │   ├── HUDController.ts        # HUD 하위 호환 Re-export 래퍼
 │   │   ├── LoadingScreen.ts        # 초기화 및 인게임전 겸용 로딩 씬 제어기
-│   │   ├── MatchHistoryModal.ts    # 전적 검색 하위 호환 Re-export 래퍼
-│   │   ├── MatchHistoryTable.ts    # 전적 테이블 하위 호환 Re-export 래퍼
-│   │   ├── MinimapReplayPlayer.ts  # 미니맵 플레이어 하위 호환 Re-export 래퍼
 │   │   ├── ModalManager.ts         # 모달 상태 관리 및 오케스트레이션
 │   │   ├── PauseModal.ts           # 인게임 일시정지 메뉴 모달
 │   │   ├── ReplayBarController.ts  # 리플레이 하단 재생바 컨트롤러
-│   │   ├── SettingsModal.ts        # 그래픽/오디오/조작 환경설정 모달
 │   │   └── Toast.ts                # 알림 토스트 팝업 컴포넌트
 │   ├── main.ts                     # 애플리케이션 진입점 및 UI 이벤트 오케스트레이션
 │   ├── styles.css                  # 모듈별 스타일시트 매니페스트 (@import)

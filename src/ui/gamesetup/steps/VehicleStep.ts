@@ -123,15 +123,6 @@ export class VehicleStep {
     this.vehiclePreview?.resize();
   }
 
-  public randomize(): void {
-    const models: VehicleModelId[] = ['gt_turbo', 'formula_aero', 'cyber_speedster', 'lm_hypercar'];
-    const chosenModel = models[Math.floor(Math.random() * models.length)];
-    this.setModel(chosenModel);
-
-    const randHex = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
-    this.setColor(randHex, true);
-  }
-
   public reset(): void {
     this.setModel('gt_turbo');
     this.setColor('#ef4444', true);

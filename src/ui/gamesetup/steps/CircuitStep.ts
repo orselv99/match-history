@@ -35,14 +35,6 @@ export class CircuitStep {
     this.preview.update(this.selectedCircuit);
   }
 
-  public randomize(): CircuitId {
-    const circuits: CircuitId[] = ['circuit_monaco', 'circuit_monza', 'circuit_spa', 'circuit_silverstone'];
-    const chosen = circuits[Math.floor(Math.random() * circuits.length)];
-    this.setSelectedCircuit(chosen);
-    this.callbacks.onCircuitChange?.(chosen);
-    return chosen;
-  }
-
   public reset(): void {
     this.setSelectedCircuit('circuit_monaco');
     this.callbacks.onCircuitChange?.('circuit_monaco');

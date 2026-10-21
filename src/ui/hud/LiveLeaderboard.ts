@@ -95,6 +95,3 @@ export class LiveLeaderboard {
     });
   }
 }
-
-// 하위 호환 별칭
-export { LiveLeaderboard as StandingsTower };

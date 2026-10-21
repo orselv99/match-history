@@ -16,11 +16,6 @@ export class HUDController {
   public readonly inputOverlay: InputOverlay;
   public readonly sectorNotification: SectorNotification;
 
-  // 하위 호환 게터
-  public get standingsTower(): LiveLeaderboard {
-    return this.liveLeaderboard;
-  }
-
   private cutsceneSkipPrompt: HTMLElement | null;
   private cinematicBars: HTMLElement | null;
   private countdownOverlay: HTMLElement | null;

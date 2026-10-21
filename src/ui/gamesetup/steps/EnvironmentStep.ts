@@ -79,15 +79,6 @@ export class EnvironmentStep {
     return `${t(timeKey)} + ${t(weatherKey)}`;
   }
 
-  public randomize(): void {
-    const times: TimeOfDay[] = ['morning', 'noon', 'sunset', 'night'];
-    const weathers: WeatherType[] = ['clear', 'rain', 'wind_fog', 'snow'];
-    this.selectedTimeOfDay = times[Math.floor(Math.random() * times.length)];
-    this.selectedWeather = weathers[Math.floor(Math.random() * weathers.length)];
-    this.updateShowcase();
-    this.callbacks.onEnvironmentChange?.(this.selectedTimeOfDay, this.selectedWeather);
-  }
-
   public reset(): void {
     this.selectedTimeOfDay = 'noon';
     this.selectedWeather = 'clear';

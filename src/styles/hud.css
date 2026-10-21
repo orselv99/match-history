@@ -1,5 +1,7 @@
 /* 1. 상단 글로벌 바 (중앙 집중형 무배경 티커) */
 .top-bar {
+  position: relative;
+  z-index: 10;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -457,6 +459,7 @@
 /* 5. 하단 HUD (좌측 서킷정보 스택, 중앙 리플레이 컨트롤 & 키 오버레이, 우측 속도계 스택) */
 .bottom-hud {
   position: relative;
+  z-index: 10;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
@@ -839,7 +842,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 5;
+  z-index: 2;
   overflow: hidden;
 }
 
@@ -890,7 +893,7 @@
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.4s ease;
-  z-index: 2;
+  z-index: 10;
   overflow: hidden;
 }
 
@@ -1014,7 +1017,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 6;
+  z-index: 2;
   opacity: 0;
   transition: opacity 0.5s ease;
   overflow: hidden;
@@ -1051,18 +1054,10 @@
   animation: wiperSweepMotionPassenger 2.0s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
 }
 
-/* 레이스 종료(FINISH) 및 일시정지 시 와이퍼 정지 */
-.weather-screen-overlay.is-finished .windshield-wiper-assembly {
-  opacity: 0 !important;
-  transition: opacity 0.6s ease;
-}
-
+/* 레이스 종료(FINISH) 및 일시정지 시 와이퍼 정지 (사라지지 않고 그 자리에서 멈춤) */
 .weather-screen-overlay.is-finished .wiper-unit,
 .weather-screen-overlay.is-finished .wiper-unit.wiper-driver,
-.weather-screen-overlay.is-finished .wiper-unit.wiper-passenger {
-  animation: none !important;
-}
-
+.weather-screen-overlay.is-finished .wiper-unit.wiper-passenger,
 .weather-screen-overlay.is-paused .wiper-unit,
 .weather-screen-overlay.is-paused .wiper-unit.wiper-driver,
 .weather-screen-overlay.is-paused .wiper-unit.wiper-passenger {

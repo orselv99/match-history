@@ -12,7 +12,7 @@ import { GameSetupWizard, RaceSetupConfig } from './ui/gamesetup/GameSetupWizard
 import { HUDController } from './ui/hud/HUDController.ts';
 import { FinishModal } from './ui/FinishModal.ts';
 import { ReplayBarController } from './ui/ReplayBarController.ts';
-import { SettingsModal } from './ui/SettingsModal.ts';
+import { SettingsModal } from './ui/settings/SettingsModal.ts';
 import { PauseModal } from './ui/PauseModal.ts';
 import { MatchHistoryModal } from './ui/history/MatchHistoryModal.ts';
 import { ModalManager } from './ui/ModalManager.ts';

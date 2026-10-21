@@ -422,20 +422,33 @@
               </div>
             </div>
 
+            <!-- BGM 오디오 영구 캐시 -->
             <div class="setting-row">
               <div class="setting-label-col">
-                <span class="setting-name" data-i18n="settings.general.cacheName">오프라인 영구 캐시</span>
-                <span class="setting-desc" id="setting-storage-desc" data-i18n="settings.general.cacheDesc">IndexedDB 영구 보관 (BGM 및 리플레이)</span>
+                <span class="setting-name" data-i18n="settings.general.bgmCacheName">BGM 영구 캐시</span>
+                <span class="setting-desc" id="setting-bgm-storage-desc" data-i18n="settings.general.bgmCacheDesc">IndexedDB 배경음악 스트리밍 영구 보관</span>
               </div>
               <div class="setting-control-col">
-                <span id="setting-storage-stats" class="setting-val-display" style="font-size: 11px; margin-right: 8px;">0MB (0곡)</span>
-                <button id="btn-clear-cache" class="glass-btn" style="padding: 2px 8px; font-size: 10px;" data-i18n="settings.general.clearCache" title="로컬 IndexedDB 캐시 비우기" data-i18n-title="settings.general.clearCacheTitle">캐시 비우기</button>
+                <span id="setting-storage-audio-stats" class="setting-val-display" style="font-size: 11px; margin-right: 8px;">0.0MB (로비 0곡 / 인게임 0곡)</span>
+                <button id="btn-clear-audio-cache" class="glass-btn" style="padding: 2px 8px; font-size: 10px;" data-i18n="settings.general.clearBgmCache" title="로컬 BGM 오디오 캐시 비우기" data-i18n-title="settings.general.clearBgmCacheTitle">캐시 비우기</button>
+              </div>
+            </div>
+
+            <!-- 경기 리플레이 캐시 -->
+            <div class="setting-row">
+              <div class="setting-label-col">
+                <span class="setting-name" data-i18n="settings.general.replayCacheName">경기 리플레이 캐시</span>
+                <span class="setting-desc" id="setting-replay-storage-desc" data-i18n="settings.general.replayCacheDesc">IndexedDB 경기 3D 텔레메트리 궤적 영구 보관</span>
+              </div>
+              <div class="setting-control-col">
+                <span id="setting-storage-replay-stats" class="setting-val-display" style="font-size: 11px; margin-right: 8px;">0.0MB (0경기)</span>
+                <button id="btn-clear-replay-cache" class="glass-btn" style="padding: 2px 8px; font-size: 10px;" data-i18n="settings.general.clearReplayCache" title="로컬 경기 리플레이 캐시 비우기" data-i18n-title="settings.general.clearReplayCacheTitle">캐시 비우기</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 탭 2: 게임플레이 (GAMEPLAY) - 조향감도, 틸트, 키보드 조작 설정 -->
+        <!-- 탭 2: 게임플레이 (GAMEPLAY) - 조향감도, 틸트, 조작 설정 -->
         <div id="settings-panel-gameplay" class="settings-tab-panel">
           <div class="settings-group">
             <div class="settings-group-title" data-i18n="settings.gameplay.groupTitle">조작 감도 & 시점</div>
@@ -491,55 +504,120 @@
             </div>
           </div>
 
+          <!-- 조작 설정 그룹 (아코디언: 키보드 & 게임패드) -->
           <div class="settings-group" style="margin-top: 16px;">
-            <div class="settings-group-title" data-i18n="settings.gameplay.controlsTitle">키보드 조작 설정 (단일 키 매핑)</div>
+            <div class="settings-group-title" data-i18n="settings.gameplay.controlsTitle">조작 설정</div>
 
-            <div class="setting-row">
-              <div class="setting-label-col">
-                <span class="setting-name" data-i18n="settings.gameplay.presetName">조작 프리셋</span>
-                <span class="setting-desc" data-i18n="settings.gameplay.presetDesc">기본 프리셋 또는 완전 사용자 지정</span>
-              </div>
-              <div class="setting-control-col">
-                <div class="preset-btn-group">
-                  <button type="button" id="btn-preset-wasd" class="preset-choice-btn active" data-i18n="settings.gameplay.presetWasd">WASD + R_SHIFT</button>
-                  <button type="button" id="btn-preset-arrows" class="preset-choice-btn" data-i18n="settings.gameplay.presetArrows">화살표 + L_SHIFT</button>
-                  <span id="badge-preset-custom" class="custom-badge" style="display: none;" data-i18n="common.custom">사용자 지정</span>
+            <!-- 아코디언 1: 키보드 조작 설정 (기본 펼침) -->
+            <div class="controls-accordion-item expanded" id="controls-accordion-keyboard">
+              <button type="button" class="controls-accordion-header" id="btn-toggle-keyboard">
+                <div class="accordion-header-title">
+                  <span class="accordion-icon">⌨️</span>
+                  <span data-i18n="settings.gameplay.controlsKeyboard">키보드 조작 설정</span>
+                </div>
+                <div class="accordion-header-right">
+                  <span class="accordion-chevron">▼</span>
+                </div>
+              </button>
+              <div class="controls-accordion-body" id="body-controls-keyboard">
+                <div class="setting-row" style="padding-top: 6px;">
+                  <div class="setting-label-col">
+                    <span class="setting-name" data-i18n="settings.gameplay.presetName">조작 프리셋</span>
+                    <span class="setting-desc" data-i18n="settings.gameplay.presetDesc">기본 프리셋 또는 완전 사용자 지정</span>
+                  </div>
+                  <div class="setting-control-col">
+                    <div class="preset-btn-group">
+                      <button type="button" id="btn-preset-wasd" class="preset-choice-btn active" data-i18n="settings.gameplay.presetWasd">WASD + R_SHIFT</button>
+                      <button type="button" id="btn-preset-arrows" class="preset-choice-btn" data-i18n="settings.gameplay.presetArrows">화살표 + L_SHIFT</button>
+                      <span id="badge-preset-custom" class="custom-badge" style="display: none;" data-i18n="common.custom">사용자 지정</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="keybind-grid" id="keybind-grid">
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.throttle">가속 (THROTTLE)</span>
+                    <button type="button" class="keybind-btn" data-action="throttle">W</button>
+                  </div>
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.brake">감속/후진 (BRAKE)</span>
+                    <button type="button" class="keybind-btn" data-action="brake">R_SHIFT</button>
+                  </div>
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.steerLeft">좌회전 (STEER LEFT)</span>
+                    <button type="button" class="keybind-btn" data-action="steerLeft">A</button>
+                  </div>
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.steerRight">우회전 (STEER RIGHT)</span>
+                    <button type="button" class="keybind-btn" data-action="steerRight">D</button>
+                  </div>
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.drift">드리프트 (DRIFT)</span>
+                    <button type="button" class="keybind-btn" data-action="handbrake">SPACE</button>
+                  </div>
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.reset">서킷 복귀 (RESET)</span>
+                    <button type="button" class="keybind-btn" data-action="reset">R</button>
+                  </div>
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.lights">헤드라이트 (LIGHTS)</span>
+                    <button type="button" class="keybind-btn" data-action="headlights">H</button>
+                  </div>
+                </div>
+
+                <div class="keybind-help-note">
+                  <span data-i18n="settings.gameplay.keyNote">※ 키 버튼을 클릭한 후 원하는 키를 누르면 즉시 변경됩니다. (ESC: 취소)</span>
                 </div>
               </div>
             </div>
 
-            <div class="keybind-grid" id="keybind-grid">
-              <div class="keybind-item">
-                <span class="keybind-action-label" data-i18n="settings.gameplay.throttle">가속 (THROTTLE)</span>
-                <button type="button" class="keybind-btn" data-action="throttle">W</button>
+            <!-- 아코디언 2: 게임패드 조작 설정 (기본 접힘) -->
+            <div class="controls-accordion-item" id="controls-accordion-gamepad">
+              <button type="button" class="controls-accordion-header" id="btn-toggle-gamepad">
+                <div class="accordion-header-title">
+                  <span class="accordion-icon">🎮</span>
+                  <span data-i18n="settings.gameplay.controlsGamepad">게임패드 조작 설정</span>
+                </div>
+                <div class="accordion-header-right">
+                  <span id="badge-gamepad-status" class="custom-badge" style="background: rgba(148, 163, 184, 0.15); border-color: rgba(148, 163, 184, 0.3); color: var(--text-secondary); margin-right: 8px;">⚪ 미연결</span>
+                  <span class="accordion-chevron">▶</span>
+                </div>
+              </button>
+              <div class="controls-accordion-body" id="body-controls-gamepad" style="display: none;">
+                <div class="setting-row" style="padding-top: 6px;">
+                  <div class="setting-label-col">
+                    <span class="setting-name" id="gamepad-detected-name">표준 게임패드 (XInput / DualShock / DirectInput)</span>
+                    <span class="setting-desc" id="gamepad-status-desc" data-i18n="settings.gameplay.gamepadDisconnected">게임패드 연결되지 않음 (XInput/DirectInput 자동 지원)</span>
+                  </div>
+                </div>
+
+                <div class="keybind-grid">
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.gamepadSteer">조향 (STEERING)</span>
+                    <span class="gamepad-mapping-val" data-i18n="settings.gameplay.gamepadSteerVal">좌측 스틱 / D-PAD</span>
+                  </div>
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.gamepadThrottle">가속 (THROTTLE)</span>
+                    <span class="gamepad-mapping-val" data-i18n="settings.gameplay.gamepadThrottleVal">RT / R2 트리거 / A 버튼</span>
+                  </div>
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.gamepadBrake">감속/후진 (BRAKE)</span>
+                    <span class="gamepad-mapping-val" data-i18n="settings.gameplay.gamepadBrakeVal">LT / L2 트리거 / B 버튼</span>
+                  </div>
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.gamepadDrift">드리프트 (HANDBRAKE)</span>
+                    <span class="gamepad-mapping-val" data-i18n="settings.gameplay.gamepadDriftVal">X 버튼 / RB / R1</span>
+                  </div>
+                  <div class="keybind-item">
+                    <span class="keybind-action-label" data-i18n="settings.gameplay.gamepadReset">서킷 복귀 (RESET)</span>
+                    <span class="gamepad-mapping-val" data-i18n="settings.gameplay.gamepadResetVal">Y 버튼 / SELECT</span>
+                  </div>
+                </div>
+
+                <div class="keybind-help-note">
+                  <span data-i18n="settings.gameplay.gamepadNote">※ 게임패드(Xbox/PlayStation/표준 컨트롤러) 연결 시 아날로그 스틱 및 트리거 버튼이 자동 매핑됩니다.</span>
+                </div>
               </div>
-              <div class="keybind-item">
-                <span class="keybind-action-label" data-i18n="settings.gameplay.brake">감속/후진 (BRAKE)</span>
-                <button type="button" class="keybind-btn" data-action="brake">R_SHIFT</button>
-              </div>
-              <div class="keybind-item">
-                <span class="keybind-action-label" data-i18n="settings.gameplay.steerLeft">좌회전 (STEER LEFT)</span>
-                <button type="button" class="keybind-btn" data-action="steerLeft">A</button>
-              </div>
-              <div class="keybind-item">
-                <span class="keybind-action-label" data-i18n="settings.gameplay.steerRight">우회전 (STEER RIGHT)</span>
-                <button type="button" class="keybind-btn" data-action="steerRight">D</button>
-              </div>
-              <div class="keybind-item">
-                <span class="keybind-action-label" data-i18n="settings.gameplay.drift">드리프트 (DRIFT)</span>
-                <button type="button" class="keybind-btn" data-action="handbrake">SPACE</button>
-              </div>
-              <div class="keybind-item">
-                <span class="keybind-action-label" data-i18n="settings.gameplay.reset">서킷 복귀 (RESET)</span>
-                <button type="button" class="keybind-btn" data-action="reset">R</button>
-              </div>
-              <div class="keybind-item">
-                <span class="keybind-action-label" data-i18n="settings.gameplay.lights">헤드라이트 (LIGHTS)</span>
-                <button type="button" class="keybind-btn" data-action="headlights">H</button>
-              </div>
-            </div>
-            <div class="keybind-help-note">
-              <span data-i18n="settings.gameplay.keyNote">※ 키 버튼을 클릭한 후 원하는 키를 누르면 즉시 변경됩니다. (ESC: 취소)</span>
             </div>
           </div>
         </div>

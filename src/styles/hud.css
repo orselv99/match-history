@@ -1021,6 +1021,25 @@
   opacity: 0;
   transition: opacity 0.5s ease;
   overflow: hidden;
+  /* 좌/우 사이드미러 영역(220x116px @ top:190px) 컷아웃 홀 생성하여 와이퍼가 백미러 내부를 가로지르지 않도록 방지 */
+  clip-path: polygon(
+    evenodd,
+    0% 0%,
+    100% 0%,
+    100% 100%,
+    0% 100%,
+    0% 0%,
+    20px 190px,
+    240px 190px,
+    240px 306px,
+    20px 306px,
+    20px 190px,
+    calc(100% - 240px) 190px,
+    calc(100% - 20px) 190px,
+    calc(100% - 20px) 306px,
+    calc(100% - 240px) 306px,
+    calc(100% - 240px) 190px
+  );
 }
 
 .weather-screen-overlay.is-raining .windshield-wiper-assembly,

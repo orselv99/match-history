@@ -121,8 +121,9 @@ artifacts_0/
 │   │   │   ├── SpeedometerWidget.ts # 속도계, 기어 단수, RPM 타코미터, 드리프트 스태미나 바
 │   │   │   └── index.ts            # HUD 서브시스템 배럴 내보내기
 │   │   ├── settings/               # 환경 설정 서브시스템
-│   │   │   ├── AudioSettingsTab.ts # 볼륨, 음소거, 오디오 캐시 전담 탭
-│   │   │   ├── ControlsSettingsTab.ts # 키 바인딩, 프리셋, 스티어 감도, 카메라 뷰 전담 탭
+│   │   │   ├── GeneralSettingsTab.ts # 언어 선택, BGM 및 경기 리플레이 캐시 분리 관리 탭
+│   │   │   ├── AudioSettingsTab.ts # 볼륨, 음소거, 사운드 제어 전담 탭
+│   │   │   ├── ControlsSettingsTab.ts # 조작 설정 아코디언(키보드 & 게임패드), 감도, 카메라 뷰 전담 탭
 │   │   │   ├── GraphicsSettingsTab.ts # GPU 감지, 프리셋(HIGH/MED/LOW), 그래픽 옵션 전담 탭
 │   │   │   ├── SettingsModal.ts    # 환경 설정 모달 메인 오케스트레이터
 │   │   │   └── index.ts            # 환경 설정 서브시스템 배럴 내보내기

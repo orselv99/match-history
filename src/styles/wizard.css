@@ -692,6 +692,27 @@
   align-items: center;
 }
 
+.wizard-footer-left .secondary-btn,
+.wizard-footer-right .primary-btn,
+.wizard-actions button {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  line-height: 1 !important;
+  padding: 0 20px !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: var(--font-mono) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
+
 .wizard-footer-right .primary-btn {
   min-width: 160px;
 }

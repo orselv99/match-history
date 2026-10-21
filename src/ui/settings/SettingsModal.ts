@@ -2,14 +2,16 @@ import { BaseModal } from '../BaseModal.ts';
 import { AudioManager } from '../../core/AudioManager.ts';
 import { i18nManager } from '../../i18n/I18nManager.ts';
 import type { Game } from '../../core/Game.ts';
+import { GeneralSettingsTab } from './GeneralSettingsTab.ts';
 import { AudioSettingsTab } from './AudioSettingsTab.ts';
 import { ControlsSettingsTab } from './ControlsSettingsTab.ts';
 import { GraphicsSettingsTab } from './GraphicsSettingsTab.ts';
 
 /**
  * 환경 설정 모달 메인 오케스트레이터 컨트롤러
+ * - 일반 탭 -> GeneralSettingsTab 위임 (언어 선택 & BGM/리플레이 캐시 분리 제어)
  * - 사운드 탭 -> AudioSettingsTab 위임
- * - 조작 & 게임플레이 탭 -> ControlsSettingsTab 위임
+ * - 조작 & 게임플레이 탭 -> ControlsSettingsTab 위임 (키보드 & 게임패드 아코디언)
  * - 그래픽 & 하드웨어 탭 -> GraphicsSettingsTab 위임
  */
 export class SettingsModal extends BaseModal {
@@ -21,6 +23,7 @@ export class SettingsModal extends BaseModal {
   private tabPanels: NodeListOf<HTMLElement>;
 
   // 서브 탭 컨트롤러
+  public readonly generalTab: GeneralSettingsTab;
   public readonly audioTab: AudioSettingsTab;
   public readonly controlsTab: ControlsSettingsTab;
   public readonly graphicsTab: GraphicsSettingsTab;
@@ -34,7 +37,8 @@ export class SettingsModal extends BaseModal {
     this.tabButtons = document.querySelectorAll('.settings-tab-btn');
     this.tabPanels = document.querySelectorAll('.settings-tab-panel');
 
-    // 3대 서브 탭 컴포넌트 초기화
+    // 4대 서브 탭 컴포넌트 초기화
+    this.generalTab = new GeneralSettingsTab(() => this.syncUI());
     this.audioTab = new AudioSettingsTab(audio);
     this.controlsTab = new ControlsSettingsTab(game);
     this.graphicsTab = new GraphicsSettingsTab(game);
@@ -84,6 +88,7 @@ export class SettingsModal extends BaseModal {
   }
 
   public syncUI(): void {
+    this.generalTab.syncUI();
     this.audioTab.syncUI();
     this.controlsTab.syncUI();
     this.graphicsTab.syncUI();

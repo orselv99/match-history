@@ -263,6 +263,73 @@ input:checked + .switch-slider:before {
 }
 
 /* =====================================================================
+   조작 설정 아코디언 (키보드 & 게임패드 접기/펼치기)
+   ===================================================================== */
+.controls-accordion-item {
+  margin-top: 10px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(10, 12, 16, 0.35);
+}
+
+.controls-accordion-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--surface-card);
+  border: none;
+  border-bottom: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.controls-accordion-header:hover {
+  background: var(--surface-subtle);
+}
+
+.controls-accordion-item.expanded .controls-accordion-header {
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-subtle);
+}
+
+.accordion-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.accordion-header-right {
+  display: flex;
+  align-items: center;
+}
+
+.accordion-chevron {
+  font-size: 10px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+  user-select: none;
+}
+
+.controls-accordion-body {
+  padding: 10px;
+}
+
+.gamepad-mapping-val {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-spec);
+  padding: 2px 6px;
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-strong);
+}
+
+/* =====================================================================
    환경 설정 탭 (Tabs Navigation & Panels) 스타일링
    ===================================================================== */
 .settings-tabs-nav {

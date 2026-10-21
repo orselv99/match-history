@@ -240,6 +240,24 @@ export class AppDatabase {
     }
   }
 
+  /**
+   * 경기 리플레이 캐시 전체 삭제
+   */
+  public async clearReplayCache(): Promise<void> {
+    try {
+      const db = await this.getDB();
+      return new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORES.REPLAY, 'readwrite');
+        const store = tx.objectStore(STORES.REPLAY);
+        const req = store.clear();
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    } catch (e) {
+      console.warn('[AppDatabase] Failed to clear replay cache:', e);
+    }
+  }
+
   /* =====================================================================
      2. 매치 리플레이(Replay) 바이너리 캐시 API (차후 리플레이 기능 완벽 준비)
      ===================================================================== */

@@ -77,13 +77,7 @@ function generateTicksForSeed(
   const oppInitDists = oppSlots.map(s => -STARTING_GRID_SLOTS[s].distBehind);
   const oppInitLanes = oppSlots.map(s => -STARTING_GRID_SLOTS[s].lane);
 
-  // 메인 스트레이트 시작점 및 정방향/우측 벡터 산출 (모든 구간에서 r = (-tan.z, 0, tan.x) 로 100% 일치)
-  const startPt = curve.getPointAt(0);
-  const startTangent = curve.getTangentAt(0).normalize();
-  const startRight = new THREE.Vector3(-startTangent.z, 0, startTangent.x).normalize();
-  const straightHeading = Math.atan2(startTangent.x, startTangent.z);
-
-  // 3D 위치 및 회전각 산출 함수 (결승선 이전에는 직선 수평 정렬, 이후에는 서킷 곡선 추종 - 벡터 방향 통일로 불연속 점프 원천 차단)
+  // 3D 위치 및 회전각 산출 함수 (서킷 스플라인 곡선 추종으로 모든 그리드 슬롯이 100% 서킷 위에 정렬)
   function getVehiclePose(vDist: number, vInitLane: number, targetLane: number): {
     pos: THREE.Vector3;
     heading: number;
@@ -91,38 +85,25 @@ function generateTicksForSeed(
     roll: number;
   } {
     const pos = new THREE.Vector3();
-    if (vDist <= 0) {
-      pos.copy(startPt)
-         .addScaledVector(startTangent, vDist)
-         .addScaledVector(startRight, vInitLane);
-      pos.y = Math.max(0, startPt.y) + 0.055;
-      return {
-        pos,
-        heading: straightHeading,
-        pitch: 0,
-        roll: 0,
-      };
-    } else {
-      const t = (vDist / circuitLength) % 1.0;
-      curve.getPointAt(t, pos);
-      const tan = curve.getTangentAt(t).normalize();
-      const r = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
+    const t = ((vDist / circuitLength) % 1.0 + 1.0) % 1.0;
+    curve.getPointAt(t, pos);
+    const tan = curve.getTangentAt(t).normalize();
+    const r = new THREE.Vector3(-tan.z, 0, tan.x).normalize();
 
-      // 출발 후 45m 구간에 걸쳐 그리드 레인에서 레이싱 레인으로 부드럽게 합류
-      const blendOut = Math.min(1.0, vDist / 45.0);
-      const lane = THREE.MathUtils.lerp(vInitLane, targetLane, blendOut);
-      pos.addScaledVector(r, lane);
-      pos.y = Math.max(0, pos.y) + 0.055;
+    // 출발 후 45m 구간에 걸쳐 그리드 레인에서 레이싱 레인으로 부드럽게 합류 (출발선 이전은 그리드 레인 유지)
+    const blendOut = vDist <= 0 ? 0 : Math.min(1.0, vDist / 45.0);
+    const lane = THREE.MathUtils.lerp(vInitLane, targetLane, blendOut);
+    pos.addScaledVector(r, lane);
+    pos.y = Math.max(0, pos.y) + 0.055;
 
-      const heading = Math.atan2(tan.x, tan.z);
-      const pitch = -Math.asin(THREE.MathUtils.clamp(tan.y, -0.45, 0.45));
-      return {
-        pos,
-        heading,
-        pitch,
-        roll: 0,
-      };
-    }
+    const heading = Math.atan2(tan.x, tan.z);
+    const pitch = -Math.asin(THREE.MathUtils.clamp(tan.y, -0.45, 0.45));
+    return {
+      pos,
+      heading,
+      pitch,
+      roll: 0,
+    };
   }
 
   let dist = playerInitDist;

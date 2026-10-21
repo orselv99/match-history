@@ -102,7 +102,7 @@ export class OpponentManager {
    * 스타팅 그리드 박스에 차량 나란히 정렬 배치 (Grid Alignment)
    * @param asRivals 플레이어 주행 모드 시 (슬롯 0은 플레이어 전용, 상대는 1, 2, 3번 슬롯에 배치)
    */
-  public resetToGrids(asRivals: boolean = false): void {
+  public resetToGrids(asRivals: boolean = false, playerSlot: number = 0): void {
     this.isRivalsMode = asRivals;
     this.isActive = true;
     this.group.visible = true;
@@ -110,16 +110,21 @@ export class OpponentManager {
 
     const circuitLength = this.circuit.circuitCurve.getLength();
     this.raceTimeMs = 0;
+    const rivalSlots = [0, 1, 2, 3].filter(s => s !== playerSlot);
+
     this.agents.forEach((agent, idx) => {
       if (asRivals && idx === 0) {
-        // 슬롯 0은 플레이어 차량이 차지하므로 비활성화
+        // 플레이어 차량이 차지하는 슬롯 인덱스 매핑 및 비활성화
         agent.vehicle.mesh.visible = false;
         agent.speedMs = 0;
+        agent.assignedSlot = playerSlot;
         return;
       }
 
       agent.vehicle.mesh.visible = true;
-      const slot = STARTING_GRID_SLOTS[Math.min(STARTING_GRID_SLOTS.length - 1, Math.max(0, idx))] ?? STARTING_GRID_SLOTS[0];
+      const slotIndex = asRivals ? (rivalSlots[idx - 1] ?? idx) : idx;
+      agent.assignedSlot = slotIndex;
+      const slot = STARTING_GRID_SLOTS[Math.min(STARTING_GRID_SLOTS.length - 1, Math.max(0, slotIndex))] ?? STARTING_GRID_SLOTS[0];
       const distBehind = slot.distBehind;
       const lane = slot.lane;
 
@@ -141,13 +146,17 @@ export class OpponentManager {
       agent.steerDir = 0;
 
       // 그리드 박스 위치에 차량 스폰 (Y: 0.055m 지면 밀착)
-      const gridPos = this.circuit.getGridPosition(idx);
+      const gridPos = this.circuit.getGridPosition(slotIndex);
       agent.vehicle.reset(gridPos.position, gridPos.heading);
     });
   }
 
-  public activate(asRivals: boolean = false): void {
-    this.resetToGrids(asRivals);
+  public getAgentForSlot(slotIndex: number): OpponentAgent | undefined {
+    return this.agents.find(a => a.assignedSlot === slotIndex);
+  }
+
+  public activate(asRivals: boolean = false, playerSlot: number = 0): void {
+    this.resetToGrids(asRivals, playerSlot);
   }
 
   public deactivate(): void {

@@ -111,13 +111,15 @@ window.addEventListener('DOMContentLoaded', () => {
         game.replayPlayer.syncOpponents(record.metadata.opponentConfigs);
       }
 
-      // 4. 리플레이 틱 데이터 로드 및 모드 전환
+      // 4. 리플레이 틱 데이터 로드 및 모드 전환 (카운트다운과 함께 재생 준비)
       game.currentReplayMetadata = record.metadata;
       game.replayPlayer.loadReplay(record.ticks);
       setModeUI('REPLAY');
       game.replayPlayer.seek(0);
-      game.replayPlayer.play();
+      game.replayPlayer.pause();
+      game.startCountdown(true);
       game.cameraController.snapToTarget(game.replayPlayer.ghostVehicle);
+      replayBar.updateButtonState();
 
       showToast(`▶ [${record.matchCode}] ${driverName || 'Driver'} 리플레이 재생을 시작합니다.`);
     },
@@ -157,9 +159,9 @@ window.addEventListener('DOMContentLoaded', () => {
   const finishModal = new FinishModal({
     onReplay: async () => {
       if (game.mode === 'REPLAY') {
-        game.raceState = 'RUNNING';
         game.replayPlayer.seek(0);
-        game.replayPlayer.play();
+        game.replayPlayer.pause();
+        game.startCountdown(true);
         game.cameraController.snapToTarget(game.replayPlayer.ghostVehicle);
         replayBar.updateButtonState();
         return;
@@ -170,7 +172,8 @@ window.addEventListener('DOMContentLoaded', () => {
       game.replayPlayer.loadReplay(ticks);
       setModeUI('REPLAY');
       game.replayPlayer.seek(0);
-      game.replayPlayer.play();
+      game.replayPlayer.pause();
+      game.startCountdown(true);
       game.cameraController.snapToTarget(game.replayPlayer.ghostVehicle);
       replayBar.updateButtonState();
     },
@@ -212,10 +215,11 @@ window.addEventListener('DOMContentLoaded', () => {
     },
     onRestart: () => {
       if (game.mode === 'REPLAY') {
-        game.raceState = 'RUNNING';
         if (finishModal.isOpen()) finishModal.close();
         game.replayPlayer.seek(0);
-        game.replayPlayer.play();
+        game.replayPlayer.pause();
+        game.startCountdown(true);
+        game.cameraController.snapToTarget(game.replayPlayer.ghostVehicle);
         replayBar.updateButtonState();
       } else {
         game.restartRace();

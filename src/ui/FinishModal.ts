@@ -234,7 +234,29 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
       }
 
       // 1. 인게임 레이스 최종 순위 ('순위, 이름, 시간')
-      this.renderRaceResults(metadata.raceResults || []);
+      let results = metadata.raceResults || [];
+      if (results.length <= 1 && (metadata as any).opponents && (metadata as any).opponents.length > 0) {
+        const pTimeMs = metadata.totalTimeMs || 0;
+        results = [
+          {
+            rank: (metadata as any).rank || 1,
+            driverName: metadata.driverName || 'Player',
+            timeMs: pTimeMs,
+            timeFormatted: (metadata as any).totalTimeFormatted || this.formatMs(pTimeMs),
+            isPlayer: true,
+            color: metadata.color || '#38bdf8',
+          },
+          ...(metadata as any).opponents.map((opp: any) => ({
+            rank: 1,
+            driverName: opp.driverName,
+            timeMs: opp.totalTimeMs || 0,
+            timeFormatted: opp.totalTimeFormatted || this.formatMs(opp.totalTimeMs || 0),
+            isPlayer: false,
+            color: opp.color,
+          }))
+        ].sort((a, b) => a.timeMs - b.timeMs).map((item, idx) => ({ ...item, rank: idx + 1 }));
+      }
+      this.renderRaceResults(results);
 
       // 2. 서버 서킷 상위 5위 랭킹 비동기 조회 (Fallback 지원)
       this.loadServerTop5(metadata.circuitId);

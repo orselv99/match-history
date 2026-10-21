@@ -5,16 +5,18 @@ import type { CachedReplayRecord } from '../storage/schema.ts';
 import { CIRCUIT_DEFINITIONS, type CircuitId } from '../data/circuits.ts';
 import { showToast } from './Toast.ts';
 import { MinimapReplayPlayer } from './MinimapReplayPlayer.ts';
+import { MatchHistoryTable } from './MatchHistoryTable.ts';
 
 export interface MatchHistoryModalCallbacks {
   onPlayReplay?: (record: CachedReplayRecord) => void;
 }
 
 /**
- * 로컬 IndexedDB에 저장된 최대 100개 주행 리플레이 목록 및 전적 컨트롤러
- * - 서킷별 필터링 및 검색어(드라이버/코드) 지원 (검색 시 기존 순위 유지)
- * - 테이블 행 클릭 시 리더보드와 동일한 크기로 전환되는 풀-커버 인스펙터 팝업
- * - 2D 트랙 미니맵 리플레이 (수동 재생, 스크러버 탐색, 3D 리플레이 연동)
+ * 로컬 IndexedDB에 저장된 주행 리플레이 목록 및 전적 컨트롤러
+ * - 상단 요약 통계(총 경기 수, 최고 랩타임, 최고속도)
+ * - 테이블 렌더링 및 페이지네이션을 MatchHistoryTable 컴포넌트로 위임
+ * - 2D 트랙 미니맵 렌더링을 MinimapReplayPlayer 컴포넌트로 위임
+ * - 풀-커버 인스펙터 상세 분석 팝업 관리
  */
 export class MatchHistoryModal extends BaseModal {
   // 메인 리더보드 카드 DOM
@@ -34,19 +36,15 @@ export class MatchHistoryModal extends BaseModal {
   private inspectorCard: HTMLElement | null;
   private inspectorBtnClose: HTMLElement | null;
   private inspectorContentBody: HTMLElement | null;
-
-  private allRecords: CachedReplayRecord[] = [];
-  private currentCircuitFilter: string = 'all';
-  private searchQuery: string = '';
-  private sortMode: 'best_lap' | 'recent' | 'top_speed' = 'best_lap';
-  private currentPage: number = 1;
-  private readonly pageSize: number = 20;
   private paginationContainer: HTMLElement | null = null;
 
-  // 2D 미니맵 플레이어 및 인스펙터 상태
+  private allRecords: CachedReplayRecord[] = [];
+
+  // 분리된 전담 하위 컴포넌트
   public isInspectorViewOpen: boolean = false;
   private currentInspectorRecord: CachedReplayRecord | null = null;
   private minimapPlayer: MinimapReplayPlayer = new MinimapReplayPlayer();
+  private table: MatchHistoryTable;
 
   private callbacks: MatchHistoryModalCallbacks;
 
@@ -73,6 +71,28 @@ export class MatchHistoryModal extends BaseModal {
     this.inspectorContentBody = document.getElementById('inspector-content-body');
     this.paginationContainer = document.getElementById('history-pagination-container');
 
+    // MatchHistoryTable 인스턴스 초기화
+    this.table = new MatchHistoryTable({
+      tbody: this.tableTbody,
+      paginationContainer: this.paginationContainer,
+      callbacks: {
+        onSelectRecord: (record) => {
+          this.openInspector(record.matchCode);
+        },
+        onPlayReplay: (record) => {
+          this.closeEntireModal();
+          this.callbacks.onPlayReplay?.(record);
+        },
+        onDeleteRecord: async (record) => {
+          if (confirm(`경기 기록 [${record.matchCode}]를 삭제하시겠습니까?`)) {
+            await appDB.deleteReplay(record.matchCode);
+            showToast(`🗑 리플레이 [${record.matchCode}] 기록이 삭제되었습니다.`);
+            await this.loadAndRender();
+          }
+        },
+      },
+    });
+
     this.bindEvents();
   }
 
@@ -91,17 +111,17 @@ export class MatchHistoryModal extends BaseModal {
       btn.addEventListener('click', () => {
         this.tabBtns.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        this.currentCircuitFilter = btn.getAttribute('data-circuit') || 'all';
-        this.currentPage = 1;
-        this.renderTable();
+        const circuit = btn.getAttribute('data-circuit') || 'all';
+        this.table.setCircuitFilter(circuit);
+        this.table.render();
       });
     });
 
     // 4. 드라이버 및 매치코드 검색
     const executeSearch = () => {
-      this.searchQuery = this.searchInput?.value.trim().toLowerCase() || '';
-      this.currentPage = 1;
-      this.renderTable();
+      const query = this.searchInput?.value || '';
+      this.table.setSearchQuery(query);
+      this.table.render();
     };
 
     this.btnSearch?.addEventListener('click', executeSearch);
@@ -111,70 +131,12 @@ export class MatchHistoryModal extends BaseModal {
 
     // 5. 정렬 셀렉트 변경
     this.sortSelect?.addEventListener('change', () => {
-      this.sortMode = (this.sortSelect?.value as any) || 'best_lap';
-      this.currentPage = 1;
-      this.renderTable();
+      const mode = (this.sortSelect?.value as any) || 'best_lap';
+      this.table.setSortMode(mode);
+      this.table.render();
     });
 
-    // 6. 페이지네이션 바 클릭 이벤트 위임
-    this.paginationContainer?.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      const pageBtn = target.closest('.page-btn') as HTMLElement | null;
-      if (!pageBtn || pageBtn.hasAttribute('disabled')) return;
-
-      const pageStr = pageBtn.getAttribute('data-page');
-      if (pageStr) {
-        const page = parseInt(pageStr, 10);
-        if (!isNaN(page) && page !== this.currentPage) {
-          this.currentPage = page;
-          this.renderTable();
-          const scrollContainer = this.mainCard?.querySelector('.history-table-container');
-          if (scrollContainer) {
-            scrollContainer.scrollTop = 0;
-          }
-        }
-      }
-    });
-
-    // 9. 테이블 내 클릭 이벤트 위임
-    this.tableTbody?.addEventListener('click', async (e) => {
-      const target = e.target as HTMLElement;
-
-      // 다시보기 재생 버튼 (직접 3D 뷰어 진입)
-      const replayBtn = target.closest('.history-replay-btn') as HTMLElement | null;
-      if (replayBtn) {
-        const matchCode = replayBtn.getAttribute('data-match');
-        const record = this.allRecords.find(r => r.matchCode === matchCode);
-        if (record && this.callbacks.onPlayReplay) {
-          this.closeEntireModal();
-          this.callbacks.onPlayReplay(record);
-        }
-        return;
-      }
-
-      // 리플레이 삭제 버튼
-      const deleteBtn = target.closest('.history-delete-btn') as HTMLElement | null;
-      if (deleteBtn) {
-        const matchCode = deleteBtn.getAttribute('data-match');
-        if (matchCode) {
-          await appDB.deleteReplay(matchCode);
-          showToast(`🗑 리플레이 [${matchCode}] 기록이 삭제되었습니다.`);
-          await this.loadAndRender();
-        }
-        return;
-      }
-
-      // 데이터 행 클릭 시 인스펙터 풀-커버 팝업 열기
-      const dataRow = target.closest('.history-data-row') as HTMLElement | null;
-      if (dataRow) {
-        const matchCode = dataRow.getAttribute('data-match');
-        if (matchCode) {
-          this.openInspector(matchCode);
-        }
-      }
-    });
-
-    // 10. 인스펙터 내부 클릭 & 스크러버 이벤트 위임
+    // 6. 인스펙터 내부 클릭 & 스크러버 이벤트 위임
     this.inspectorCard?.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
 
@@ -233,16 +195,11 @@ export class MatchHistoryModal extends BaseModal {
   }
 
   public open(): void {
+    super.show();
     this.closeInspector();
-    this.showModal();
     this.loadAndRender();
   }
 
-  /**
-   * ESC 키 또는 닫기 요청 시:
-   * - 인스펙터가 열려있으면 목록으로 먼저 복귀
-   * - 목록 화면이면 모달 전체를 닫음
-   */
   public override close(): void {
     if (this.isInspectorViewOpen) {
       this.closeInspector();
@@ -295,7 +252,6 @@ export class MatchHistoryModal extends BaseModal {
 
   /**
    * IndexedDB에서 최대 100개 리플레이 조회 및 통계/테이블 일괄 갱신
-   * - 3랩 미만인 구버전 리플레이 탐색 시 자동 삭제 및 필터링하여 온전한 3랩 데이터만 표시
    */
   public async loadAndRender(): Promise<void> {
     try {
@@ -311,31 +267,27 @@ export class MatchHistoryModal extends BaseModal {
         }
       }
 
-      // 3랩 데이터가 40개 미만인 경우(초기화 또는 구버전 정리 후 등) 자동으로 최신 시드 데이터 즉시 일괄 동기화
+      // 3랩 데이터가 40개 미만인 경우 자동으로 최신 시드 데이터 즉시 일괄 동기화
       if (validRecords.length < 40) {
         await initSeedReplays(true);
-        const refreshed = await appDB.listReplays();
-        this.allRecords = refreshed.filter(r => {
-          const lastTick = r.ticks?.[r.ticks.length - 1];
-          return (r.metadata?.totalLaps || 1) >= 3 && (lastTick?.lap || 1) >= 3 && (lastTick?.timeMs || 0) >= 45000;
-        });
+        const seeded = await appDB.listReplays();
+        this.allRecords = seeded;
       } else {
         this.allRecords = validRecords;
       }
-    } catch (e) {
-      console.warn('[MatchHistoryModal] Failed to load replays:', e);
-      this.allRecords = [];
-    }
 
-    this.currentPage = 1;
-    this.updateStats();
-    this.renderTable();
+      this.updateHeaderStats();
+      this.table.setRecords(this.allRecords);
+      this.table.render();
+    } catch (e) {
+      console.warn('[MatchHistoryModal] loadAndRender failed:', e);
+    }
   }
 
   /**
-   * 상단 통계 카드 수치 업데이트
+   * 상단 요약 카드(총 경기 수, 최고 랩타임, 최고속도) 통계 갱신
    */
-  private updateStats(): void {
+  private updateHeaderStats(): void {
     const total = this.allRecords.length;
 
     if (this.statTotal) {
@@ -355,17 +307,17 @@ export class MatchHistoryModal extends BaseModal {
       }
 
       if (minBestMs !== Infinity) {
-        this.statBest.innerHTML = `${this.formatTime(minBestMs)} <span class="metric-unit">${this.escapeHtml(bestDriver)}</span>`;
+        this.statBest.innerHTML = `${this.table.formatTime(minBestMs)} <span class="metric-unit">${this.table.escapeHtml(bestDriver)}</span>`;
       } else {
         this.statBest.innerHTML = `--:--.---`;
       }
     }
 
-    // 최고속 탐색
+    // 최고속 탐색 (topSpeedKmh / maxSpeedKmh 호환)
     if (this.statSpeed) {
       let maxSpeed = 0;
       for (const r of this.allRecords) {
-        const spd = r.metadata?.topSpeedKmh;
+        const spd = r.metadata?.topSpeedKmh ?? (r.metadata as any)?.maxSpeedKmh;
         if (typeof spd === 'number' && spd > maxSpeed) {
           maxSpeed = spd;
         }
@@ -375,176 +327,20 @@ export class MatchHistoryModal extends BaseModal {
   }
 
   /**
-   * 필터 및 정렬 조건에 따른 리플레이 목록 렌더링
-   * - 검색 시 기존 정렬 순위(rankNum) 보존
-   */
-  private renderTable(): void {
-    if (!this.tableTbody) return;
-
-    // 1. 서킷 필터링
-    const baseList = this.allRecords.filter(r => {
-      const recCircuitId = r.metadata?.circuitId || 'circuit_monaco';
-      if (this.currentCircuitFilter !== 'all' && recCircuitId !== this.currentCircuitFilter) {
-        return false;
-      }
-      return true;
-    });
-
-    // 2. 정렬 모드에 따라 기본 전체 순위 정렬
-    if (this.sortMode === 'best_lap') {
-      baseList.sort((a, b) => (a.metadata?.bestLapMs || Infinity) - (b.metadata?.bestLapMs || Infinity));
-    } else if (this.sortMode === 'recent') {
-      baseList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
-    } else if (this.sortMode === 'top_speed') {
-      baseList.sort((a, b) => (b.metadata?.topSpeedKmh || 0) - (a.metadata?.topSpeedKmh || 0));
-    }
-
-    // 3. 각 레코드에 고유 순위(rankNum) 부여 (검색 시 1위로 리셋되는 버그 원천 해결)
-    const rankedList = baseList.map((rec, idx) => ({
-      rec,
-      rankNum: idx + 1,
-    }));
-
-    // 4. 검색어 필터링 적용 (원래 순위 rankNum 보존)
-    let filtered = rankedList;
-    if (this.searchQuery) {
-      filtered = rankedList.filter(({ rec }) => {
-        const recCircuitId = rec.metadata?.circuitId || 'circuit_monaco';
-        const driverName = (rec.metadata?.driverName || (rec.metadata as any)?.userNickname || '').toLowerCase();
-        const code = (rec.matchCode || '').toLowerCase();
-        const circuitTitle = (CIRCUIT_DEFINITIONS[recCircuitId]?.title || '').toLowerCase();
-        return driverName.includes(this.searchQuery) || code.includes(this.searchQuery) || circuitTitle.includes(this.searchQuery);
-      });
-    }
-
-    // 5. 빈 상태 UI
-    if (filtered.length === 0) {
-      if (this.paginationContainer) this.paginationContainer.innerHTML = "";
-      this.tableTbody.innerHTML = `
-        <tr>
-          <td colspan="8" style="text-align: center; padding: 36px 16px; color: var(--text-muted); font-family: var(--font-mono); font-size: 12px;">
-            <span style="font-size: 22px; display: block; margin-bottom: 8px;">🏁</span>
-            일치하는 경기 리플레이가 없습니다.<br>
-            <span style="font-size: 11px; opacity: 0.7;">경기를 완주한 후 결과 화면에서 [다시보기]를 누르면 로컬 IndexedDB에 자동 보관됩니다.</span>
-          </td>
-        </tr>
-      `;
-      return;
-    }
-
-    // 6. 페이지네이션 슬라이싱 (페이지당 20건)
-    const totalPages = Math.max(1, Math.ceil(filtered.length / this.pageSize));
-    if (this.currentPage > totalPages) this.currentPage = totalPages;
-    if (this.currentPage < 1) this.currentPage = 1;
-
-    const startIndex = (this.currentPage - 1) * this.pageSize;
-    const pageItems = filtered.slice(startIndex, startIndex + this.pageSize);
-
-    // 7. 테이블 행 생성 (가로 스크롤 방지를 위해 다시보기 버튼 텍스트 제거하고 컴팩트 아이콘만 표시)
-    this.tableTbody.innerHTML = pageItems.map(({ rec, rankNum }) => {
-      const meta = rec.metadata;
-      // 순위 표시: 1~3등은 메달 이모티콘만 사용, 4등 이상은 000 (3자리 패딩) 고정 표시
-      let rankBadgeHtml = `<span class="rank-badge">${rankNum.toString().padStart(3, '0')}</span>`;
-      let rankRowClass = '';
-
-      if (this.sortMode === 'best_lap' && rankNum <= 3) {
-        const medal = rankNum === 1 ? '🥇' : (rankNum === 2 ? '🥈' : '🥉');
-        rankBadgeHtml = `<span class="rank-badge rank-badge-${rankNum} medal-only" title="${rankNum}위">${medal}</span>`;
-        rankRowClass = `rank-row-top rank-${rankNum}`;
-      }
-
-      const driverName = this.escapeHtml(meta?.driverName || (meta as any)?.userNickname || 'Driver');
-      const vehicleBadge = this.getVehicleBadge(meta?.vehicleModelId || (meta as any)?.vehicleId || 'gt_turbo');
-      const recCircuitId = meta?.circuitId || 'circuit_monaco';
-      const circuitTitle = this.getCircuitTitle(recCircuitId);
-      const lapTime = meta?.bestLapMs ? this.formatTime(meta.bestLapMs) : '--:--.---';
-      const topSpeed = meta?.topSpeedKmh ? `${meta.topSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
-      const dateStr = this.formatDate(rec.savedAt || rec.createdAt);
-
-      return `
-        <tr class="history-data-row ${rankRowClass}" data-match="${rec.matchCode}" title="클릭하여 상세 기록 및 2D 미니맵 인스펙터 열기">
-          <td class="col-rank">${rankBadgeHtml}</td>
-          <td class="col-driver"><strong class="driver-name-text">${driverName}</strong></td>
-          <td class="col-vehicle">${vehicleBadge}</td>
-          <td class="col-circuit">${this.formatCircuitTitle(circuitTitle)}</td>
-          <td class="col-lap"><span class="lap-highlight ${rankNum === 1 ? 'gold' : ''}">${lapTime}</span></td>
-          <td class="col-speed">${topSpeed}</td>
-          <td class="col-date">${dateStr}</td>
-          <td class="col-action">
-            <div class="history-action-group">
-              <button type="button" class="history-replay-btn icon-only" data-match="${rec.matchCode}" title="3D 리플레이 다시보기">▶</button>
-              <button type="button" class="history-delete-btn" data-match="${rec.matchCode}" title="삭제">✕</button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    // 8. 페이지네이션 바 렌더링
-    this.renderPagination(totalPages, filtered.length, startIndex, pageItems.length);
-  }
-
-  /**
    * 인스펙터 풀-커버 카드 내부 본문 HTML 생성
    */
-  /**
-   * 200건 대규모 리더보드 초고속 탐색을 위한 페이지네이션 컨트롤 바 렌더링
-   */
-  private renderPagination(totalPages: number, totalCount: number, startIndex: number, pageItemCount: number): void {
-    if (!this.paginationContainer) return;
-
-    if (totalPages <= 1) {
-      this.paginationContainer.innerHTML = `<div class="pagination-info">전체 <strong>${totalCount}</strong>건</div>`;
-      return;
-    }
-
-    const current = this.currentPage;
-    const items: (number | '...')[] = [];
-
-    if (totalPages <= 7) {
-      for (let i = 1; i <= totalPages; i++) items.push(i);
-    } else {
-      if (current <= 3) {
-        items.push(1, 2, 3, 4, '...', totalPages);
-      } else if (current >= totalPages - 2) {
-        items.push(1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages);
-      } else {
-        items.push(1, '...', current - 1, current, current + 1, '...', totalPages);
-      }
-    }
-
-    let pageButtonsHtml = "";
-    for (const it of items) {
-      if (it === '...') {
-        pageButtonsHtml += `<span class="page-ellipsis">...</span>`;
-      } else {
-        pageButtonsHtml += `<button type="button" class="page-btn page-num ${it === current ? 'active' : ''}" data-page="${it}">[${it}]</button>`;
-      }
-    }
-
-    this.paginationContainer.innerHTML = `
-      <div class="pagination-info">전체 <strong>${totalCount}</strong>건 중 <strong>${startIndex + 1} - ${startIndex + pageItemCount}</strong></div>
-      <div class="pagination-controls">
-        <button type="button" class="page-btn page-nav" data-page="1" title="첫 페이지" ${current === 1 ? 'disabled' : ''}>«</button>
-        <button type="button" class="page-btn page-nav" data-page="${Math.max(1, current - 1)}" title="이전 페이지" ${current === 1 ? 'disabled' : ''}>‹</button>
-        ${pageButtonsHtml}
-        <button type="button" class="page-btn page-nav" data-page="${Math.min(totalPages, current + 1)}" title="다음 페이지" ${current === totalPages ? 'disabled' : ''}>›</button>
-        <button type="button" class="page-btn page-nav" data-page="${totalPages}" title="마지막 페이지" ${current === totalPages ? 'disabled' : ''}>»</button>
-      </div>
-    `;
-  }
-
   private buildInspectorContentHtml(rec: CachedReplayRecord): string {
     const meta = rec.metadata;
-    const driverName = this.escapeHtml(meta?.driverName || 'Driver');
+    const driverName = this.table.escapeHtml(meta?.driverName || (meta as any)?.userNickname || 'Driver');
     const recCircuitId = meta?.circuitId || 'circuit_monaco';
-    const circuitTitle = this.getCircuitTitle(recCircuitId);
-    const vehicleName = this.getVehicleName(meta?.vehicleModelId || 'gt_turbo');
+    const circuitTitle = this.table.getCircuitTitle(recCircuitId);
+    const vehicleName = this.table.getVehicleName(meta?.vehicleModelId || 'gt_turbo');
     const isFirstPerson = meta?.viewMode === 'FIRST_PERSON';
     const playerColor = meta?.color || '#38bdf8';
-    const bestLapStr = meta?.bestLapMs ? this.formatTime(meta.bestLapMs) : '--:--.---';
-    const totalRaceStr = meta?.totalTimeMs ? this.formatTime(meta.totalTimeMs) : '--:--.---';
-    const topSpeedStr = meta?.topSpeedKmh ? `${meta.topSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
+    const bestLapStr = meta?.bestLapMs ? this.table.formatTime(meta.bestLapMs) : '--:--.---';
+    const totalRaceStr = meta?.totalTimeMs ? this.table.formatTime(meta.totalTimeMs) : '--:--.---';
+    const spd = meta?.topSpeedKmh ?? (meta as any)?.maxSpeedKmh;
+    const topSpeedStr = spd ? `${spd.toFixed(1)} km/h` : '--.- km/h';
     const avgSpeedStr = meta?.avgSpeedKmh ? `${meta.avgSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
 
     // 베스트 랩 번호 (1, 2, 3...) 및 랩별 전체 섹터 기록 생성 (3 LAP × 3 SECTOR = 9행)
@@ -567,7 +363,7 @@ export class MatchHistoryModal extends BaseModal {
       for (let s = 0; s < 3; s++) {
         const secNum = s + 1;
         const curMs = currentLapSectors[s] || 0;
-        const timeStr = curMs > 0 ? this.formatTime(curMs) : "--:--.---";
+        const timeStr = curMs > 0 ? this.table.formatTime(curMs) : "--:--.---";
 
         let deltaHtml = '<span class="sector-delta-val delta-even text-right">-</span>';
         if (prevLapSectors && curMs > 0 && prevLapSectors[s] > 0) {
@@ -593,10 +389,33 @@ export class MatchHistoryModal extends BaseModal {
       }
     }
 
-    // 1~4위 순위표
+    // 1~4위 완주 순위표 (raceResults 또는 opponents 종합)
+    let results: any[] = (meta?.raceResults && meta.raceResults.length > 1) ? meta.raceResults : [];
+    if (results.length === 0 && (meta as any)?.opponents && (meta as any).opponents.length > 0) {
+      const pTimeMs = meta?.totalTimeMs || 0;
+      results = [
+        {
+          rank: (meta as any)?.rank || 1,
+          driverName: meta?.driverName || driverName,
+          timeMs: pTimeMs,
+          timeFormatted: (meta as any).totalTimeFormatted || bestLapStr,
+          isPlayer: true,
+          color: meta?.color || '#38bdf8',
+        },
+        ...(meta as any).opponents.map((opp: any) => ({
+          rank: 1,
+          driverName: opp.driverName,
+          timeMs: opp.totalTimeMs || 0,
+          timeFormatted: opp.totalTimeFormatted || '--:--.---',
+          isPlayer: false,
+          color: opp.color,
+        }))
+      ].sort((a, b) => a.timeMs - b.timeMs).map((item, idx) => ({ ...item, rank: idx + 1 }));
+    }
+
     let raceResultsHtml = '';
-    if (meta?.raceResults && meta.raceResults.length > 0) {
-      raceResultsHtml = meta.raceResults.map(r => `
+    if (results.length > 0) {
+      raceResultsHtml = results.map((r: any) => `
         <div class="rank-finish-row ${r.isPlayer ? 'player-row' : ''}">
           <div class="rank-badge-wrap">
             <span class="rank-pos-badge ${r.rank === 1 ? 'gold' : r.rank === 2 ? 'silver' : r.rank === 3 ? 'bronze' : 'fourth'}">
@@ -604,7 +423,7 @@ export class MatchHistoryModal extends BaseModal {
             </span>
           </div>
           <span class="rank-driver-name ${r.isPlayer ? 'player-driver' : ''}">
-            ${this.escapeHtml(r.driverName)}${r.isPlayer ? ' <span class="you-pill">YOU</span>' : ''}
+            ${this.table.escapeHtml(r.driverName)}${r.isPlayer ? ' <span class="you-pill">YOU</span>' : ''}
           </span>
           <span class="rank-time-val">${r.timeFormatted}</span>
         </div>
@@ -623,94 +442,127 @@ export class MatchHistoryModal extends BaseModal {
       `;
     }
 
-    const totalDurationStr = rec.ticks.length > 0 ? this.formatTime(rec.ticks[rec.ticks.length - 1].timeMs) : '--:--.---';
+    const totalDurationStr = rec.ticks.length > 0 ? this.table.formatTime(rec.ticks[rec.ticks.length - 1].timeMs) : '--:--.---';
 
     return `
       <div class="inspector-layout-grid">
         <!-- 좌측: 메타데이터 컬럼 -->
         <div class="inspector-meta-col">
-          <!-- 1~3행: 드라이버 Parent Grouping (총 6개의 카드) -->
-          <div class="detail-floating-group driver-parent-group">
-            <span class="floating-group-title">🪛 드라이버: <strong class="driver-name-highlight">${driverName}</strong></span>
-            <div class="detail-meta-grid-2col">
-              <!-- 1행: 머신, 서킷 -->
+          <!-- 1행: 드라이버 프로필 & 경기 식별자 -->
+          <div class="detail-floating-group">
+            <span class="floating-group-title">👤 드라이버 & 경기 정보</span>
+            <div class="detail-floating-grid col-3">
               <div class="detail-floating-card">
-                <span class="floating-card-label">머신</span>
-                <span class="floating-card-value">${vehicleName}</span>
+                <span class="floating-card-label">드라이버</span>
+                <span class="floating-card-value text-cyan">${driverName}</span>
               </div>
               <div class="detail-floating-card">
-                <span class="floating-card-label">서킷</span>
-                <span class="floating-card-value circuit-name-val">${this.formatCircuitTitle(circuitTitle)}</span>
-              </div>
-              <!-- 2행: 베스트 랩타임, 총 레이스 시간 -->
-              <div class="detail-floating-card">
-                <span class="floating-card-label">베스트 랩타임</span>
-                <span class="floating-card-value text-accent-gold">${bestLapStr} <span class="best-lap-num-badge">LAP ${bestLapNum}</span></span>
+                <span class="floating-card-label">경기 코드</span>
+                <span class="floating-card-value text-accent font-mono">${rec.matchCode}</span>
               </div>
               <div class="detail-floating-card">
-                <span class="floating-card-label">총 레이스 시간</span>
-                <span class="floating-card-value">${totalRaceStr}</span>
-              </div>
-              <!-- 3행: 최고속도, 평균속도 -->
-              <div class="detail-floating-card">
-                <span class="floating-card-label">최고속도</span>
-                <span class="floating-card-value">${topSpeedStr}</span>
-              </div>
-              <div class="detail-floating-card">
-                <span class="floating-card-label">평균속도</span>
-                <span class="floating-card-value">${avgSpeedStr}</span>
+                <span class="floating-card-label">시점 모드</span>
+                <span class="floating-card-value text-white">${isFirstPerson ? '1인칭 (FPV)' : '3인칭 (TPV)'}</span>
               </div>
             </div>
           </div>
 
-          <!-- 4행: 랩별 섹터 기록 (3 LAP × 3 SECTOR = 9구간) -->
+          <!-- 2행: 머신 스펙 & 서킷 위치 -->
           <div class="detail-floating-group">
-            <span class="floating-group-title">⏱ 랩별 섹터 기록</span>
-            <div class="sector-record-grid">
+            <span class="floating-group-title">🏎️ 머신 & 서킷 환경</span>
+            <div class="detail-floating-grid col-2">
+              <div class="detail-floating-card">
+                <span class="floating-card-label">탑승 머신</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="display: inline-block; width: 10px; height: 10px; background: ${playerColor}; border: 1px solid rgba(255,255,255,0.4); border-radius: 1px;"></span>
+                  <span class="floating-card-value text-white">${vehicleName}</span>
+                </div>
+              </div>
+              <div class="detail-floating-card">
+                <span class="floating-card-label">개최 서킷</span>
+                <span class="floating-card-value text-gold">${circuitTitle}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3행: 최고 랩타임 & 총 레이스 시간 -->
+          <div class="detail-floating-group">
+            <span class="floating-group-title">⏱️ 랩타임 & 레이스 기록</span>
+            <div class="detail-floating-grid col-2">
+              <div class="detail-floating-card highlight-card">
+                <span class="floating-card-label">🏆 BEST LAP (LAP ${bestLapNum})</span>
+                <span class="floating-card-value text-gold font-mono" style="font-size: 16px;">${bestLapStr}</span>
+              </div>
+              <div class="detail-floating-card">
+                <span class="floating-card-label">총 레이스 시간</span>
+                <span class="floating-card-value text-white font-mono" style="font-size: 16px;">${totalRaceStr}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4행: 최고속도, 평균속도 -->
+          <div class="detail-floating-group">
+            <span class="floating-group-title">⚡ 텔레메트리 속도 통계</span>
+            <div class="detail-floating-grid col-2">
+              <div class="detail-floating-card">
+                <span class="floating-card-label">최고속도</span>
+                <span class="floating-card-value text-cyan font-mono" style="font-size: 16px;">${topSpeedStr}</span>
+              </div>
+              <div class="detail-floating-card">
+                <span class="floating-card-label">평균속도</span>
+                <span class="floating-card-value text-white font-mono" style="font-size: 16px;">${avgSpeedStr}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 5행: 3 랩 × 3 섹터 (총 9행 정밀 분석) -->
+          <div class="detail-floating-group">
+            <span class="floating-group-title">📊 랩별 섹터(Sector) 세부 타임 스탬프</span>
+            <div class="sector-grid-table">
               <div class="sector-grid-header">
-                <span>구간 (LAP/SEC)</span>
-                <span class="text-right">시간</span>
-                <span class="text-right">이전 랩 대비</span>
+                <span>섹터</span>
+                <span class="text-right">기록</span>
+                <span class="text-right">직전랩 대비</span>
               </div>
               ${sectorRowsHtml}
             </div>
           </div>
 
-          <!-- 5행: 레이스 완주 순위 -->
+          <!-- 6행: 레이스 완주 순위 (1~4위) -->
           <div class="detail-floating-group">
-            <span class="floating-group-title">🏆 레이스 완주 순위</span>
+            <span class="floating-group-title">🏁 레이스 완주 순위</span>
             <div class="rank-finish-list">
               ${raceResultsHtml}
             </div>
           </div>
 
-          <!-- 6행: 텔레메트리 리플레이 데이터 정보 -->
+          <!-- 7행: 텔레메트리 레코드 정보 -->
           <div class="detail-floating-group">
-            <span class="floating-group-title">📊 텔레메트리 & 리플레이 데이터 정보</span>
-            <div class="inspector-tech-col-list">
+            <span class="floating-group-title">💾 텔레메트리 레코드 사양</span>
+            <div class="tech-spec-grid">
               <div class="tech-row-item">
                 <span class="tech-k">샘플링 레이트</span>
-                <span class="tech-v">10Hz / Catmull-Rom 3차 보간</span>
+                <span class="tech-v text-white">15 Hz (66.6ms)</span>
               </div>
               <div class="tech-row-item">
-                <span class="tech-k">기록 프레임 수</span>
-                <span class="tech-v">${rec.ticks.length.toLocaleString()} 틱</span>
+                <span class="tech-k">저장 틱 수</span>
+                <span class="tech-v font-mono text-cyan">${rec.ticks.length.toLocaleString()} Ticks</span>
               </div>
               <div class="tech-row-item">
-                <span class="tech-k">데이터 압축률</span>
-                <span class="tech-v text-cyan">95.5% (고정소수점 패킷)</span>
+                <span class="tech-k">압축 방식</span>
+                <span class="tech-v text-cyan">95.5% (양자화 트랙)</span>
               </div>
               <div class="tech-row-item">
                 <span class="tech-k">저장 일시</span>
-                <span class="tech-v">${this.formatDate(rec.savedAt || rec.createdAt)}</span>
+                <span class="tech-v">${this.table.formatDate(rec.savedAt || rec.createdAt)}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- 우측: 2D 미니맵 컬럼 (우측 가운데 Floating Group) -->
+        <!-- 우측: 2D 미니맵 플레이어 -->
         <div class="inspector-minimap-col detail-floating-group minimap-floating-card">
-          <span class="floating-group-title minimap-floating-label">📡 2D 미니맵 레이스 궤적</span>
+          <span class="floating-group-title minimap-floating-label">🛰️ 2D 미니맵 레이스 뷰</span>
           <span class="floating-group-title minimap-floating-time" id="inspector-time-display">00:00.000 / ${totalDurationStr}</span>
 
           <div class="inspector-canvas-wrapper">
@@ -745,89 +597,5 @@ export class MatchHistoryModal extends BaseModal {
         </div>
       </div>
     `;
-  }
-
-  private getVehicleBadge(vehicleModelId: string): string {
-    if (vehicleModelId === 'formula_aero') {
-      return `<span class="vehicle-badge formula">Formula Aero</span>`;
-    } else if (vehicleModelId === 'cyber_speedster') {
-      return `<span class="vehicle-badge cyber">Cyber Speedster</span>`;
-    } else if (vehicleModelId === 'lm_hypercar') {
-      return `<span class="vehicle-badge hyper">Apex Hypercar</span>`;
-    }
-    return `<span class="vehicle-badge gt">GT-86 Turbo</span>`;
-  }
-
-  private getVehicleName(vehicleModelId: string): string {
-    if (vehicleModelId === 'formula_aero') return 'Formula Aero';
-    if (vehicleModelId === 'cyber_speedster') return 'Cyber Speedster';
-    if (vehicleModelId === 'lm_hypercar') return 'Apex Hypercar';
-    return 'GT-86 Turbo';
-  }
-
-  private formatCircuitTitle(title: string): string {
-    if (!title) return "";
-    if (title.length >= 10 && title.includes(" ")) {
-      const words = title.split(" ");
-      if (words.length === 2) {
-        return `${words[0]}<br>${words[1]}`;
-      } else if (words.length > 2) {
-        const midChar = title.length / 2;
-        let bestSpaceIdx = 0;
-        let minDiff = Infinity;
-        let runningLen = 0;
-        for (let i = 0; i < words.length - 1; i++) {
-          runningLen += words[i].length + (i > 0 ? 1 : 0);
-          const diff = Math.abs(runningLen - midChar);
-          if (diff < minDiff) {
-            minDiff = diff;
-            bestSpaceIdx = i;
-          }
-        }
-        const part1 = words.slice(0, bestSpaceIdx + 1).join(" ");
-        const part2 = words.slice(bestSpaceIdx + 1).join(" ");
-        return `${part1}<br>${part2}`;
-      }
-    }
-    return title;
-  }
-
-  private getCircuitTitle(circuitId: CircuitId): string {
-    const meta = CIRCUIT_DEFINITIONS[circuitId];
-    if (meta?.title) return meta.title;
-    if (circuitId === 'circuit_monaco') return 'Monaco GP';
-    if (circuitId === 'circuit_monza') return 'Monza GP';
-    if (circuitId === 'circuit_spa') return 'Spa-Francorchamps';
-    if (circuitId === 'circuit_silverstone') return 'Silverstone';
-    return circuitId;
-  }
-
-  private formatTime(ms: number): string {
-    const totalSec = Math.floor(ms / 1000);
-    const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
-    const s = (totalSec % 60).toString().padStart(2, '0');
-    const msec = Math.floor(ms % 1000).toString().padStart(3, '0');
-    return `${m}:${s}.${msec}`;
-  }
-
-  private formatDate(timestamp: number | string): string {
-    try {
-      const d = new Date(timestamp);
-      if (isNaN(d.getTime())) return '-';
-      const year = d.getFullYear();
-      const month = (d.getMonth() + 1).toString().padStart(2, '0');
-      const day = d.getDate().toString().padStart(2, '0');
-      const hours = d.getHours().toString().padStart(2, '0');
-      const mins = d.getMinutes().toString().padStart(2, '0');
-      return `${year}-${month}-${day} ${hours}:${mins}`;
-    } catch {
-      return '-';
-    }
-  }
-
-  private escapeHtml(text: string): string {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
   }
 }

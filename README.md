@@ -103,6 +103,7 @@ artifacts_0/
 │   │   ├── HUDController.ts        # 속도계, 기어, 랩 타임 HUD 컨트롤러
 │   │   ├── LoadingScreen.ts        # 초기화 및 인게임전 겸용 로딩 씬 제어기
 │   │   ├── MatchHistoryModal.ts    # 전적 검색 및 리더보드 모달
+│   │   ├── MatchHistoryTable.ts    # 전적 검색 테이블 및 페이지네이션 제어기
 │   │   ├── MinimapReplayPlayer.ts  # 2D 캔버스 트랙 미니맵 리플레이 플레이어
 │   │   ├── ModalManager.ts         # 모달 상태 관리 및 오케스트레이션
 │   │   ├── PauseModal.ts           # 인게임 일시정지 메뉴 모달

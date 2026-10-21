@@ -32,8 +32,43 @@ const CIRCUIT_PLANS: CircuitSeedPlan[] = [
   { circuitId: 'circuit_silverstone', prefix: 'SEED-SS', count: 50, baseTopSpeed: 244.0 },
 ];
 
+/**
+ * 인게임 물리 시뮬레이션 기반 3랩 주행 틱 및 정밀 메타데이터 생성
+ * - 출발 시 4대 차량 모두 「 」 그리드 마킹 박스 내 정중앙에 수평 정차(speed=0, yaw=메인스트레이트 정방향)
+ * - 결승선 통과 전에는 메인 스트레이트 직선 궤적 주행, 결승선 통과 후 서킷 스플라인 곡선에 부드럽게 합류
+ * - 차량 속도(km/h)와 3D 트랙 실제 이동 거리(m)를 100% 일치시켜 실제 주행과 리플레이 속도감이 완벽히 동일함
+ */
+function generateTicksForSeed(
+  circuitId: CircuitId,
+  topSpeedKmh: number,
+  playerRank: number,
+  opponentsConfig: Array<{ offsetDist: number; lane: number }>,
+  cIdx: number,
+  playerSlot: number
+): {
+  ticks: RawReplayTick[];
+  lapTimes: [number, number, number];
+  totalTimeMs: number;
+  bestLapMs: number;
+  bestLapNum: number;
+  sectorTimes: [number, number, number][];
+  avgSpeedKmh: number;
+} {
+  const def = CIRCUIT_DEFINITIONS[circuitId];
+  if (!def) throw new Error(`Unknown circuit: ${circuitId}`);
+
+  const curve = new THREE.CatmullRomCurve3(def.controlPoints, true, 'centripetal');
+  const circuitLength = curve.getLength();
+
+  // 15Hz 샘플링 (66.6ms당 1틱) - 정밀 궤적 및 100MB 이내 고밀도 시뮬레이션
+  const FPS = 15;
+  const dt = 1 / FPS;
+  const dtMs = 1000 / FPS;
+
+  const ticks: RawReplayTick[] = [];
+  const tangent = new THREE.Vector3();
+
   // 4개 그리드 슬롯 배치 결정 (STARTING_GRID_SLOTS 단일 소스 참조)
-  const playerSlot = Math.min(3, Math.max(0, playerRank - 1));
   const oppSlots = [0, 1, 2, 3].filter(s => s !== playerSlot);
 
   const playerInitDist = -STARTING_GRID_SLOTS[playerSlot].distBehind;
@@ -184,9 +219,14 @@ const CIRCUIT_PLANS: CircuitSeedPlan[] = [
     const opponents: ReplayOpponentState[] = opponentsConfig.map((opp, oppIdx) => {
       let oppDist = 0;
       const raceProgress = dist > 0 ? THREE.MathUtils.clamp(dist / (3 * circuitLength), 0, 1) : 0;
-      const wave = Math.sin(raceProgress * Math.PI * 5 + oppIdx * 1.9) * 16.0;
-      const blend = Math.pow(raceProgress, 1.8);
-      const dynamicOffset = opp.offsetDist * blend + (opp.offsetDist + wave) * (1 - blend);
+      
+      // 3개 랩 전체에 걸쳐 랩마다 2~3회 이상 엎치락뒤치락(Lead Changes) 발생하는 다중 주파수 오버테이크 파동
+      const lapProgress = dist / circuitLength;
+      const overtakeWave = Math.sin(lapProgress * Math.PI * 2.2 + oppIdx * 1.8 + cIdx * 0.7) * 22.0
+                         + Math.cos(lapProgress * Math.PI * 4.4 + oppIdx * 2.5) * 9.0;
+      // 결승선(마지막 반 바퀴, raceProgress > 0.75)에서는 각 차량의 최종 순위(opp.offsetDist)로 부드럽게 수렴
+      const convergeWeight = Math.pow(THREE.MathUtils.clamp((raceProgress - 0.75) / 0.25, 0, 1), 2.0);
+      const dynamicOffset = opp.offsetDist * convergeWeight + (opp.offsetDist * 0.15 + overtakeWave) * (1.0 - convergeWeight);
 
       if (dist <= 0) {
         oppDist = oppInitDists[oppIdx] + (dist - playerInitDist);
@@ -357,7 +397,9 @@ function main() {
         },
       ];
 
-      const sim = generateTicksForSeed(plan.circuitId, topSpeedKmh, playerRank, opponentConfigs, cIdx);
+      // 시작 슬롯을 0(Pole), 1(P2), 2(P3), 3(P4)로 고르게 25%씩 분산
+      const playerSlot = (cIdx * 3 + globalIndex) % 4;
+      const sim = generateTicksForSeed(plan.circuitId, topSpeedKmh, playerRank, opponentConfigs, cIdx, playerSlot);
 
       // 3. 상대 차량 3대의 기록 산출 (밀리초 단위 실시간 주행 기반)
       const opponentsResult = opponentConfigs.map((opp, oppIdx) => {
@@ -384,7 +426,34 @@ function main() {
         };
       });
 
-      // 4. 메타데이터 생성
+      // 4. 레이스 최종 완주 순위(1~4위) 배열 산출
+      const allRacers = [
+        {
+          driverName,
+          timeMs: sim.totalTimeMs,
+          timeFormatted: formatMs(sim.totalTimeMs),
+          isPlayer: true,
+          color,
+        },
+        ...opponentsResult.map(opp => ({
+          driverName: opp.driverName,
+          timeMs: opp.totalTimeMs,
+          timeFormatted: opp.totalTimeFormatted,
+          isPlayer: false,
+          color: opp.color,
+        })),
+      ].sort((a, b) => a.timeMs - b.timeMs);
+
+      const raceResults = allRacers.map((r, idx) => ({
+        rank: idx + 1,
+        driverName: r.driverName,
+        timeMs: r.timeMs,
+        timeFormatted: r.timeFormatted,
+        isPlayer: r.isPlayer,
+        color: r.color,
+      }));
+
+      // 5. 메타데이터 생성
       const metadata: MatchSummaryMetadata = {
         matchCode,
         circuitId: plan.circuitId,
@@ -401,12 +470,14 @@ function main() {
         lapTimes: sim.lapTimes,
         sectorTimes: sim.sectorTimes,
         avgSpeedKmh: sim.avgSpeedKmh,
+        topSpeedKmh,
         maxSpeedKmh: topSpeedKmh,
         rank: playerRank,
         totalRacers: 4,
         totalLaps: 3,
         opponentConfigs,
         opponents: opponentsResult,
+        raceResults,
       };
 
       seedRecords.push({

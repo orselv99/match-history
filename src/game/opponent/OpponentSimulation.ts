@@ -15,6 +15,7 @@ export interface OpponentAgent {
   targetLaneOffset: number;
   color: string;
   currentLap: number;
+  assignedSlot?: number;
   isFinished: boolean;
   finishTimeMs?: number;
   // 다이내믹 레이싱 배틀 변수 (엎치락뒤치락 팽팽한 순위 싸움)

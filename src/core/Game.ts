@@ -322,14 +322,24 @@ export class Game {
   }
 
 
-  public resetVehicleToStart(): void {
-    // 플레이어 차량을 스타팅 그리드 1번 슬롯(Pole Position, Y: 0.055m 노면 밀착)에 정렬!
-    const gridPos = this.circuit.getGridPosition(0);
+  public playerGridSlot: number = 0;
+
+  public resetVehicleToStart(slotIndex?: number): void {
+    if (slotIndex !== undefined) {
+      this.playerGridSlot = slotIndex;
+    } else if (this.mode === 'DRIVING') {
+      this.playerGridSlot = Math.floor(Math.random() * 4);
+    } else {
+      this.playerGridSlot = 0;
+    }
+
+    // 플레이어 차량을 스타팅 그리드 슬롯(0~3 다양화)에 정렬
+    const gridPos = this.circuit.getGridPosition(this.playerGridSlot);
     this.playerVehicle.reset(gridPos.position, gridPos.heading);
 
-    // 주행 모드일 경우 상대 차량들도 1, 2, 3번 슬롯에 정렬
+    // 주행 모드일 경우 상대 차량들도 나머지 3개 슬롯에 정렬
     if (this.mode === 'DRIVING') {
-      this.opponentManager.resetToGrids(true);
+      this.opponentManager.resetToGrids(true, this.playerGridSlot);
     }
 
     this.skidMarkManager.reset();
@@ -365,8 +375,9 @@ export class Game {
    */
   private getVehicleForSlot(slotIndex: number): Vehicle | null {
     if (this.mode === 'DRIVING') {
-      if (slotIndex === 0) return this.playerVehicle;
-      return this.opponentManager.agents[slotIndex]?.vehicle || null;
+      if (slotIndex === this.playerGridSlot) return this.playerVehicle;
+      const opp = this.opponentManager.getAgentForSlot(slotIndex);
+      return opp?.vehicle || null;
     } else {
       return this.opponentManager.agents[slotIndex]?.vehicle || (slotIndex === 0 ? this.playerVehicle : null);
     }
@@ -378,9 +389,13 @@ export class Game {
     this.recorder.clear();
 
     if (this.mode === 'DRIVING') {
-      this.opponentManager.resetToGrids(true);
+      this.playerGridSlot = Math.floor(Math.random() * 4);
+      const gridPos = this.circuit.getGridPosition(this.playerGridSlot);
+      this.playerVehicle.reset(gridPos.position, gridPos.heading);
+      this.opponentManager.resetToGrids(true, this.playerGridSlot);
     } else {
-      this.opponentManager.resetToGrids(false);
+      this.playerGridSlot = 0;
+      this.opponentManager.resetToGrids(false, 0);
     }
 
     this.startCutsceneController.setup((i) => this.getVehicleForSlot(i), this.mode === 'DRIVING');
@@ -413,8 +428,8 @@ export class Game {
     this.startCountdown();
   }
 
-  public startCountdown(): void {
-    if (this.raceState === 'COUNTDOWN' || this.raceState === 'RUNNING') return;
+  public startCountdown(force: boolean = false): void {
+    if (!force && (this.raceState === 'COUNTDOWN' || this.raceState === 'RUNNING')) return;
     this.resetStandings();
     this.gantryGoTimer = 0;
     this.circuit.setGantryLights(0);

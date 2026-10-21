@@ -120,6 +120,14 @@ artifacts_0/
 │   │   │   ├── SectorNotification.ts # 섹터/도착선 통과 순차 알림 텍스트 컴포넌트
 │   │   │   ├── SpeedometerWidget.ts # 속도계, 기어 단수, RPM 타코미터, 드리프트 스태미나 바
 │   │   │   └── index.ts            # HUD 서브시스템 배럴 내보내기
+│   │   ├── finish/                 # 완주 모달 서브시스템
+│   │   │   ├── benchmarks.ts       # 서킷별 벤치마크 TOP 5 초기 Fallback 데이터
+│   │   │   ├── FinishLeaderboard.ts # 서킷별 역대 TOP 5 비동기 조회/렌더러
+│   │   │   ├── FinishModal.ts      # 완주 요약 및 서킷 랭킹 모달 오케스트레이터
+│   │   │   ├── FinishPhotoMode.ts  # 포토 모드(Ctrl+Z) 및 스크린샷 캡처 제어기
+│   │   │   ├── FinishRaceResults.ts # 인게임 레이스 최종 순위 테이블 렌더러
+│   │   │   ├── types.ts            # 완주 모달 전용 콜백 및 엔트리 타입
+│   │   │   └── index.ts            # 완주 모달 서브시스템 배럴 내보내기
 │   │   ├── settings/               # 환경 설정 서브시스템
 │   │   │   ├── GeneralSettingsTab.ts # 언어 선택, BGM 및 경기 리플레이 캐시 분리 관리 탭
 │   │   │   ├── AudioSettingsTab.ts # 볼륨, 음소거, 사운드 제어 전담 탭
@@ -128,7 +136,6 @@ artifacts_0/
 │   │   │   ├── SettingsModal.ts    # 환경 설정 모달 메인 오케스트레이터
 │   │   │   └── index.ts            # 환경 설정 서브시스템 배럴 내보내기
 │   │   ├── BaseModal.ts            # 공통 모달 베이스 추상 클래스
-│   │   ├── FinishModal.ts          # 레이스 완주 및 결과 요약 모달
 │   │   ├── LoadingScreen.ts        # 초기화 및 인게임전 겸용 로딩 씬 제어기
 │   │   ├── ModalManager.ts         # 모달 상태 관리 및 오케스트레이션
 │   │   ├── PauseModal.ts           # 인게임 일시정지 메뉴 모달

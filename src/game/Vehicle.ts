@@ -408,11 +408,6 @@ export class Vehicle {
     }
   }
 
-  public toggleHeadlights(): boolean {
-    this.setHeadlights(!this.headlightsEnabled);
-    return this.headlightsEnabled;
-  }
-
   public getRearWheelWorldPositions(): { left: THREE.Vector3; right: THREE.Vector3 } {
     const left = new THREE.Vector3();
     const right = new THREE.Vector3();

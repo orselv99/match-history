@@ -10,7 +10,7 @@ import { keyBindingManager } from './core/KeyBindingManager.ts';
 // UI Controllers
 import { GameSetupWizard, RaceSetupConfig } from './ui/gamesetup/GameSetupWizard.ts';
 import { HUDController } from './ui/hud/HUDController.ts';
-import { FinishModal } from './ui/FinishModal.ts';
+import { FinishModal } from './ui/finish/FinishModal.ts';
 import { ReplayBarController } from './ui/ReplayBarController.ts';
 import { SettingsModal } from './ui/settings/SettingsModal.ts';
 import { PauseModal } from './ui/PauseModal.ts';
@@ -379,10 +379,6 @@ window.addEventListener('DOMContentLoaded', () => {
           replayBar.updateButtonState();
         }
         // 주행 중(DRIVING 모드)에는 Game.ts의 [R] 트랙 안전 복귀(Track Respawn)가 독립 처리됨
-      }
-    } else if (keyBindingManager.isActionKey('headlights', e.code) || e.key === 'h' || e.key === 'H') {
-      if (!(e.target instanceof HTMLInputElement)) {
-        game.toggleHeadlights();
       }
     } else if (e.key === 'c' || e.key === 'C') {
       if (!(e.target instanceof HTMLInputElement)) {

@@ -7,8 +7,7 @@ export type KeyAction =
   | 'steerLeft'
   | 'steerRight'
   | 'handbrake'
-  | 'reset'
-  | 'headlights';
+  | 'reset';
 
 export type KeyPresetId = 'wasd' | 'arrows' | 'custom';
 
@@ -22,7 +21,6 @@ export interface KeyBindingMap {
   steerRight: string;
   handbrake: string;
   reset: string;
-  headlights: string;
 }
 
 const STORAGE_KEY = 'apex_keybindings_v3';
@@ -31,7 +29,7 @@ const STORAGE_KEY = 'apex_keybindings_v3';
  * 기본 프리셋 정의 (단일 키 매핑)
  * - wasd: W 가속, 우측 쉬프트(ShiftRight) 감속/후진, A/D 조향, SPACE 드리프트
  * - arrows: 화살표↑ 가속, 좌측 쉬프트(ShiftLeft) 감속/후진, 화살표←/→ 조향, SPACE 드리프트
- * - 공통: R 서킷 복귀, H 헤드라이트 토글
+ * - 공통: R 서킷 복귀
  */
 const PRESETS: Record<'wasd' | 'arrows', KeyBindingMap> = {
   wasd: {
@@ -41,7 +39,6 @@ const PRESETS: Record<'wasd' | 'arrows', KeyBindingMap> = {
     steerRight: 'KeyD',
     handbrake: 'Space',
     reset: 'KeyR',
-    headlights: 'KeyH',
   },
   arrows: {
     throttle: 'ArrowUp',
@@ -50,7 +47,6 @@ const PRESETS: Record<'wasd' | 'arrows', KeyBindingMap> = {
     steerRight: 'ArrowRight',
     handbrake: 'Space',
     reset: 'KeyR',
-    headlights: 'KeyH',
   },
 };
 

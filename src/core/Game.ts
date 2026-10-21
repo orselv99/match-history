@@ -293,15 +293,6 @@ export class Game {
     }
   }
 
-  public toggleHeadlights(): boolean {
-    const next = !this.playerVehicle.headlightsEnabled;
-    this.playerVehicle.setHeadlights(next);
-    if (this.mode === 'DEMO' && this.opponentManager.agents[0]) {
-      this.opponentManager.agents[0].vehicle.setHeadlights(next);
-    }
-    return next;
-  }
-
   public toggleCameraView(): CameraViewMode {
     const mode = this.cameraController.toggleViewMode();
     const is1P = mode === 'FIRST_PERSON';

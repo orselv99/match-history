@@ -69,14 +69,18 @@ export class CircuitDecorations {
       }
     }
 
-    // 2) 4개 슬롯 코너 브래킷 「 」 마킹
-    const localXDir = new THREE.Vector3(startTangent.z, 0, -startTangent.x).normalize();
+    // 2) 4개 슬롯 코너 브래킷 「 」 마킹 (서킷 곡선 실제 궤적 추종)
+    const totalL = circuitCurve.getLength();
 
     STARTING_GRID_SLOTS.forEach((slot) => {
+      const u = (1.0 - (slot.distBehind / totalL) + 1.0) % 1.0;
+      const pt = circuitCurve.getPointAt(u);
+      const slotTangent = circuitCurve.getTangentAt(u).normalize();
+      const slotLocalXDir = new THREE.Vector3(slotTangent.z, 0, -slotTangent.x).normalize();
+
       const center = new THREE.Vector3()
-        .copy(startPt)
-        .addScaledVector(startTangent, -slot.distBehind)
-        .addScaledVector(localXDir, slot.lane);
+        .copy(pt)
+        .addScaledVector(slotLocalXDir, slot.lane);
       const halfW = 1.35;
       const halfL = 2.4;
       const bracketArm = 0.7;
@@ -92,18 +96,18 @@ export class CircuitDecorations {
       corners.forEach(c => {
         const cornerOrigin = new THREE.Vector3()
           .copy(center)
-          .addScaledVector(localXDir, c.sideX * halfW)
-          .addScaledVector(startTangent, c.sideZ * halfL);
+          .addScaledVector(slotLocalXDir, c.sideX * halfW)
+          .addScaledVector(slotTangent, c.sideZ * halfL);
 
         // 가로 바
         const hStart = new THREE.Vector3().copy(cornerOrigin);
-        const hEnd = new THREE.Vector3().copy(cornerOrigin).addScaledVector(localXDir, -c.sideX * bracketArm);
-        group.add(this.createMarkingStrip(hStart, hEnd, startTangent, bThick, whiteMat));
+        const hEnd = new THREE.Vector3().copy(cornerOrigin).addScaledVector(slotLocalXDir, -c.sideX * bracketArm);
+        group.add(this.createMarkingStrip(hStart, hEnd, slotTangent, bThick, whiteMat));
 
         // 세로 바
         const vStart = new THREE.Vector3().copy(cornerOrigin);
-        const vEnd = new THREE.Vector3().copy(cornerOrigin).addScaledVector(startTangent, -c.sideZ * bracketArm);
-        group.add(this.createMarkingStrip(vStart, vEnd, localXDir, bThick, whiteMat));
+        const vEnd = new THREE.Vector3().copy(cornerOrigin).addScaledVector(slotTangent, -c.sideZ * bracketArm);
+        group.add(this.createMarkingStrip(vStart, vEnd, slotLocalXDir, bThick, whiteMat));
       });
     });
 

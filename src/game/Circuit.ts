@@ -343,7 +343,20 @@ export class Circuit {
    */
   public getGridPosition(slotIndex: number): { position: THREE.Vector3; heading: number } {
     const slot = STARTING_GRID_SLOTS[Math.min(STARTING_GRID_SLOTS.length - 1, Math.max(0, slotIndex))] ?? STARTING_GRID_SLOTS[0];
-    return this.getStartStraightWorldPosition(slot.lane, -slot.distBehind);
+    const totalLength = this.circuitCurve.getLength();
+    // 서킷 곡선 실제 궤적을 역추적하여 결승선 후방(distBehind) 지점 정확히 산출
+    const u = (1.0 - (slot.distBehind / totalLength) + 1.0) % 1.0;
+    const pt = this.circuitCurve.getPointAt(u);
+    const tangent = this.circuitCurve.getTangentAt(u).normalize();
+    const localXDir = new THREE.Vector3(tangent.z, 0, -tangent.x).normalize();
+    const heading = Math.atan2(tangent.x, tangent.z);
+
+    const position = new THREE.Vector3()
+      .copy(pt)
+      .addScaledVector(localXDir, slot.lane);
+    position.y = Math.max(0, pt.y) + 0.08;
+
+    return { position, heading };
   }
 
   /**

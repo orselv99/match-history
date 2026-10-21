@@ -72,7 +72,8 @@ export const CIRCUIT_DEFINITIONS: Record<string, CircuitMetadata> = {
       new THREE.Vector3(-160, 0.6, -60),   // Tabac 고속 좌코너 (+0.6m)
       new THREE.Vector3(-120, 0, -20),     // 수영장 복합 시케인 (Louis Chiron, 0m)
       new THREE.Vector3(-80, 0, 40),       // La Rascasse 헤어핀 (0m)
-      new THREE.Vector3(-30, 0, 20),       // Anthony Noghes 마지막 복귀 코너 (0m)
+      new THREE.Vector3(-55, 0, 18),       // Anthony Noghes 마지막 복귀 코너 (0m)
+      new THREE.Vector3(-40, 0, 0),        // 메인 스트레이트 진입 및 스타팅 그리드 직선화 (0m)
     ],
   },
 

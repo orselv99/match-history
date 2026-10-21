@@ -105,9 +105,17 @@ artifacts_0/
 │   │   │   ├── GameSetupWizard.ts  # 4단계 레이스 세팅 위저드 모달 오케스트레이터
 │   │   │   ├── HoneycombPicker.ts  # 127셀 헥사곤 허니콤 컬러 팔레트 컴포넌트
 │   │   │   └── VehiclePreview.ts   # 게임 설정 Step 2용 독립 3D 턴테이블 뷰어
+│   │   ├── hud/                    # 인게임 HUD 위젯 서브시스템
+│   │   │   ├── HUDController.ts    # 속도계, 순위 타워, 랩 타이머, 조작 오버레이 메인 오케스트레이터
+│   │   │   ├── InputOverlay.ts     # 조작 가이드 키 뱃지 및 실시간 키 입력 오버레이
+│   │   │   ├── LapTimerDisplay.ts  # 서킷 명칭, 랩 카운터 및 랩 타임(현재/최고) 표시
+│   │   │   ├── SectorNotification.ts # 섹터/도착선 통과 순차 알림 텍스트 컴포넌트
+│   │   │   ├── SpeedometerWidget.ts # 속도계, 기어 단수, RPM 타코미터, 드리프트 스태미나 바
+│   │   │   ├── StandingsTower.ts   # 상단 좌측 4인 실시간 순위 타워 및 추월 애니메이션
+│   │   │   └── index.ts            # HUD 서브시스템 배럴 내보내기
 │   │   ├── BaseModal.ts            # 공통 모달 베이스 추상 클래스
 │   │   ├── FinishModal.ts          # 레이스 완주 및 결과 요약 모달
-│   │   ├── HUDController.ts        # 속도계, 기어, 랩 타임 HUD 컨트롤러
+│   │   ├── HUDController.ts        # HUD 하위 호환 Re-export 래퍼
 │   │   ├── LoadingScreen.ts        # 초기화 및 인게임전 겸용 로딩 씬 제어기
 │   │   ├── MatchHistoryModal.ts    # 전적 검색 및 리더보드 모달
 │   │   ├── MatchHistoryTable.ts    # 전적 검색 테이블 및 페이지네이션 제어기

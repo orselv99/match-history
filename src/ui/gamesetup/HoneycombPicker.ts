@@ -11,7 +11,6 @@ export class HoneycombPicker {
   private svgEl!: SVGSVGElement;
   private swatchEl!: HTMLElement;
   private hexTextEl!: HTMLElement;
-  private nativeInputEl!: HTMLInputElement;
   private cells: { polygon: SVGPolygonElement; hex: string }[] = [];
 
   constructor(container: HTMLElement, initialHex: string = '#ef4444', onColorSelect: (hex: string) => void) {
@@ -44,10 +43,6 @@ export class HoneycombPicker {
             <div id="honeycomb-swatch" class="honeycomb-swatch-current" style="background-color: ${this.selectedHex};"></div>
             <span id="honeycomb-hex-display" class="honeycomb-hex-display">${this.selectedHex.toUpperCase()}</span>
           </div>
-          <div class="honeycomb-custom-btn-wrap">
-            <span class="honeycomb-custom-chip">CUSTOM 🎨</span>
-            <input type="color" id="honeycomb-native-input" class="honeycomb-native-input" value="${this.selectedHex}" />
-          </div>
         </div>
         <span class="honeycomb-guide-note">원하는 색상 타일을 클릭하면 오른쪽 3D 뷰어와 인게임 머신에 실시간으로 반영됩니다.</span>
       </div>
@@ -56,7 +51,6 @@ export class HoneycombPicker {
     this.svgEl = this.container.querySelector('.honeycomb-svg') as SVGSVGElement;
     this.swatchEl = this.container.querySelector('#honeycomb-swatch') as HTMLElement;
     this.hexTextEl = this.container.querySelector('#honeycomb-hex-display') as HTMLElement;
-    this.nativeInputEl = this.container.querySelector('#honeycomb-native-input') as HTMLInputElement;
 
     // 허니콤 헥사곤 셀 생성 (R = 6, 127셀)
     const R = 6;
@@ -117,19 +111,12 @@ export class HoneycombPicker {
         this.cells.push({ polygon, hex: cellHex });
       }
     }
-
-    // 네이티브 커스텀 컬러 입력 핸들러
-    this.nativeInputEl.addEventListener('input', (e) => {
-      const val = (e.target as HTMLInputElement).value;
-      this.selectColor(val);
-    });
   }
 
   public selectColor(hex: string): void {
     this.selectedHex = hex.toLowerCase();
     this.swatchEl.style.backgroundColor = hex;
     this.hexTextEl.textContent = hex.toUpperCase();
-    this.nativeInputEl.value = hex;
 
     // 활성 셀 하이라이트 갱신
     let foundExact = false;

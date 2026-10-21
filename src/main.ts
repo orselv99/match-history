@@ -9,7 +9,7 @@ import { keyBindingManager } from './core/KeyBindingManager.ts';
 
 // UI Controllers
 import { GameSetupWizard, RaceSetupConfig } from './ui/gamesetup/GameSetupWizard.ts';
-import { HUDController } from './ui/HUDController.ts';
+import { HUDController } from './ui/hud/HUDController.ts';
 import { FinishModal } from './ui/FinishModal.ts';
 import { ReplayBarController } from './ui/ReplayBarController.ts';
 import { SettingsModal } from './ui/SettingsModal.ts';

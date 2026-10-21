@@ -80,33 +80,6 @@
   border: 1px solid var(--border-subtle);
 }
 
-.honeycomb-custom-btn-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.honeycomb-native-input {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.honeycomb-custom-chip {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid var(--border-strong);
-  padding: 5px 9px;
-  pointer-events: none;
-  letter-spacing: 0.04em;
-}
 
 .honeycomb-guide-note {
   font-family: var(--font-sans);

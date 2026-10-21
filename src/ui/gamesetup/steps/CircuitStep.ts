@@ -17,6 +17,7 @@ export class CircuitStep {
     this.callbacks = callbacks;
     this.preview = new CircuitPreview((circuitId) => {
       this.selectedCircuit = circuitId;
+      this.update();
       this.callbacks.onCircuitChange?.(circuitId);
     });
   }

@@ -139,7 +139,11 @@ export class MatchHistoryTable {
     if (this.sortMode === 'best_lap') {
       baseList.sort((a, b) => (a.metadata?.bestLapMs || Infinity) - (b.metadata?.bestLapMs || Infinity));
     } else if (this.sortMode === 'recent') {
-      baseList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+      baseList.sort((a, b) => {
+        const timeB = new Date(b.metadata?.createdAt || b.createdAt || b.savedAt || 0).getTime();
+        const timeA = new Date(a.metadata?.createdAt || a.createdAt || a.savedAt || 0).getTime();
+        return timeB - timeA;
+      });
     } else if (this.sortMode === 'top_speed') {
       baseList.sort((a, b) => (b.metadata?.topSpeedKmh || 0) - (a.metadata?.topSpeedKmh || 0));
     }
@@ -203,7 +207,7 @@ export class MatchHistoryTable {
       const circuitTitle = this.getCircuitTitle(recCircuitId);
       const lapTime = meta?.bestLapMs ? this.formatTime(meta.bestLapMs) : '--:--.---';
       const topSpeed = meta?.topSpeedKmh ? `${meta.topSpeedKmh.toFixed(1)} km/h` : '--.- km/h';
-      const dateStr = this.formatDate(rec.savedAt || rec.createdAt);
+      const dateStr = this.formatDate(rec.metadata?.createdAt || rec.createdAt || rec.savedAt);
 
       return `
         <tr class="history-data-row ${rankRowClass}" data-match="${rec.matchCode}" title="클릭하여 상세 기록 및 2D 미니맵 인스펙터 열기">
@@ -338,7 +342,8 @@ export class MatchHistoryTable {
     return `${m}:${s}.${msec}`;
   }
 
-  public formatDate(timestamp: number | string): string {
+  public formatDate(timestamp: number | string | undefined): string {
+    if (!timestamp) return '-';
     try {
       const d = new Date(timestamp);
       if (isNaN(d.getTime())) return '-';

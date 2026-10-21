@@ -1,4 +1,4 @@
-import { CIRCUIT_DEFINITIONS, getCircuitSvgData, type CircuitId } from '../data/circuits.ts';
+import { CIRCUIT_DEFINITIONS, getCircuitSvgData, type CircuitId } from '../../data/circuits.ts';
 
 /**
  * 게임 설정 위저드 Step 1: 서킷 2D SVG 트랙맵 및 스펙 쇼케이스 렌더러

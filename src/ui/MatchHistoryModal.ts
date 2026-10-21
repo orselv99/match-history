@@ -497,7 +497,7 @@ export class MatchHistoryModal extends BaseModal {
               </div>
               <div class="tech-row-item">
                 <span class="tech-k">저장 일시</span>
-                <span class="tech-v">${this.table.formatDate(rec.savedAt || rec.createdAt)}</span>
+                <span class="tech-v">${this.table.formatDate(rec.metadata?.createdAt || rec.createdAt || rec.savedAt)}</span>
               </div>
             </div>
           </div>

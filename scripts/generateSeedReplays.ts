@@ -482,7 +482,8 @@ function main() {
         matchCode,
         metadata,
         ticks: sim.ticks,
-        createdAt: metadata.timestamp,
+        createdAt: metadata.createdAt,
+        savedAt: new Date(metadata.createdAt).getTime(),
         compressed: false,
       });
 

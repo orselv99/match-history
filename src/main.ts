@@ -8,7 +8,7 @@ import { INGAME_BGM_TRACKS, BgmTrack } from './data/audio.ts';
 import { keyBindingManager } from './core/KeyBindingManager.ts';
 
 // UI Controllers
-import { GameSetupWizard, RaceSetupConfig } from './ui/GameSetupWizard.ts';
+import { GameSetupWizard, RaceSetupConfig } from './ui/gamesetup/GameSetupWizard.ts';
 import { HUDController } from './ui/HUDController.ts';
 import { FinishModal } from './ui/FinishModal.ts';
 import { ReplayBarController } from './ui/ReplayBarController.ts';
@@ -182,6 +182,10 @@ window.addEventListener('DOMContentLoaded', () => {
     },
     onTitle: () => {
       setModeUI('TITLE');
+    },
+    onCaptureScreenshot: () => {
+      game.renderer.render(game.scene, game.camera);
+      return game.renderer.domElement.toDataURL('image/png');
     },
   });
 

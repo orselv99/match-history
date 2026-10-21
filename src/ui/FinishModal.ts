@@ -9,6 +9,7 @@ export interface FinishModalCallbacks {
   onReplay: () => void;
   onRestart: () => void;
   onTitle: () => void;
+  onCaptureScreenshot?: () => string | void;
 }
 
 export interface CircuitLeaderboardEntry {
@@ -64,9 +65,11 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
   private latestMetadata: MatchSummaryMetadata | null = null;
   private isPhotoMode: boolean = false;
   private hintTimeoutId: number | null = null;
+  private callbacks: FinishModalCallbacks;
 
   constructor(callbacks: FinishModalCallbacks) {
     super('finish-modal');
+    this.callbacks = callbacks;
 
     this.circuitCodeTag = document.getElementById('modal-circuit-code');
     this.raceResultsTbody = document.getElementById('finish-race-results-tbody');
@@ -205,11 +208,19 @@ export class FinishModal extends BaseModal<MatchSummaryMetadata> {
   }
 
   public captureScreenshot(): void {
-    const canvas = document.querySelector<HTMLCanvasElement>('#game-container canvas');
-    if (!canvas) return;
-
     try {
-      const dataUrl = canvas.toDataURL('image/png');
+      let dataUrl: string | null = null;
+      if (this.callbacks.onCaptureScreenshot) {
+        dataUrl = this.callbacks.onCaptureScreenshot() || null;
+      }
+      if (!dataUrl) {
+        const canvas = document.querySelector<HTMLCanvasElement>('#game-container canvas');
+        if (canvas) {
+          dataUrl = canvas.toDataURL('image/png');
+        }
+      }
+      if (!dataUrl) return;
+
       const a = document.createElement('a');
       a.href = dataUrl;
       const circuitName = this.latestMetadata?.circuitId || 'circuit';

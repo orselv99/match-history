@@ -95,11 +95,18 @@ artifacts_0/
 │   ├── types/                      # 공통 TypeScript 타입 정의
 │   │   └── game.ts                 # 레이스 상태, 게임 모드, 키 입력, 순위표 타입 정의
 │   ├── ui/                         # DOM UI 컴포넌트, 모달 및 프리뷰 제어기
+│   │   ├── gamesetup/              # 4단계 게임 세팅 위저드 및 프리뷰 서브시스템
+│   │   │   ├── steps/              # 위저드 단계별 전담 스텝 모듈
+│   │   │   │   ├── BriefingStep.ts     # Step 4: 드라이버 프로필 및 최종 레이스 브리핑 스텝
+│   │   │   │   ├── CircuitStep.ts      # Step 1: 서킷 선택 및 2D 트랙 프리뷰 스텝
+│   │   │   │   ├── EnvironmentStep.ts  # Step 3: 시간대 및 날씨 환경 선택 스텝
+│   │   │   │   └── VehicleStep.ts      # Step 2: 머신 모델, 스펙 쇼케이스 및 컬러 팔레트 스텝
+│   │   │   ├── CircuitPreview.ts   # 게임 설정 Step 1용 2D SVG 서킷 맵 & 스펙 쇼케이스
+│   │   │   ├── GameSetupWizard.ts  # 4단계 레이스 세팅 위저드 모달 오케스트레이터
+│   │   │   ├── HoneycombPicker.ts  # 127셀 헥사곤 허니콤 컬러 팔레트 컴포넌트
+│   │   │   └── VehiclePreview.ts   # 게임 설정 Step 2용 독립 3D 턴테이블 뷰어
 │   │   ├── BaseModal.ts            # 공통 모달 베이스 추상 클래스
-│   │   ├── CircuitPreview.ts       # 게임 설정 Step 1용 2D SVG 서킷 맵 & 스펙 쇼케이스
 │   │   ├── FinishModal.ts          # 레이스 완주 및 결과 요약 모달
-│   │   ├── GameSetupWizard.ts      # 4단계 레이스 세팅 위저드 모달 (서킷/머신/환경/모드)
-│   │   ├── HoneycombPicker.ts      # 127셀 헥사곤 허니콤 컬러 팔레트 컴포넌트
 │   │   ├── HUDController.ts        # 속도계, 기어, 랩 타임 HUD 컨트롤러
 │   │   ├── LoadingScreen.ts        # 초기화 및 인게임전 겸용 로딩 씬 제어기
 │   │   ├── MatchHistoryModal.ts    # 전적 검색 및 리더보드 모달
@@ -109,8 +116,7 @@ artifacts_0/
 │   │   ├── PauseModal.ts           # 인게임 일시정지 메뉴 모달
 │   │   ├── ReplayBarController.ts  # 리플레이 하단 재생바 컨트롤러
 │   │   ├── SettingsModal.ts        # 그래픽/오디오/조작 환경설정 모달
-│   │   ├── Toast.ts                # 알림 토스트 팝업 컴포넌트
-│   │   └── VehiclePreview.ts       # 게임 설정 Step 2용 독립 3D 턴테이블 뷰어
+│   │   └── Toast.ts                # 알림 토스트 팝업 컴포넌트
 │   ├── main.ts                     # 애플리케이션 진입점 및 UI 이벤트 오케스트레이션
 │   ├── styles.css                  # 모듈별 스타일시트 매니페스트 (@import)
 │   └── vite-env.d.ts               # Vite 환경 클라이언트 타입 선언

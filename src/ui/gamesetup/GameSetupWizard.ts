@@ -236,6 +236,7 @@ export class GameSetupWizard extends BaseModal {
   }
 
   public syncBriefing(): void {
+    if (!this.briefingStep || !this.circuitStep || !this.vehicleStep || !this.environmentStep) return;
     this.briefingStep.updateBriefing(
       this.selectedCircuit,
       this.selectedVehicleModel,

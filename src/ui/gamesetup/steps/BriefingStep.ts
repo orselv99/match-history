@@ -33,7 +33,9 @@ export class BriefingStep {
     this.briefingDriver = document.getElementById('briefing-driver');
 
     this.bindEvents();
-    this.pickRandomName();
+    if (this.driverNameInput && !this.driverNameInput.value) {
+      this.driverNameInput.value = RANDOM_DRIVER_NAMES[Math.floor(Math.random() * RANDOM_DRIVER_NAMES.length)];
+    }
   }
 
   private bindEvents(): void {

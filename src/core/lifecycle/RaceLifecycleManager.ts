@@ -33,12 +33,13 @@ export interface RaceLifecycleDependencies {
   getStartCutsceneController: () => StartCutsceneController;
   getEnvironmentManager: () => EnvironmentManager;
   clearSpeedFX: () => void;
+  getMode: () => GameMode;
+  setMode: (mode: GameMode) => void;
   onFinish?: (metadata: MatchSummaryMetadata) => void;
 }
 
 /**
  * 경기 세션 생명주기 및 모드 상태 머신 전담 관리자
- * - 게임 모드 (TITLE, DRIVING, REPLAY, DEMO) 전환 및 오디오/차량 가시성 동기화
  * - 레이스 상태 (READY, START_CUTSCENE, COUNTDOWN, RUNNING, FINISHED, PAUSED) 전이
  * - 갠트리 3구 신호등 시퀀싱 & 카운트다운 비프 사운드
  * - 완주 판정, 4인 드라이버 전적 순위 산출 및 리플레이 벤치마크 메타데이터 집계
@@ -46,7 +47,13 @@ export interface RaceLifecycleDependencies {
 export class RaceLifecycleManager {
   private deps: RaceLifecycleDependencies;
 
-  public mode: GameMode = 'TITLE';
+  public get mode(): GameMode {
+    return this.deps.getMode();
+  }
+  public set mode(m: GameMode) {
+    this.deps.setMode(m);
+  }
+
   public raceState: RaceState = 'READY';
   public isPaused: boolean = false;
   public playerGridSlot: number = 0;
@@ -288,85 +295,7 @@ export class RaceLifecycleManager {
   }
 
   public setMode(mode: GameMode): void {
-    this.isPaused = false;
-    this.mode = mode;
-    this.updateWeatherScreenFX();
-    this.deps.clearSpeedFX();
-
-    const camera = this.deps.getCameraController().camera;
-    camera.fov = 65;
-    camera.updateProjectionMatrix();
-    document.getElementById('slipstream-overlay')?.classList.remove('active');
-
-    const audio = this.deps.getAudio();
-    const playerVehicle = this.deps.getPlayerVehicle();
-    const replayPlayer = this.deps.getReplayPlayer();
-    const opponentManager = this.deps.getOpponentManager();
-    const circuit = this.deps.getCircuit();
-
-    if (mode === 'TITLE') {
-      audio.pauseEngine();
-      audio.playLobbyBgm();
-      playerVehicle.mesh.visible = true;
-      this.resetVehicleToStart();
-      this.mode = 'TITLE';
-      replayPlayer.hideGhost();
-      opponentManager.deactivate();
-      this.raceState = 'READY';
-      this.countdownTimer = 3.0;
-      this.lastBeepNumber = -1;
-      this.offroadTimer = 0;
-      this.offroadHintShown = false;
-    } else if (mode === 'REPLAY') {
-      audio.pauseEngine();
-      audio.playInGameBgm();
-      playerVehicle.mesh.visible = false;
-      opponentManager.deactivate();
-      replayPlayer.ghostVehicle.setVehicleModel(playerVehicle.currentVehicleModelId);
-      replayPlayer.ghostVehicle.setColor(playerVehicle.color);
-
-      if (opponentManager.isActive && opponentManager.agents[1]?.vehicle.currentVehicleModelId) {
-        replayPlayer.syncOpponents([
-          { vehicleModelId: opponentManager.agents[1]?.vehicle.currentVehicleModelId, color: opponentManager.agents[1]?.color, driverName: opponentManager.agents[1]?.driverName },
-          { vehicleModelId: opponentManager.agents[2]?.vehicle.currentVehicleModelId, color: opponentManager.agents[2]?.color, driverName: opponentManager.agents[2]?.driverName },
-          { vehicleModelId: opponentManager.agents[3]?.vehicle.currentVehicleModelId, color: opponentManager.agents[3]?.color, driverName: opponentManager.agents[3]?.driverName },
-        ]);
-      }
-
-      this.deps.getSkidMarkManager().reset();
-      this.deps.getCollisionManager().reset();
-      replayPlayer.seek(0);
-      replayPlayer.pause();
-      this.raceState = 'COUNTDOWN';
-      this.countdownTimer = 3.0;
-      this.lastBeepNumber = -1;
-      this.gantryGoTimer = 0;
-      circuit.setGantryLights(0);
-      this.deps.getCameraController().snapToTarget(replayPlayer.ghostVehicle);
-    } else if (mode === 'DEMO') {
-      audio.playInGameBgm();
-      playerVehicle.mesh.visible = false;
-      replayPlayer.hideGhost();
-      opponentManager.setSlotConfig(0, playerVehicle.currentVehicleModelId, playerVehicle.color);
-      opponentManager.activate(false);
-      if (opponentManager.agents[0]) {
-        opponentManager.agents[0].vehicle.setHeadlights(playerVehicle.headlightsEnabled);
-      }
-      this.deps.getSkidMarkManager().reset();
-      this.deps.getCollisionManager().reset();
-      this.deps.getLapTimer().reset();
-      this.deps.getRecorder().clear();
-      this.startRace(true);
-    } else { // DRIVING
-      audio.playInGameBgm();
-      playerVehicle.mesh.visible = true;
-      replayPlayer.hideGhost();
-      opponentManager.activate(true);
-      this.resetVehicleToStart();
-      this.raceState = 'READY';
-      this.countdownTimer = 3.0;
-      this.lastBeepNumber = -1;
-    }
+    this.deps.setMode(mode);
   }
 
   public computeRaceResults(): RaceResultEntry[] {

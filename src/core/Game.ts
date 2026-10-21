@@ -25,6 +25,7 @@ import { MatchSummaryMetadata, RaceResultEntry } from '../replay/ReplayTypes.ts'
 // Refactored Subsystems
 import { RenderEngine } from './engine/RenderEngine.ts';
 import { GameLoop } from './engine/GameLoop.ts';
+import { GameStateManager } from './lifecycle/GameStateManager.ts';
 import { RaceLifecycleManager } from './lifecycle/RaceLifecycleManager.ts';
 import { RaceSimulationCoordinator } from './simulation/RaceSimulationCoordinator.ts';
 import { NametagRenderer } from './simulation/NametagRenderer.ts';
@@ -52,6 +53,7 @@ import type {
 export class Game {
   public renderEngine: RenderEngine;
   public gameLoop: GameLoop;
+  public stateManager: GameStateManager;
   public lifecycleManager: RaceLifecycleManager;
   public simulationCoordinator: RaceSimulationCoordinator;
   public nametagRenderer: NametagRenderer;
@@ -150,7 +152,7 @@ export class Game {
     this.standingsManager = new StandingsManager();
     this.nametagRenderer = new NametagRenderer();
 
-    // 6. 경기 생명주기 및 시뮬레이션 코디네이터 초기화
+    // 6. 경기 생명주기 및 상태 관리자 초기화
     this.lifecycleManager = new RaceLifecycleManager({
       getCircuit: () => this.circuit,
       getPlayerVehicle: () => this.playerVehicle,
@@ -166,11 +168,29 @@ export class Game {
       getStartCutsceneController: () => this.startCutsceneController,
       getEnvironmentManager: () => this.environmentManager,
       clearSpeedFX: () => this.renderEngine.speedFX.clear(),
+      getMode: () => this.stateManager.mode,
+      setMode: (m) => this.stateManager.setMode(m),
       onFinish: (metadata) => {
         if (this.onFinishCallback) {
           this.onFinishCallback(metadata);
         }
       },
+    });
+
+    this.stateManager = new GameStateManager({
+      getPlayerVehicle: () => this.playerVehicle,
+      getOpponentManager: () => this.opponentManager,
+      getReplayPlayer: () => this.replayPlayer,
+      getAudio: () => this.audio,
+      getCameraController: () => this.cameraController,
+      getCircuit: () => this.circuit,
+      getSkidMarkManager: () => this.skidMarkManager,
+      getCollisionManager: () => this.collisionManager,
+      getLapTimer: () => this.lapTimer,
+      getRecorder: () => this.recorder,
+      getLifecycleManager: () => this.lifecycleManager,
+      clearSpeedFX: () => this.renderEngine.speedFX.clear(),
+      updateWeatherScreenFX: () => this.lifecycleManager.updateWeatherScreenFX(),
     });
 
     this.simulationCoordinator = new RaceSimulationCoordinator({
@@ -216,8 +236,8 @@ export class Game {
   public get speedFX(): SpeedFX { return this.renderEngine.speedFX; }
   public get container(): HTMLElement { return this.renderEngine.container; }
 
-  public get mode(): GameMode { return this.lifecycleManager.mode; }
-  public set mode(m: GameMode) { this.lifecycleManager.mode = m; }
+  public get mode(): GameMode { return this.stateManager.mode; }
+  public set mode(m: GameMode) { this.stateManager.mode = m; }
 
   public get raceState(): RaceState { return this.lifecycleManager.raceState; }
   public set raceState(s: RaceState) { this.lifecycleManager.raceState = s; }
@@ -324,7 +344,7 @@ export class Game {
   }
 
   public setMode(mode: GameMode): void {
-    this.lifecycleManager.setMode(mode);
+    this.stateManager.setMode(mode);
   }
 
   public resetStandings(): void {

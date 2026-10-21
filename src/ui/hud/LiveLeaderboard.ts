@@ -8,31 +8,31 @@ interface RacerRowItem {
 }
 
 /**
- * 상단 좌측 실시간 4인 순위 타워(Standings Tower) 및 셔플 교체 애니메이션 전담 컴포넌트
+ * 상단 좌측 실시간 순위표 (Live Leaderboard) 및 추월 애니메이션 전담 컴포넌트
  */
-export class StandingsTower {
-  private hudRankContainer: HTMLElement | null;
-  private standingsTower: HTMLElement | null;
+export class LiveLeaderboard {
+  private rankContainer: HTMLElement | null;
+  private leaderboardEl: HTMLElement | null;
   private racerRowMap: Map<string, RacerRowItem> = new Map();
 
   constructor() {
-    this.hudRankContainer = document.getElementById('hud-rank-container');
-    this.standingsTower = document.getElementById('hud-standings-tower');
+    this.rankContainer = document.getElementById('hud-rank-container');
+    this.leaderboardEl = document.getElementById('hud-standings-tower');
   }
 
   public update(gameMode: string, standings?: LeaderboardRacerEntry[]): void {
-    if (!this.hudRankContainer || !this.standingsTower) return;
+    if (!this.rankContainer || !this.leaderboardEl) return;
 
-    const showStandings = gameMode !== 'TITLE' && !!standings && standings.length > 0;
-    this.hudRankContainer.style.display = showStandings ? 'block' : 'none';
+    const showLeaderboard = gameMode !== 'TITLE' && !!standings && standings.length > 0;
+    this.rankContainer.style.display = showLeaderboard ? 'block' : 'none';
 
-    if (!showStandings || !standings) return;
+    if (!showLeaderboard || !standings) return;
 
     // 1. 엔트리 키 변경 감지 시(모드 전환 등) 기존 노드 재생성
     const currentKeys = standings.map(s => s.id).join(',');
     const existingKeys = Array.from(this.racerRowMap.keys()).join(',');
     if (currentKeys !== existingKeys) {
-      this.standingsTower.innerHTML = '';
+      this.leaderboardEl.innerHTML = '';
       this.racerRowMap.clear();
 
       standings.forEach(racer => {
@@ -56,7 +56,7 @@ export class StandingsTower {
         rowEl.appendChild(colorPill);
         rowEl.appendChild(nameEl);
 
-        this.standingsTower!.appendChild(rowEl);
+        this.leaderboardEl!.appendChild(rowEl);
         this.racerRowMap.set(racer.id, {
           rowEl,
           badgeEl,
@@ -95,3 +95,6 @@ export class StandingsTower {
     });
   }
 }
+
+// 하위 호환 별칭
+export { LiveLeaderboard as StandingsTower };

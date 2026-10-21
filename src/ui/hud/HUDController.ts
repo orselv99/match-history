@@ -1,20 +1,25 @@
 import { GameUIState } from '../../core/Game.ts';
 import { SpeedometerWidget } from './SpeedometerWidget.ts';
-import { StandingsTower } from './StandingsTower.ts';
+import { LiveLeaderboard } from './LiveLeaderboard.ts';
 import { LapTimerDisplay } from './LapTimerDisplay.ts';
 import { InputOverlay } from './InputOverlay.ts';
 import { SectorNotification } from './SectorNotification.ts';
 
 /**
  * 인게임 헤드업 디스플레이(HUD) 갱신 및 애니메이션 전담 메인 오케스트레이터
- * - 위젯 단위(속도계, 순위 타워, 랩 타이머, 조작 오버레이, 섹터 알림)로 위임 제어
+ * - 위젯 단위(속도계, 실시간 순위표, 랩 타이머, 조작 오버레이, 섹터 알림)로 위임 제어
  */
 export class HUDController {
   public readonly speedometer: SpeedometerWidget;
-  public readonly standingsTower: StandingsTower;
+  public readonly liveLeaderboard: LiveLeaderboard;
   public readonly lapTimer: LapTimerDisplay;
   public readonly inputOverlay: InputOverlay;
   public readonly sectorNotification: SectorNotification;
+
+  // 하위 호환 게터
+  public get standingsTower(): LiveLeaderboard {
+    return this.liveLeaderboard;
+  }
 
   private cutsceneSkipPrompt: HTMLElement | null;
   private cinematicBars: HTMLElement | null;
@@ -23,7 +28,7 @@ export class HUDController {
 
   constructor() {
     this.speedometer = new SpeedometerWidget();
-    this.standingsTower = new StandingsTower();
+    this.liveLeaderboard = new LiveLeaderboard();
     this.lapTimer = new LapTimerDisplay();
     this.inputOverlay = new InputOverlay();
     this.sectorNotification = new SectorNotification();
@@ -43,8 +48,8 @@ export class HUDController {
   }
 
   public update(state: GameUIState): void {
-    // 1. 상단 좌측 실시간 4인 순위 타워
-    this.standingsTower.update(state.gameMode, state.standings);
+    // 1. 상단 좌측 실시간 4인 순위표 (Live Leaderboard)
+    this.liveLeaderboard.update(state.gameMode, state.standings);
 
     // 2. 우측 하단 속도계, 기어, RPM, 드리프트 스태미나
     this.speedometer.update(

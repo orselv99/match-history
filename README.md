@@ -105,21 +105,28 @@ artifacts_0/
 │   │   │   ├── GameSetupWizard.ts  # 4단계 레이스 세팅 위저드 모달 오케스트레이터
 │   │   │   ├── HoneycombPicker.ts  # 127셀 헥사곤 허니콤 컬러 팔레트 컴포넌트
 │   │   │   └── VehiclePreview.ts   # 게임 설정 Step 2용 독립 3D 턴테이블 뷰어
+│   │   ├── history/                # 전적 검색 및 리더보드 서브시스템
+│   │   │   ├── HistoryStatsSummary.ts # 상단 3대 KPI 통계 요약 카드 (총 경기, 최고 랩타임, 최고속)
+│   │   │   ├── MatchHistoryInspector.ts # 인스펙터 풀-커버 팝업 및 상세 섹터/텔레메트리 뷰어
+│   │   │   ├── MatchHistoryModal.ts # 전적 검색 및 리더보드 메인 오케스트레이터
+│   │   │   ├── MatchHistoryTable.ts # 전적 검색 테이블 및 페이지네이션 제어기
+│   │   │   ├── MinimapReplayPlayer.ts # 2D 캔버스 트랙 미니맵 리플레이 플레이어
+│   │   │   └── index.ts            # 전적 검색 서브시스템 배럴 내보내기
 │   │   ├── hud/                    # 인게임 HUD 위젯 서브시스템
-│   │   │   ├── HUDController.ts    # 속도계, 순위 타워, 랩 타이머, 조작 오버레이 메인 오케스트레이터
+│   │   │   ├── HUDController.ts    # 속도계, 실시간 순위표, 랩 타이머, 조작 오버레이 메인 오케스트레이터
 │   │   │   ├── InputOverlay.ts     # 조작 가이드 키 뱃지 및 실시간 키 입력 오버레이
 │   │   │   ├── LapTimerDisplay.ts  # 서킷 명칭, 랩 카운터 및 랩 타임(현재/최고) 표시
+│   │   │   ├── LiveLeaderboard.ts  # 상단 좌측 4인 실시간 순위표 및 추월 애니메이션
 │   │   │   ├── SectorNotification.ts # 섹터/도착선 통과 순차 알림 텍스트 컴포넌트
 │   │   │   ├── SpeedometerWidget.ts # 속도계, 기어 단수, RPM 타코미터, 드리프트 스태미나 바
-│   │   │   ├── StandingsTower.ts   # 상단 좌측 4인 실시간 순위 타워 및 추월 애니메이션
 │   │   │   └── index.ts            # HUD 서브시스템 배럴 내보내기
 │   │   ├── BaseModal.ts            # 공통 모달 베이스 추상 클래스
 │   │   ├── FinishModal.ts          # 레이스 완주 및 결과 요약 모달
 │   │   ├── HUDController.ts        # HUD 하위 호환 Re-export 래퍼
 │   │   ├── LoadingScreen.ts        # 초기화 및 인게임전 겸용 로딩 씬 제어기
-│   │   ├── MatchHistoryModal.ts    # 전적 검색 및 리더보드 모달
-│   │   ├── MatchHistoryTable.ts    # 전적 검색 테이블 및 페이지네이션 제어기
-│   │   ├── MinimapReplayPlayer.ts  # 2D 캔버스 트랙 미니맵 리플레이 플레이어
+│   │   ├── MatchHistoryModal.ts    # 전적 검색 하위 호환 Re-export 래퍼
+│   │   ├── MatchHistoryTable.ts    # 전적 테이블 하위 호환 Re-export 래퍼
+│   │   ├── MinimapReplayPlayer.ts  # 미니맵 플레이어 하위 호환 Re-export 래퍼
 │   │   ├── ModalManager.ts         # 모달 상태 관리 및 오케스트레이션
 │   │   ├── PauseModal.ts           # 인게임 일시정지 메뉴 모달
 │   │   ├── ReplayBarController.ts  # 리플레이 하단 재생바 컨트롤러

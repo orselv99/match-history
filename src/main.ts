@@ -14,7 +14,7 @@ import { FinishModal } from './ui/FinishModal.ts';
 import { ReplayBarController } from './ui/ReplayBarController.ts';
 import { SettingsModal } from './ui/SettingsModal.ts';
 import { PauseModal } from './ui/PauseModal.ts';
-import { MatchHistoryModal } from './ui/MatchHistoryModal.ts';
+import { MatchHistoryModal } from './ui/history/MatchHistoryModal.ts';
 import { ModalManager } from './ui/ModalManager.ts';
 import { i18nManager } from './i18n/I18nManager.ts';
 import { appDB } from './storage/AppDatabase.ts';

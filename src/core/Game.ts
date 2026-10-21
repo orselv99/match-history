@@ -272,12 +272,16 @@ export class Game {
     const leftMirror = document.getElementById('left-mirror-frame');
     const rightMirror = document.getElementById('right-mirror-frame');
 
-    const isRain = isFxEnabled && this.currentWeather === 'rain';
-    const isSnow = isFxEnabled && this.currentWeather === 'snow';
+    const isLobby = this.mode === 'TITLE';
+    const isFinished = this.raceState === 'FINISHED';
+    const isRain = isFxEnabled && this.currentWeather === 'rain' && !isLobby;
+    const isSnow = isFxEnabled && this.currentWeather === 'snow' && !isLobby;
 
     if (overlay) {
       overlay.classList.toggle('is-raining', isRain);
       overlay.classList.toggle('is-snowing', isSnow);
+      overlay.classList.toggle('is-finished', isFinished);
+      overlay.classList.toggle('is-paused', this.isPaused);
     }
     if (leftMirror) {
       leftMirror.classList.toggle('is-raining', isRain);
@@ -898,6 +902,7 @@ export class Game {
 
   public handleReplayFinish(): void {
     this.raceState = 'FINISHED';
+    this.updateWeatherScreenFX();
     this.speedFX.clear();
     this.replayPlayer.pause();
     this.audio.playFinishFanfare();
@@ -990,6 +995,7 @@ export class Game {
   }
 
   private async handleFinish(targetVehicle: Vehicle, userId: string, nickname: string): Promise<void> {
+    this.updateWeatherScreenFX();
     this.recorder.stop();
     this.audio.pauseEngine();
     this.audio.duckBgm(true, 0.2);
@@ -1069,6 +1075,7 @@ export class Game {
   public pause(): void {
     if (this.mode !== 'DRIVING' && this.mode !== 'DEMO' && this.mode !== 'REPLAY') return;
     this.isPaused = true;
+    this.updateWeatherScreenFX();
     this.audio.pauseEngine();
     this.audio.pauseBgm();
     if (this.mode === 'REPLAY') {
@@ -1078,6 +1085,7 @@ export class Game {
 
   public resume(): void {
     this.isPaused = false;
+    this.updateWeatherScreenFX();
     this.audio.resumeBgm();
     if (this.mode === 'REPLAY') {
       this.replayPlayer.play();
@@ -1099,6 +1107,7 @@ export class Game {
   public setMode(mode: GameMode): void {
     this.isPaused = false;
     this.mode = mode;
+    this.updateWeatherScreenFX();
     this.speedFX.clear();
     this.cameraController.camera.fov = 65;
     this.cameraController.camera.updateProjectionMatrix();
